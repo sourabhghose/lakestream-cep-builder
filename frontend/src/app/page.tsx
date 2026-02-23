@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Menu,
   ChevronDown,
@@ -18,6 +18,9 @@ import {
   HelpCircle,
   Boxes,
   History,
+  ShieldCheck,
+  Sun,
+  Moon,
 } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import PipelineCanvas from "@/components/canvas/PipelineCanvas";
@@ -26,6 +29,7 @@ import ConfigPanel from "@/components/panels/ConfigPanel";
 import HelpPanel from "@/components/panels/HelpPanel";
 import PipelineListPanel from "@/components/panels/PipelineListPanel";
 import DeployHistoryPanel from "@/components/panels/DeployHistoryPanel";
+import ValidationPanel from "@/components/panels/ValidationPanel";
 import CodePreview from "@/components/editors/CodePreview";
 import TemplateGallery from "@/components/templates/TemplateGallery";
 import SaveDialog from "@/components/dialogs/SaveDialog";
@@ -35,6 +39,7 @@ import Toast from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
 import { usePipelineStore } from "@/hooks/usePipelineStore";
 import { useToastStore } from "@/hooks/useToastStore";
+import { useThemeStore } from "@/hooks/useThemeStore";
 import { exportPipeline, importPipeline } from "@/lib/pipelineIO";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { computeLayout } from "@/lib/autoLayout";
@@ -62,6 +67,7 @@ export default function Home() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [pipelineListOpen, setPipelineListOpen] = useState(false);
   const [deployHistoryOpen, setDeployHistoryOpen] = useState(false);
+  const [validationPanelOpen, setValidationPanelOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [saveTemplateDialogOpen, setSaveTemplateDialogOpen] = useState(false);
   const [deployDialogOpen, setDeployDialogOpen] = useState(false);
@@ -84,6 +90,11 @@ export default function Home() {
   } = usePipelineStore();
   const importFileInputRef = useRef<HTMLInputElement>(null);
   const addToast = useToastStore((s) => s.addToast);
+  const { theme, toggleTheme, initTheme } = useThemeStore();
+
+  useEffect(() => {
+    initTheme();
+  }, [initTheme]);
 
   function handleSaveClick() {
     setSaveDialogOpen(true);
@@ -156,17 +167,17 @@ export default function Home() {
   };
 
   return (
-    <div className="flex h-screen flex-col bg-slate-950">
+    <div className="flex h-screen flex-col bg-gray-100 dark:bg-slate-950">
       {/* Top bar */}
-      <header className="flex h-12 shrink-0 items-center justify-between border-b border-slate-700 bg-slate-900/95 px-4">
+      <header className="flex h-12 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 dark:border-slate-700 dark:bg-slate-900/95">
         <div className="flex items-center gap-4">
-          <h1 className="text-lg font-semibold text-slate-200">
+          <h1 className="text-lg font-semibold text-gray-900 dark:text-slate-200">
             LakeStream CEP Builder
           </h1>
           <DropdownMenu.Root open={menuOpen} onOpenChange={setMenuOpen}>
             <DropdownMenu.Trigger asChild>
               <button
-                className="flex items-center gap-2 rounded border border-slate-600 bg-slate-800 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-700"
+                className="flex items-center gap-2 rounded border border-gray-300 bg-gray-100 px-3 py-1.5 text-sm text-gray-900 hover:bg-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                 aria-label="Pipeline menu"
               >
                 <Menu className="h-4 w-4" />
@@ -306,6 +317,14 @@ export default function Home() {
             <History className="h-5 w-5" />
           </button>
           <button
+            className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-slate-200"
+            onClick={() => setValidationPanelOpen(true)}
+            title="Validate pipeline"
+          >
+            <ShieldCheck className="h-4 w-4" />
+            Validate
+          </button>
+          <button
             className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
             onClick={handleDeployClick}
           >
@@ -313,10 +332,18 @@ export default function Home() {
             Deploy
           </button>
           <button
+            onClick={toggleTheme}
+            className="rounded-md p-2 text-gray-600 hover:bg-gray-200 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          </button>
+          <button
             onClick={() => setHelpOpen((o) => !o)}
             className={cn(
-              "rounded-md p-2 text-slate-400 hover:bg-slate-800 hover:text-slate-200",
-              helpOpen && "bg-slate-800 text-slate-200"
+              "rounded-md p-2 text-gray-600 hover:bg-gray-200 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200",
+              helpOpen && "bg-gray-200 text-gray-900 dark:bg-slate-800 dark:text-slate-200"
             )}
             title="Help"
           >
@@ -338,12 +365,12 @@ export default function Home() {
           <PipelineCanvas />
           {isEmpty && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <div className="rounded-xl border border-dashed border-slate-600 bg-slate-900/80 px-8 py-6 text-center backdrop-blur">
-                <Boxes className="mx-auto mb-3 h-12 w-12 text-slate-500" />
-                <p className="text-sm font-medium text-slate-300">
+              <div className="rounded-xl border border-dashed border-gray-300 bg-white/80 px-8 py-6 text-center backdrop-blur dark:border-slate-600 dark:bg-slate-900/80">
+                <Boxes className="mx-auto mb-3 h-12 w-12 text-gray-500 dark:text-slate-500" />
+                <p className="text-sm font-medium text-gray-700 dark:text-slate-300">
                   Drag nodes from the palette to start building your pipeline
                 </p>
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-gray-500 dark:text-slate-500">
                   Add sources, transforms, CEP patterns, and sinks
                 </p>
               </div>
@@ -365,6 +392,11 @@ export default function Home() {
           isOpen={deployHistoryOpen}
           onClose={() => setDeployHistoryOpen(false)}
           pipelineId={pipelineId}
+        />
+        {/* Validation Panel */}
+        <ValidationPanel
+          isOpen={validationPanelOpen}
+          onClose={() => setValidationPanelOpen(false)}
         />
       </div>
 

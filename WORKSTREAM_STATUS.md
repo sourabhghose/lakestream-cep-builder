@@ -30,50 +30,90 @@ LakeStream CEP Builder — Visual CEP Pipeline Builder for Databricks
 **WS16: Test suite** — 37 backend tests (pipelines, codegen, deploy, generators, store), all passing
 
 ### Round 5 (2026-02-23)
-**WS17: Schema registry** — Unity Catalog schema discovery API (catalogs/schemas/tables/columns), SchemaBrowser tree-view component, cascading dropdowns in DynamicConfigForm for catalog/schema/table fields, "Browse schema" integration
-**WS18: Pipeline management** — PipelineListPanel (list/load/delete), SaveDialog (create/update), pipeline dropdown menu (New/Open/Save/Save As/Delete), version display, dirty state tracking, loadPipelineFromServer
-**WS19: CI/CD** — GitHub Actions CI (backend-test, frontend-build, lint), deploy workflow (manual/tag), Dependabot for npm+pip, README badges
-**WS20: Data preview** — Synthetic data preview API per node type, DataPreview table component, eye icon on nodes for preview popup, "Preview Data" section in config panel
+**WS17: Schema registry** — Unity Catalog schema discovery API, SchemaBrowser tree-view, cascading dropdowns
+**WS18: Pipeline management** — PipelineListPanel (list/load/delete), SaveDialog (create/update), version display, dirty state
+**WS19: CI/CD** — GitHub Actions CI (backend-test, frontend-build, lint), deploy workflow, Dependabot
+**WS20: Data preview** — Synthetic data preview API per node type, DataPreview table component
+
+### Round 6 (2026-02-23)
+**Lakebase + Databricks App architecture** — Updated PRD, Lakebase PostgreSQL store (psycopg3), DB schema DDL, FastAPI static file serving, app.yaml, Makefile deploy targets
+
+### Round 7 (2026-02-23)
+**WS21: OAuth middleware** — Databricks App OAuth user identity extraction, 5-min cache, dev fallback, wired into pipeline create + deploy
+**WS22: Deploy dialog** — Comprehensive modal with job config, compute settings (new/existing cluster, autoscale), schedule (continuous/cron), checkpoint config, connection validation, success state with job URL
+**WS23: Deploy history panel** — Slide-over showing deployment audit trail per pipeline with status badges, code target tags, error messages, clickable job URLs, expandable deployed code view
+**WS24: User preferences API** — GET/PUT endpoints backed by Lakebase or local JSON files, deploy history local fallback, 49 backend tests (12 new)
+
+### Round 8 (2026-02-23)
+**WS25: Pipeline export/import** — Export pipeline as .lakestream.json file, import from file with validation, preserves metadata and code target
+**WS26: Template management** — Save pipeline as reusable template with name/description/industry, backend CRUD backed by Lakebase or local files, 10 built-in stubs
+**WS27: Pipeline search** — Canvas-wide search (Ctrl+F) matching labels, types, config values. Navigate matches with arrows, auto-pan to node, pulsing blue ring highlight
 
 ## Current State
 
 | Component | Coverage |
 | --- | --- |
-| Frontend components | All built and wired |
-| Backend API | 12 endpoints: health, pipelines CRUD, codegen, codeparse, deploy (validate/catalogs/schemas), schema discovery, preview |
-| SDP code gen | 22 templates — all node types |
-| SSS code gen | 29 templates — all node types |
-| CEP patterns | All 12 implemented |
-| Templates | 10 pre-built use cases |
+| Frontend components | 20+ components across canvas, panels, dialogs, editors |
+| Backend API | 17 endpoints: health, pipelines CRUD, codegen, codeparse, deploy (validate/catalogs/schemas/history), schema discovery, preview, preferences, templates |
+| SDP code gen | 22 Jinja2 templates — all 38 node types |
+| SSS code gen | 29 Jinja2 templates — all 38 node types |
+| CEP patterns | All 12 implemented (TransformWithState) |
+| Templates | 10 pre-built + user-created via API |
 | Pattern timeline | Built (design + test modes) |
 | Frontend ↔ Backend | Full API integration |
 | Deploy service | Real Databricks SDK + mock fallback |
-| Pipeline storage | Persistent (local files / UC volumes) |
+| Deploy dialog | Full compute/schedule/checkpoint config |
+| Deploy history | Audit trail with code view |
+| Pipeline storage | Lakebase PostgreSQL + local file fallback |
 | Edge validation | Semantic validation with toasts |
 | Error handling | Toasts, loading states, empty states |
 | Monaco sync | Bidirectional (canvas↔code) |
 | Help system | Tooltips, shortcuts, help panel |
 | Performance | MiniMap, memoization, search, auto-layout |
-| Tests | 37 backend tests (all passing) |
+| Tests | 49 backend tests (all passing) |
 | Undo/Redo | 50-entry history stack |
 | Schema discovery | UC catalog/schema/table browsing |
 | Pipeline management | Full CRUD with save dialog and list panel |
 | CI/CD | GitHub Actions (CI + Deploy + Dependabot) |
 | Data preview | Synthetic preview per node type |
+| OAuth | User identity from Databricks App OAuth |
+| User preferences | Per-user settings API |
+| Export/Import | JSON file export/import |
+| Template management | Save as template + CRUD |
+| Pipeline search | Canvas-wide search with highlighting |
 
-## Architecture Summary
+## Architecture
 
 ```
-Frontend (Next.js 14)          Backend (FastAPI)             Databricks
-┌─────────────────────┐   ┌─────────────────────────┐   ┌──────────────────┐
-│ React Flow Canvas   │   │ /api/pipelines (CRUD)   │   │ Lakeflow Jobs    │
-│ Node Palette (38)   │──▶│ /api/codegen/generate   │──▶│ DLT Pipelines    │
-│ Monaco Editor       │   │ /api/codeparse/parse    │   │ Spark SS Jobs    │
-│ Schema Browser      │   │ /api/deploy (+validate) │   │ Unity Catalog    │
-│ Pipeline Manager    │   │ /api/schema (discovery) │   │ Volumes (store)  │
-│ Data Preview        │   │ /api/preview/sample     │   │                  │
-│ Help + Tooltips     │   │ 22 SDP + 29 SSS tmpls   │   │                  │
-└─────────────────────┘   └─────────────────────────┘   └──────────────────┘
+┌─────────────────────────────── Databricks App ───────────────────────────────┐
+│  ┌──────────────────────┐    ┌──────────────────────────────────────────────┐│
+│  │   React Frontend     │    │       FastAPI Backend                        ││
+│  │                      │    │                                              ││
+│  │  React Flow Canvas   │───▶│  /api/pipelines     (CRUD)                  ││
+│  │  38-Node Palette     │    │  /api/codegen       (SDP + SSS generation)  ││
+│  │  Monaco Editor       │    │  /api/codeparse     (SQL → canvas)          ││
+│  │  Deploy Dialog       │    │  /api/deploy        (SDK + history)         ││
+│  │  Schema Browser      │    │  /api/schema        (UC discovery)          ││
+│  │  Pipeline Search     │    │  /api/preview       (sample data)           ││
+│  │  Deploy History      │    │  /api/preferences   (user settings)         ││
+│  │  Template Gallery    │    │  /api/templates     (template CRUD)         ││
+│  │  Export/Import       │    │  /health            (health check)          ││
+│  └──────────────────────┘    └──────────┬───────────────────────────────────┘│
+│        Static at /                      │                                    │
+│        API at /api/*                    │                                    │
+└─────────────────────────────────────────┼────────────────────────────────────┘
+                                          │
+            ┌─────────────────────────────┼────────────────────────┐
+            │                             │                        │
+    ┌───────▼────────┐         ┌──────────▼──────────┐    ┌───────▼───────┐
+    │   Lakebase     │         │   Lakeflow Jobs     │    │ Unity Catalog │
+    │   PostgreSQL   │         │   DLT Pipelines     │    │    Schemas    │
+    │                │         │   SSS Jobs           │    │    Tables     │
+    │  pipelines     │         │   Notebooks         │    │               │
+    │  deploy_hist   │         └─────────────────────┘    └───────────────┘
+    │  user_prefs    │
+    │  templates     │
+    └────────────────┘
 ```
 
 ## Git History
@@ -85,6 +125,9 @@ Frontend (Next.js 14)          Backend (FastAPI)             Databricks
 | Round 3 | Real deploy, persistent storage, edge validation, UX |
 | Round 4 | Bidirectional sync, help, performance, tests |
 | Round 5 | Schema registry, pipeline mgmt, CI/CD, data preview |
+| Round 6 | Lakebase PostgreSQL + Databricks App architecture |
+| Round 7 | OAuth, deploy dialog, deploy history, user preferences |
+| Round 8 | Export/import, template management, pipeline search |
 
 ---
-*Updated: 2026-02-23 after Round 5*
+*Updated: 2026-02-23 after Round 8*

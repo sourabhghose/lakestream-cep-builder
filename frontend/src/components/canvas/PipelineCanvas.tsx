@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import {
   ReactFlow,
   Background,
@@ -38,6 +38,25 @@ const edgeTypes: EdgeTypes = {
 };
 
 const SNAP_GRID: [number, number] = [15, 15];
+
+function PanToNodeEffect() {
+  const { setCenter, getNodes } = useReactFlow();
+  const panToNodeId = usePipelineStore((s) => s.panToNodeId);
+  const clearPanToNode = usePipelineStore((s) => s.clearPanToNode);
+
+  useEffect(() => {
+    if (!panToNodeId) return;
+    const node = getNodes().find((n) => n.id === panToNodeId);
+    if (node) {
+      const cx = node.position.x + 90;
+      const cy = node.position.y + 40;
+      setCenter(cx, cy, { duration: 300 });
+    }
+    clearPanToNode();
+  }, [panToNodeId, getNodes, setCenter, clearPanToNode]);
+
+  return null;
+}
 
 function PipelineCanvasInner() {
   const { screenToFlowPosition } = useReactFlow();
@@ -146,6 +165,7 @@ function PipelineCanvasInner() {
 
   return (
     <div className="relative h-full w-full">
+      <PanToNodeEffect />
       <PipelineSearch />
       <ReactFlow
         nodes={nodes}

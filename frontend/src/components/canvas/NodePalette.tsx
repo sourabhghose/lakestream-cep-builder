@@ -80,7 +80,7 @@ export default function NodePalette({
 
   if (collapsed) {
     return (
-      <div className="flex w-12 flex-col border-r border-slate-700 bg-slate-900/95">
+      <div className="flex w-12 flex-col border-r border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900/95">
         <button
           onClick={onToggleCollapse}
           className="flex h-12 items-center justify-center border-b border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
@@ -93,7 +93,7 @@ export default function NodePalette({
   }
 
   return (
-    <div className="flex w-[250px] flex-col border-r border-slate-700 bg-slate-900/95">
+    <div className="flex w-[250px] flex-col border-r border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900/95">
       <div className="flex h-12 items-center justify-between border-b border-slate-700 px-4">
         <span className="font-medium text-slate-200">Node Palette</span>
         <button

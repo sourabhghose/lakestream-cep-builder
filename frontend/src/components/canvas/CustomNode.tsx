@@ -76,7 +76,7 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
   return (
     <div
       className={cn(
-        "min-w-[180px] rounded-lg border-2 bg-slate-900/95 px-4 py-3 shadow-lg backdrop-blur",
+        "min-w-[180px] rounded-lg border-2 bg-white px-4 py-3 shadow-lg backdrop-blur dark:bg-gray-800 dark:text-gray-100",
         borderColor,
         selected && "ring-2 ring-blue-400 ring-offset-2 ring-offset-slate-950",
         hasError && "border-red-500",

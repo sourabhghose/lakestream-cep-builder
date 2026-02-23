@@ -34,14 +34,52 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
     redo,
     undoStack,
     redoStack,
+    copySelectedNodes,
+    pasteNodes,
+    duplicateSelectedNodes,
+    selectAllNodes,
   } = usePipelineStore();
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (!enabled) return;
 
+      const target = e.target as HTMLElement;
+      const isInput =
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable;
+
       const isMac = typeof navigator !== "undefined" && navigator.platform?.toLowerCase().includes("mac");
       const mod = isMac ? "metaKey" : "ctrlKey";
+
+      // Cmd/Ctrl+C — Copy selected nodes
+      if (e[mod] && e.key.toLowerCase() === "c" && !isInput) {
+        e.preventDefault();
+        copySelectedNodes();
+        return;
+      }
+
+      // Cmd/Ctrl+V — Paste clipboard
+      if (e[mod] && e.key.toLowerCase() === "v" && !isInput) {
+        e.preventDefault();
+        pasteNodes();
+        return;
+      }
+
+      // Cmd/Ctrl+D — Duplicate selected nodes
+      if (e[mod] && e.key.toLowerCase() === "d" && !isInput) {
+        e.preventDefault();
+        duplicateSelectedNodes();
+        return;
+      }
+
+      // Cmd/Ctrl+A — Select all nodes
+      if (e[mod] && e.key.toLowerCase() === "a" && !isInput) {
+        e.preventDefault();
+        selectAllNodes();
+        return;
+      }
 
       // Cmd/Ctrl+S — Save pipeline
       if (e[mod] && e.key === "s") {
@@ -96,13 +134,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
 
       // Delete/Backspace — Delete selected nodes/edges
       if (e.key === "Delete" || e.key === "Backspace") {
-        const target = e.target as HTMLElement;
-        const isInput =
-          target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" ||
-          target.isContentEditable;
         if (isInput) return;
-
         e.preventDefault();
         deleteSelected();
         return;
@@ -142,6 +174,10 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
       redo,
       undoStack.length,
       redoStack.length,
+      copySelectedNodes,
+      pasteNodes,
+      duplicateSelectedNodes,
+      selectAllNodes,
     ]
   );
 

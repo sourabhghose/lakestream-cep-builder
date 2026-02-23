@@ -10,6 +10,11 @@
   --node-sink: #f97316;
   --background: #ffffff;
   --foreground: #0f172a;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9fafb;
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --border-color: #e5e7eb;
 }
 
 .dark {
@@ -20,6 +25,11 @@
   --node-sink: #fb923c;
   --background: #0f172a;
   --foreground: #f8fafc;
+  --bg-primary: #1f2937;
+  --bg-secondary: #111827;
+  --text-primary: #f9fafb;
+  --text-secondary: #9ca3af;
+  --border-color: #374151;
 }
 
 body {

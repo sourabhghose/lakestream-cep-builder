@@ -49,7 +49,7 @@ export default function ConfigPanel({ isOpen, className }: ConfigPanelProps) {
     return (
       <div
         className={cn(
-          "flex w-12 flex-col border-l border-slate-700 bg-slate-900/95",
+          "flex w-12 flex-col border-l border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900/95",
           className
         )}
       >
@@ -69,7 +69,7 @@ export default function ConfigPanel({ isOpen, className }: ConfigPanelProps) {
     return (
       <div
         className={cn(
-          "flex w-[350px] flex-col border-l border-slate-700 bg-slate-900/95",
+          "flex w-[350px] flex-col border-l border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900/95",
           className
         )}
       >
@@ -95,7 +95,7 @@ export default function ConfigPanel({ isOpen, className }: ConfigPanelProps) {
   return (
     <div
       className={cn(
-        "flex w-[350px] flex-col border-l border-slate-700 bg-slate-900/95",
+        "flex w-[350px] flex-col border-l border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900/95",
         className
       )}
     >

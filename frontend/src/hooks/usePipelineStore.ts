@@ -63,6 +63,8 @@ interface PipelineState {
   undoStack: HistoryEntry[];
   /** Redo stack: future states after undo */
   redoStack: HistoryEntry[];
+  /** Clipboard for copy/paste (nodes and their internal edges) */
+  clipboard: { nodes: Node[]; edges: Edge[] } | null;
 
   addNode: (node: Node) => void;
   loadPipeline: (nodes: Node[], edges: Edge[], name?: string, description?: string) => void;
@@ -79,7 +81,15 @@ interface PipelineState {
   onConnect: (connection: Connection) => void;
   selectNode: (id: string | null) => void;
   deselectNode: () => void;
+  /** Request pan to node (used by ValidationPanel); cleared after pan */
+  panToNodeId: string | null;
+  requestPanToNode: (id: string) => void;
+  clearPanToNode: () => void;
   deleteSelected: () => void;
+  copySelectedNodes: () => void;
+  pasteNodes: () => void;
+  duplicateSelectedNodes: () => void;
+  selectAllNodes: () => void;
   setPipelineName: (name: string) => void;
   setPipelineDescription: (desc: string) => void;
   setGeneratedCode: (sdp: string, sss: string) => void;
@@ -134,6 +144,7 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
   isDeploying: false,
   undoStack: [],
   redoStack: [],
+  clipboard: null,
 
   pushHistory: () =>
     set((state) => {
@@ -168,6 +179,87 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
         selectedNodeId: null,
         undoStack: [...state.undoStack, currentEntry],
         redoStack: state.redoStack.slice(0, -1),
+        isDirty: true,
+      };
+    }),
+
+  copySelectedNodes: () =>
+    set((state) => {
+      const selectedNodes = state.nodes.filter((n) => (n as Node & { selected?: boolean }).selected);
+      if (selectedNodes.length === 0) return state;
+      const selectedIds = new Set(selectedNodes.map((n) => n.id));
+      const internalEdges = state.edges.filter(
+        (e) => selectedIds.has(e.source) && selectedIds.has(e.target)
+      );
+      return {
+        clipboard: {
+          nodes: selectedNodes.map((n) => ({ ...n, data: { ...n.data } })),
+          edges: internalEdges.map((e) => ({ ...e })),
+        },
+      };
+    }),
+
+  pasteNodes: () =>
+    set((state) => {
+      const clip = state.clipboard;
+      if (!clip || clip.nodes.length === 0) return state;
+      const timestamp = Date.now().toString();
+      const idMap = new Map<string, string>();
+      const newNodes = clip.nodes.map((n) => {
+        const newId = `${n.id}-copy-${timestamp}`;
+        idMap.set(n.id, newId);
+        const pos = n.position ?? { x: 0, y: 0 };
+        return {
+          ...n,
+          id: newId,
+          position: { x: pos.x + 50, y: pos.y + 50 },
+          data: { ...n.data, hasError: false },
+          selected: false,
+        };
+      });
+      const newEdges = clip.edges
+        .map((e, i) => {
+          const src = idMap.get(e.source);
+          const tgt = idMap.get(e.target);
+          if (!src || !tgt) return null;
+          return {
+            ...e,
+            id: `${e.id}-copy-${timestamp}-${i}`,
+            source: src,
+            target: tgt,
+          };
+        })
+        .filter((e): e is Edge => e !== null);
+      const allNodes = [...state.nodes, ...newNodes].map((n) => ({
+        ...n,
+        data: { ...n.data, hasError: hasNodeConfigError(n) },
+      }));
+      const allEdges = markInvalidEdges(allNodes, [...state.edges, ...newEdges]);
+      return {
+        ...withHistoryPush(state),
+        nodes: allNodes,
+        edges: allEdges,
+        isDirty: true,
+      };
+    }),
+
+  duplicateSelectedNodes: () => {
+    const state = get();
+    const selectedNodes = state.nodes.filter((n) => (n as Node & { selected?: boolean }).selected);
+    if (selectedNodes.length === 0) return;
+    const selectedIds = new Set(selectedNodes.map((n) => n.id));
+    const internalEdges = state.edges.filter(
+      (e) => selectedIds.has(e.source) && selectedIds.has(e.target)
+    );
+    set({ clipboard: { nodes: [...selectedNodes], edges: [...internalEdges] } });
+    get().pasteNodes();
+  },
+
+  selectAllNodes: () =>
+    set((state) => {
+      if (state.nodes.length === 0) return state;
+      return {
+        nodes: state.nodes.map((n) => ({ ...n, selected: true })),
         isDirty: true,
       };
     }),
@@ -422,6 +514,13 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
   selectNode: (id) => set({ selectedNodeId: id }),
 
   deselectNode: () => set({ selectedNodeId: null }),
+
+  panToNodeId: null,
+
+  requestPanToNode: (id) =>
+    set({ panToNodeId: id, selectedNodeId: id }),
+
+  clearPanToNode: () => set({ panToNodeId: null }),
 
   setPipelineName: (name) => set({ pipelineName: name, isDirty: true }),
 
