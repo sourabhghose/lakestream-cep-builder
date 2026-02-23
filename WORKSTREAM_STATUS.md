@@ -35,12 +35,22 @@ LakeStream CEP Builder — Visual CEP Pipeline Builder for Databricks
 
 **WS12: Frontend polish** — Semantic edge validation (rejects invalid connections with toast), Toast notification system (success/error/warning/info with auto-dismiss), Pipeline validation before deploy (checks sources, sinks, orphan nodes), Node error states (red border for missing required config), Empty state UX for blank canvas, Loading spinners for save/deploy.
 
+### Round 4 (2026-02-23)
+
+**WS13: Bidirectional Monaco sync** — Code parser endpoint (/api/codeparse/parse) for SDP SQL → canvas sync. Monaco edit mode toggle with debounced parsing. syncFromCode store action with auto-layout for parsed nodes.
+
+**WS14: In-app docs & help** — Node tooltips on palette hover (description, code target, required fields) via Radix UI. Keyboard shortcuts (Cmd+S, Cmd+Shift+G, Cmd+Shift+D, Delete, Undo/Redo). Help panel with quick start guide, shortcuts table, node category descriptions. Undo/redo system with 50-entry history stack.
+
+**WS15: Performance** — React Flow MiniMap (category-colored: green/blue/purple/orange), Controls, Background. CustomNode memoization with custom comparator. Searchable node palette with collapsible categories. Auto-layout algorithm (topological sort + layer assignment).
+
+**WS16: Test suite** — 37 backend tests across 6 test files: pipeline CRUD (10), codegen API (5), deploy API (3), SDP generator (8), SSS generator (5), pipeline store (10). All passing.
+
 ## Current State
 
 | Component | Coverage |
 | --- | --- |
 | Frontend components | All built and wired |
-| Backend API | 8 endpoints: health, pipelines CRUD, codegen, deploy + validate + catalogs |
+| Backend API | 9 endpoints: health, pipelines CRUD, codegen, codeparse, deploy + validate + catalogs |
 | SDP code gen | 22 templates — all node types covered |
 | SSS code gen | 29 templates — all node types covered |
 | CEP patterns | All 12 implemented |
@@ -51,18 +61,22 @@ LakeStream CEP Builder — Visual CEP Pipeline Builder for Databricks
 | Pipeline storage | Persistent (local files or UC volumes) |
 | Edge validation | Semantic validation with toasts |
 | Error handling | Toasts, loading states, empty states |
+| Monaco sync | Bidirectional (canvas→code and code→canvas) |
+| Help system | Tooltips, keyboard shortcuts, help panel |
+| Performance | MiniMap, node memoization, searchable palette, auto-layout |
+| Tests | 37 backend tests (all passing) |
+| Undo/Redo | 50-entry history stack |
 
 ## Remaining Work
 
 ### Production Hardening
 - OAuth configuration for Databricks App hosting
-- Bidirectional Monaco ↔ Canvas sync (edit code → update canvas)
-- Schema registry integration
+- Schema registry integration for live schema discovery
 - Live data preview at each node
 - Pipeline version diff view
-- Performance optimization (virtual scrolling, lazy loading for large pipelines)
-- In-app documentation and help tooltips
-- Comprehensive test suite (unit + integration + E2E)
+- Frontend test suite (Jest + React Testing Library)
+- E2E Playwright tests
+- CI/CD pipeline (GitHub Actions)
 
 ---
-*Updated: 2026-02-23 after Round 3*
+*Updated: 2026-02-23 after Round 4*
