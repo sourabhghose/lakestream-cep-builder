@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { Node, Edge, Connection } from "@xyflow/react";
 import * as api from "@/lib/api";
+import type { CodeAnnotation } from "@/lib/api";
 import { markInvalidEdges } from "@/lib/edgeValidator";
 import { NODE_REGISTRY } from "@/lib/nodeRegistry";
 import { hasNodeConfigError } from "@/lib/configValidator";
@@ -40,12 +41,26 @@ interface HistoryEntry {
   edges: Edge[];
 }
 
+export interface GroupState {
+  id: string;
+  name: string;
+  nodeIds: string[];
+  collapsed: boolean;
+  position: { x: number; y: number };
+  /** Stored when collapsed: original nodes for restoration */
+  storedNodes?: Node[];
+  /** Stored when collapsed: original edges involving group nodes */
+  storedEdges?: Edge[];
+}
+
 interface PipelineState {
   nodes: Node[];
   edges: Edge[];
   selectedNodeId: string | null;
   generatedSdpCode: string;
   generatedSssCode: string;
+  sdpAnnotations: CodeAnnotation[];
+  sssAnnotations: CodeAnnotation[];
   pipelineName: string;
   pipelineDescription: string;
   isDirty: boolean;
@@ -65,6 +80,8 @@ interface PipelineState {
   redoStack: HistoryEntry[];
   /** Clipboard for copy/paste (nodes and their internal edges) */
   clipboard: { nodes: Node[]; edges: Edge[] } | null;
+  /** Node groups for collapse/expand */
+  groups: Record<string, GroupState>;
 
   addNode: (node: Node) => void;
   loadPipeline: (nodes: Node[], edges: Edge[], name?: string, description?: string) => void;
@@ -74,6 +91,10 @@ interface PipelineState {
   removeNode: (id: string) => void;
   removeNodes: (ids: string[]) => void;
   updateNode: (id: string, data: Partial<Node["data"]>) => void;
+  /** Toggle inline preview expanded state on a node. Does not set isDirty. */
+  toggleNodePreview: (nodeId: string) => void;
+  /** Store preview data on a node. Does not set isDirty. */
+  setNodePreviewData: (nodeId: string, data: { columns: string[]; rows: (string | number | boolean | null)[][] }) => void;
   /** Apply search highlights to nodes (matchedIds get searchHighlight: true). Does not set isDirty. */
   applySearchHighlights: (matchedIds: Set<string>) => void;
   onNodesChange: (nodes: Node[]) => void;
@@ -90,9 +111,14 @@ interface PipelineState {
   pasteNodes: () => void;
   duplicateSelectedNodes: () => void;
   selectAllNodes: () => void;
+  createGroup: (name: string) => void;
+  toggleGroupCollapse: (groupId: string) => void;
+  ungroupNodes: (groupId: string) => void;
+  renameGroup: (groupId: string, name: string) => void;
+  getExpandedNodesAndEdges: () => { nodes: Node[]; edges: Edge[] };
   setPipelineName: (name: string) => void;
   setPipelineDescription: (desc: string) => void;
-  setGeneratedCode: (sdp: string, sss: string) => void;
+  setGeneratedCode: (sdp: string, sss: string, sdpAnn?: CodeAnnotation[], sssAnn?: CodeAnnotation[]) => void;
   setDirty: (dirty: boolean) => void;
   pushHistory: () => void;
   undo: () => void;
@@ -131,6 +157,8 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
   selectedNodeId: null,
   generatedSdpCode: "",
   generatedSssCode: "",
+  sdpAnnotations: [],
+  sssAnnotations: [],
   pipelineName: "Untitled Pipeline",
   pipelineDescription: "",
   isDirty: false,
@@ -145,6 +173,302 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
   undoStack: [],
   redoStack: [],
   clipboard: null,
+  groups: {},
+
+  getExpandedNodesAndEdges: () => {
+    const { nodes, edges, groups } = get();
+    const collapsedGroups = Object.values(groups).filter((g) => g.collapsed);
+    if (collapsedGroups.length === 0) {
+      return {
+        nodes: nodes.filter((n) => n.type !== "group"),
+        edges,
+      };
+    }
+    const groupIds = new Set(collapsedGroups.map((g) => g.id));
+    const pipelineNodes = nodes
+      .filter((n) => n.type !== "group")
+      .concat(
+        collapsedGroups.flatMap((g) => g.storedNodes ?? [])
+      );
+    const pipelineEdges = edges
+      .filter((e) => !groupIds.has(e.source) && !groupIds.has(e.target))
+      .concat(
+        collapsedGroups.flatMap((g) => g.storedEdges ?? [])
+      );
+    const edgeIds = new Set<string>();
+    const dedupedEdges = pipelineEdges.filter((e) => {
+      if (edgeIds.has(e.id)) return false;
+      edgeIds.add(e.id);
+      return true;
+    });
+    return { nodes: pipelineNodes, edges: dedupedEdges };
+  },
+
+  createGroup: (name) =>
+    set((state) => {
+      const selectedNodes = state.nodes.filter(
+        (n) => (n as Node & { selected?: boolean }).selected
+      );
+      if (selectedNodes.length < 2) return state;
+      const selectedIds = new Set(selectedNodes.map((n) => n.id));
+      let minX = Infinity,
+        minY = Infinity,
+        maxX = -Infinity,
+        maxY = -Infinity;
+      const NODE_WIDTH = 180;
+      const NODE_HEIGHT = 80;
+      for (const n of selectedNodes) {
+        const pos = n.position ?? { x: 0, y: 0 };
+        minX = Math.min(minX, pos.x);
+        minY = Math.min(minY, pos.y);
+        maxX = Math.max(maxX, pos.x + NODE_WIDTH);
+        maxY = Math.max(maxY, pos.y + NODE_HEIGHT);
+      }
+      const centerX = (minX + maxX) / 2 - 100;
+      const centerY = (minY + maxY) / 2 - 40;
+      const groupId = `group-${Date.now()}`;
+      const internalEdges = state.edges.filter(
+        (e) => selectedIds.has(e.source) && selectedIds.has(e.target)
+      );
+      const externalEdges = state.edges.filter(
+        (e) =>
+          selectedIds.has(e.source) || selectedIds.has(e.target)
+      );
+      const storedEdges = externalEdges.concat(internalEdges);
+      const newEdges: Edge[] = state.edges.filter(
+        (e) => !selectedIds.has(e.source) && !selectedIds.has(e.target)
+      );
+      const outgoing = externalEdges.filter(
+        (e) => selectedIds.has(e.source) && !selectedIds.has(e.target)
+      );
+      const incoming = externalEdges.filter(
+        (e) => !selectedIds.has(e.source) && selectedIds.has(e.target)
+      );
+      for (const e of outgoing) {
+        newEdges.push({
+          ...e,
+          id: `e${groupId}-${e.target}`,
+          source: groupId,
+          target: e.target,
+        });
+      }
+      for (const e of incoming) {
+        newEdges.push({
+          ...e,
+          id: `e${e.source}-${groupId}`,
+          source: e.source,
+          target: groupId,
+        });
+      }
+      const newNodes = state.nodes
+        .filter((n) => !selectedIds.has(n.id))
+        .map((n) => ({ ...n, selected: false }));
+      const groupNode: Node = {
+        id: groupId,
+        type: "group",
+        position: { x: centerX, y: centerY },
+        data: {
+          groupId,
+          name,
+          nodeIds: selectedNodes.map((n) => n.id),
+          nodeCount: selectedNodes.length,
+          nodeTypes: Array.from(
+            new Set(
+              selectedNodes.map((n) => n.data?.type as string).filter(Boolean)
+            )
+          ).slice(0, 4),
+        },
+      };
+      const groups: Record<string, GroupState> = {
+        ...state.groups,
+        [groupId]: {
+          id: groupId,
+          name,
+          nodeIds: selectedNodes.map((n) => n.id),
+          collapsed: true,
+          position: { x: centerX, y: centerY },
+          storedNodes: selectedNodes.map((n) => ({ ...n, data: { ...n.data } })),
+          storedEdges: storedEdges.map((e) => ({ ...e })),
+        },
+      };
+      return {
+        ...withHistoryPush(state),
+        nodes: [...newNodes, groupNode],
+        edges: markInvalidEdges([...newNodes, groupNode], newEdges),
+        groups,
+        selectedNodeId: null,
+        isDirty: true,
+      };
+    }),
+
+  toggleGroupCollapse: (groupId) =>
+    set((state) => {
+      const g = state.groups[groupId];
+      if (!g) return state;
+      if (g.collapsed) {
+        if (!g.storedNodes || !g.storedEdges) return state;
+        const nodeIds = new Set(g.nodeIds);
+        const newNodes = state.nodes
+          .filter((n) => n.id !== groupId)
+          .concat(g.storedNodes)
+          .map((n) => ({ ...n, selected: false }));
+        const newEdges = state.edges
+          .filter((e) => e.source !== groupId && e.target !== groupId)
+          .concat(g.storedEdges);
+        const groups = { ...state.groups };
+        groups[groupId] = { ...g, collapsed: false };
+        return {
+          nodes: newNodes,
+          edges: markInvalidEdges(newNodes, newEdges),
+          groups,
+          isDirty: true,
+        };
+      } else {
+        const childNodes = state.nodes.filter((n) => g.nodeIds.includes(n.id));
+        if (childNodes.length === 0) return state;
+        const selectedIds = new Set(g.nodeIds);
+        const internalEdges = state.edges.filter(
+          (e) => selectedIds.has(e.source) && selectedIds.has(e.target)
+        );
+        const externalEdges = state.edges.filter(
+          (e) =>
+            selectedIds.has(e.source) || selectedIds.has(e.target)
+        );
+        const storedEdges = externalEdges.concat(internalEdges);
+        const newEdges = state.edges
+          .filter((e) => e.source !== groupId && e.target !== groupId)
+          .filter(
+            (e) =>
+              !(selectedIds.has(e.source) && selectedIds.has(e.target))
+          );
+        const outgoing = externalEdges.filter(
+          (e) => selectedIds.has(e.source) && !selectedIds.has(e.target)
+        );
+        const incoming = externalEdges.filter(
+          (e) => !selectedIds.has(e.source) && selectedIds.has(e.target)
+        );
+        for (const e of outgoing) {
+          newEdges.push({
+            ...e,
+            id: `e${groupId}-${e.target}`,
+            source: groupId,
+            target: e.target,
+          });
+        }
+        for (const e of incoming) {
+          newEdges.push({
+            ...e,
+            id: `e${e.source}-${groupId}`,
+            source: e.source,
+            target: groupId,
+          });
+        }
+        let minX = Infinity,
+          minY = Infinity,
+          maxX = -Infinity,
+          maxY = -Infinity;
+        const NODE_WIDTH = 180;
+        const NODE_HEIGHT = 80;
+        for (const n of childNodes) {
+          const pos = n.position ?? { x: 0, y: 0 };
+          minX = Math.min(minX, pos.x);
+          minY = Math.min(minY, pos.y);
+          maxX = Math.max(maxX, pos.x + NODE_WIDTH);
+          maxY = Math.max(maxY, pos.y + NODE_HEIGHT);
+        }
+        const centerX = (minX + maxX) / 2 - 100;
+        const centerY = (minY + maxY) / 2 - 40;
+        const groupNode: Node = {
+          id: groupId,
+          type: "group",
+          position: { x: centerX, y: centerY },
+          data: {
+            groupId,
+            name: g.name,
+            nodeIds: g.nodeIds,
+            nodeCount: g.nodeIds.length,
+            nodeTypes: Array.from(
+              new Set(
+                childNodes.map((n) => n.data?.type as string).filter(Boolean)
+              )
+            ).slice(0, 4),
+          },
+        };
+        const newNodes = state.nodes
+          .filter((n) => !selectedIds.has(n.id))
+          .concat([groupNode])
+          .map((n) => ({ ...n, selected: false }));
+        const groups = { ...state.groups };
+        groups[groupId] = {
+          ...g,
+          collapsed: true,
+          position: { x: centerX, y: centerY },
+          storedNodes: childNodes.map((n) => ({ ...n, data: { ...n.data } })),
+          storedEdges: storedEdges.map((e) => ({ ...e })),
+        };
+        return {
+          nodes: newNodes,
+          edges: markInvalidEdges(newNodes, newEdges),
+          groups,
+          isDirty: true,
+        };
+      }
+    }),
+
+  ungroupNodes: (groupId) =>
+    set((state) => {
+      const g = state.groups[groupId];
+      if (!g) return state;
+      const groups = { ...state.groups };
+      delete groups[groupId];
+      if (g.collapsed && g.storedNodes && g.storedEdges) {
+        const newNodes = state.nodes
+          .filter((n) => n.id !== groupId)
+          .concat(g.storedNodes)
+          .map((n) => ({ ...n, selected: false }));
+        const newEdges = state.edges
+          .filter((e) => e.source !== groupId && e.target !== groupId)
+          .concat(g.storedEdges);
+        return {
+          ...withHistoryPush(state),
+          nodes: newNodes,
+          edges: markInvalidEdges(newNodes, newEdges),
+          groups,
+          isDirty: true,
+        };
+      }
+      const selectedIds = new Set(g.nodeIds);
+      const childNodes = state.nodes.filter((n) => selectedIds.has(n.id));
+      const newNodes = state.nodes
+        .filter((n) => n.id !== groupId && !selectedIds.has(n.id))
+        .concat(childNodes)
+        .map((n) => ({ ...n, selected: false }));
+      const newEdges = state.edges.filter(
+        (e) => e.source !== groupId && e.target !== groupId
+      );
+      return {
+        ...withHistoryPush(state),
+        nodes: newNodes,
+        edges: markInvalidEdges(newNodes, newEdges),
+        groups,
+        isDirty: true,
+      };
+    }),
+
+  renameGroup: (groupId, name) =>
+    set((state) => {
+      const g = state.groups[groupId];
+      if (!g) return state;
+      const groups = { ...state.groups };
+      groups[groupId] = { ...g, name };
+      const nodes = state.nodes.map((n) => {
+        if (n.id === groupId && n.type === "group") {
+          return { ...n, data: { ...n.data, name } };
+        }
+        return n;
+      });
+      return { groups, nodes, isDirty: true };
+    }),
 
   pushHistory: () =>
     set((state) => {
@@ -269,6 +593,10 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
       const selectedIds = new Set(
         state.nodes.filter((n) => (n as Node & { selected?: boolean }).selected).map((n) => n.id)
       );
+      const groups = { ...state.groups };
+      Array.from(selectedIds).forEach((id) => {
+        if (id.startsWith("group-")) delete groups[id];
+      });
       const selectedEdgeIds = new Set(
         state.edges
           .filter(
@@ -290,6 +618,7 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
       return {
         nodes: clearedNodes,
         edges: markInvalidEdges(clearedNodes, newEdges),
+        groups,
         selectedNodeId: state.selectedNodeId && selectedIds.has(state.selectedNodeId) ? null : state.selectedNodeId,
         undoStack: [...state.undoStack, entry].slice(-MAX_HISTORY),
         redoStack: [],
@@ -317,6 +646,7 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
         data: { ...n.data, hasError: hasNodeConfigError(n) },
       })),
       edges: markInvalidEdges(nodes, edges),
+      groups: {},
       pipelineName: name ?? "Untitled Pipeline",
       pipelineDescription: description ?? "",
       isDirty: true,
@@ -326,6 +656,7 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
     set({
       nodes: [],
       edges: [],
+      groups: {},
       selectedNodeId: null,
       pipelineName: "Untitled Pipeline",
       pipelineDescription: "",
@@ -337,6 +668,8 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
       redoStack: [],
       generatedSdpCode: "",
       generatedSssCode: "",
+      sdpAnnotations: [],
+      sssAnnotations: [],
       codeTarget: null,
     }),
 
@@ -371,6 +704,7 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
         data: { ...n.data, hasError: hasNodeConfigError(n) },
       })),
       edges: markInvalidEdges(nodes, edges),
+      groups: {},
       pipelineName: pipeline.name,
       pipelineDescription: pipeline.description ?? "",
       pipelineId: pipeline.id,
@@ -432,13 +766,18 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
   },
 
   removeNode: (id) =>
-    set((state) => ({
-      ...withHistoryPush(state),
-      nodes: state.nodes.filter((n) => n.id !== id),
-      edges: state.edges.filter((e) => e.source !== id && e.target !== id),
-      selectedNodeId: state.selectedNodeId === id ? null : state.selectedNodeId,
-      isDirty: true,
-    })),
+    set((state) => {
+      const groups = { ...state.groups };
+      if (id.startsWith("group-")) delete groups[id];
+      return {
+        ...withHistoryPush(state),
+        nodes: state.nodes.filter((n) => n.id !== id),
+        edges: state.edges.filter((e) => e.source !== id && e.target !== id),
+        groups,
+        selectedNodeId: state.selectedNodeId === id ? null : state.selectedNodeId,
+        isDirty: true,
+      };
+    }),
 
   removeNodes: (ids) =>
     set((state) => {
@@ -470,6 +809,29 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
       return { nodes: updatedNodes, isDirty: true };
     }),
 
+  toggleNodePreview: (nodeId) =>
+    set((state) => ({
+      nodes: state.nodes.map((n) => {
+        if (n.id !== nodeId) return n;
+        const expanded = !(n.data?.previewExpanded === true);
+        return { ...n, data: { ...n.data, previewExpanded: expanded } };
+      }),
+    })),
+
+  setNodePreviewData: (nodeId, data) =>
+    set((state) => ({
+      nodes: state.nodes.map((n) => {
+        if (n.id !== nodeId) return n;
+        return {
+          ...n,
+          data: {
+            ...n.data,
+            previewData: { columns: data.columns, rows: data.rows },
+          },
+        };
+      }),
+    })),
+
   applySearchHighlights: (matchedIds) =>
     set((state) => ({
       nodes: state.nodes.map((n) => ({
@@ -478,7 +840,17 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
       })),
     })),
 
-  onNodesChange: (nodes) => set({ nodes, isDirty: true }),
+  onNodesChange: (nodes) =>
+    set((state) => {
+      let groups = state.groups;
+      for (const n of nodes) {
+        if (n.type === "group" && n.id.startsWith("group-") && state.groups[n.id]) {
+          const pos = n.position ?? { x: 0, y: 0 };
+          groups = { ...groups, [n.id]: { ...state.groups[n.id], position: pos } };
+        }
+      }
+      return { nodes, groups, isDirty: true };
+    }),
 
   onEdgesChange: (edges) =>
     set((state) => {
@@ -526,8 +898,13 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
 
   setPipelineDescription: (desc) => set({ pipelineDescription: desc, isDirty: true }),
 
-  setGeneratedCode: (sdp, sss) =>
-    set({ generatedSdpCode: sdp, generatedSssCode: sss }),
+  setGeneratedCode: (sdp, sss, sdpAnn, sssAnn) =>
+    set({
+      generatedSdpCode: sdp,
+      generatedSssCode: sss,
+      sdpAnnotations: sdpAnn ?? [],
+      sssAnnotations: sssAnn ?? [],
+    }),
 
   setDirty: (dirty) => set({ isDirty: dirty }),
 
@@ -536,7 +913,8 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
   },
 
   validatePipeline: () => {
-    const { nodes, edges } = get();
+    const { getExpandedNodesAndEdges } = get();
+    const { nodes, edges } = getExpandedNodesAndEdges();
     const errors: string[] = [];
     const warnings: string[] = [];
 
@@ -577,7 +955,8 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
   },
 
   generateCode: async () => {
-    const { nodes, edges, pipelineName, pipelineDescription } = get();
+    const { pipelineName, pipelineDescription, getExpandedNodesAndEdges } = get();
+    const { nodes, edges } = getExpandedNodesAndEdges();
     if (nodes.length === 0) return;
 
     set({ isGenerating: true, warnings: [] });
@@ -591,6 +970,8 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
       set({
         generatedSdpCode: result.sdp_code ?? "",
         generatedSssCode: result.sss_code ?? "",
+        sdpAnnotations: result.sdp_annotations ?? [],
+        sssAnnotations: result.sss_annotations ?? [],
         codeTarget: result.code_target ?? null,
         warnings: result.warnings ?? [],
         isGenerating: false,
@@ -602,8 +983,9 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
   },
 
   savePipeline: async () => {
-    const { nodes, edges, pipelineName, pipelineDescription, pipelineId } =
+    const { pipelineName, pipelineDescription, pipelineId, getExpandedNodesAndEdges } =
       get();
+    const { nodes, edges } = getExpandedNodesAndEdges();
     set({ isSaving: true });
     try {
       const result = await api.savePipeline({

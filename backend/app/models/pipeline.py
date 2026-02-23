@@ -95,6 +95,15 @@ class PipelineUpdateRequest(BaseModel):
     edges: list[PipelineEdge] | None = Field(default=None, description="Pipeline edges")
 
 
+class CodeAnnotation(BaseModel):
+    """Line-level annotation linking generated code to a canvas node."""
+
+    node_id: str = Field(..., description="Canvas node ID")
+    node_label: str = Field(..., description="Display label for the node")
+    start_line: int = Field(..., description="First line of the code block (1-based)")
+    end_line: int = Field(..., description="Last line of the code block (1-based)")
+
+
 class CodeGenerationResponse(BaseModel):
     """Response from code generation endpoint."""
 
@@ -113,6 +122,14 @@ class CodeGenerationResponse(BaseModel):
     warnings: list[str] = Field(
         default_factory=list,
         description="Non-fatal warnings from code generation",
+    )
+    sdp_annotations: list[CodeAnnotation] = Field(
+        default_factory=list,
+        description="Line-level annotations for SDP code (node -> line range)",
+    )
+    sss_annotations: list[CodeAnnotation] = Field(
+        default_factory=list,
+        description="Line-level annotations for SSS code (node -> line range)",
     )
 
 

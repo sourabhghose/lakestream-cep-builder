@@ -47,12 +47,28 @@ export interface PipelineDefinition {
   status: string;
 }
 
+export interface CodeAnnotation {
+  node_id: string;
+  node_label: string;
+  start_line: number;
+  end_line: number;
+}
+
+export interface GenerateCodeResponse {
+  sdp_code?: string | null;
+  sss_code?: string | null;
+  code_target?: "sdp" | "sss" | "hybrid";
+  warnings?: string[];
+  sdp_annotations?: CodeAnnotation[];
+  sss_annotations?: CodeAnnotation[];
+}
+
 export async function generateCode(pipeline: {
   name: string;
   description: string;
   nodes: any[];
   edges: any[];
-}) {
+}): Promise<GenerateCodeResponse> {
   const res = await api.post("/api/codegen/generate", {
     id: "temp",
     name: pipeline.name,
@@ -60,7 +76,7 @@ export async function generateCode(pipeline: {
     nodes: nodesToApi(pipeline.nodes),
     edges: edgesToApi(pipeline.edges),
   });
-  return res.data; // { sdp_code, sss_code, code_target, warnings }
+  return res.data;
 }
 
 export async function parseCode(code: string): Promise<{
@@ -197,6 +213,22 @@ export async function getDeployHistory(
     `/api/deploy/history/${encodeURIComponent(pipelineId)}/details`
   );
   return res.data ?? [];
+}
+
+/** Returns the most recent deploy record for a pipeline, optionally filtered by code_target. */
+export async function getLatestDeploy(
+  pipelineId: string,
+  codeTarget?: "sdp" | "sss"
+): Promise<DeployHistoryEntry | null> {
+  const history = await getDeployHistory(pipelineId);
+  if (history.length === 0) return null;
+  if (codeTarget) {
+    const match = history.find(
+      (e) => e.code_target?.toLowerCase() === codeTarget
+    );
+    return match ?? null;
+  }
+  return history[0];
 }
 
 export interface PreviewSampleResponse {

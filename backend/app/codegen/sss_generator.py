@@ -22,6 +22,13 @@ _env = Environment(
 _env.filters["pyvar"] = lambda s: str(s).replace("-", "_")
 
 
+def _node_label(node: PipelineNode) -> str:
+    """Get display label for a node (label or type-based fallback)."""
+    if node.label and node.label.strip():
+        return node.label.strip()
+    return node.type.replace("-", " ").title()
+
+
 def _parse_duration_to_ms(duration: str) -> int:
     """Parse duration string like '10 minutes', '1 hour' to milliseconds."""
     if isinstance(duration, (int, float)):
@@ -495,7 +502,10 @@ def generate_sss(pipeline: PipelineDefinition) -> str:
     for node_id in sorted_ids:
         node = node_map.get(node_id)
         if node:
-            snippets.append(_render_node_snippet(node, pipeline))
+            raw = _render_node_snippet(node, pipeline)
+            label = _node_label(node)
+            annotation = f"# [node: {node.id}] {label}\n"
+            snippets.append(annotation + raw)
 
     template = _env.get_template("notebook.py.j2")
     return template.render(

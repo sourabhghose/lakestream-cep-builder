@@ -29,11 +29,18 @@ export default function ValidationPanel({ isOpen, onClose }: ValidationPanelProp
   const [refreshKey, setRefreshKey] = useState(0);
   const nodes = usePipelineStore((s) => s.nodes);
   const edges = usePipelineStore((s) => s.edges);
+  const groups = usePipelineStore((s) => s.groups);
+  const getExpandedNodesAndEdges = usePipelineStore((s) => s.getExpandedNodesAndEdges);
   const requestPanToNode = usePipelineStore((s) => s.requestPanToNode);
 
+  const { nodes: expandedNodes, edges: expandedEdges } = useMemo(
+    () => getExpandedNodesAndEdges(),
+    [nodes, edges, groups, getExpandedNodesAndEdges, refreshKey]
+  );
+
   const issues = useMemo(
-    () => validatePipeline(nodes, edges, NODE_REGISTRY),
-    [nodes, edges, refreshKey]
+    () => validatePipeline(expandedNodes, expandedEdges, NODE_REGISTRY),
+    [expandedNodes, expandedEdges]
   );
 
   const errors = issues.filter((i) => i.severity === "error");
@@ -135,7 +142,7 @@ export default function ValidationPanel({ isOpen, onClose }: ValidationPanelProp
                         <IssueItem
                           key={`err-${idx}`}
                           issue={issue}
-                          nodes={nodes}
+                          nodes={expandedNodes}
                           onNodeClick={requestPanToNode}
                         />
                       ))}
@@ -154,7 +161,7 @@ export default function ValidationPanel({ isOpen, onClose }: ValidationPanelProp
                         <IssueItem
                           key={`warn-${idx}`}
                           issue={issue}
-                          nodes={nodes}
+                          nodes={expandedNodes}
                           onNodeClick={requestPanToNode}
                         />
                       ))}
@@ -173,7 +180,7 @@ export default function ValidationPanel({ isOpen, onClose }: ValidationPanelProp
                         <IssueItem
                           key={`info-${idx}`}
                           issue={issue}
-                          nodes={nodes}
+                          nodes={expandedNodes}
                           onNodeClick={requestPanToNode}
                         />
                       ))}

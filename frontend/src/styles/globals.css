@@ -59,3 +59,25 @@ body {
     stroke-dashoffset: -20;
   }
 }
+
+/* Monaco editor node annotations */
+.node-annotation-line {
+  background-color: rgba(59, 130, 246, 0.08);
+}
+
+.dark .node-annotation-line {
+  background-color: rgba(96, 165, 250, 0.12);
+}
+
+.node-annotation-glyph {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50%;
+  background-color: #3b82f6;
+  margin-left: 2px;
+  cursor: pointer;
+}
+
+.dark .node-annotation-glyph {
+  background-color: #60a5fa;
+}

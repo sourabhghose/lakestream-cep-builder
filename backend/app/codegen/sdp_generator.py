@@ -24,6 +24,14 @@ def _sanitize_python_id(node_id: str) -> str:
     return node_id.replace("-", "_").replace(".", "_")
 
 
+def _node_label(node: PipelineNode) -> str:
+    """Get display label for a node (label or type-based fallback)."""
+    if node.label and node.label.strip():
+        return node.label.strip()
+    # Fallback: "kafka-topic" -> "Kafka Topic"
+    return node.type.replace("-", " ").title()
+
+
 def _render_node_snippet(node: PipelineNode, edges: list) -> str:
     """Render the SDP snippet for a single node based on its type."""
     config = node.config or {}
@@ -266,11 +274,18 @@ def generate_sdp(pipeline: PipelineDefinition) -> str:
     sorted_ids = topological_sort(pipeline.nodes, pipeline.edges)
     node_map = {n.id: n for n in pipeline.nodes}
 
+    # Node types that generate Python (not SQL) snippets
+    _PYTHON_NODE_TYPES = {"kafka-topic-sink", "rest-webhook-sink", "slack-teams-pagerduty", "email-sink"}
+
     snippets: list[str] = []
     for node_id in sorted_ids:
         node = node_map.get(node_id)
         if node:
-            snippets.append(_render_node_snippet(node, pipeline.edges))
+            raw = _render_node_snippet(node, pipeline.edges)
+            prefix = "#" if node.type in _PYTHON_NODE_TYPES else "--"
+            label = _node_label(node)
+            annotation = f"{prefix} [node: {node.id}] {label}\n"
+            snippets.append(annotation + raw)
 
     template = _env.get_template("notebook.py.j2")
     return template.render(

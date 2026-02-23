@@ -22,6 +22,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import CustomNode from "@/components/canvas/CustomNode";
+import GroupNode from "@/components/canvas/GroupNode";
 import CustomEdge from "@/components/canvas/CustomEdge";
 import PipelineSearch from "@/components/canvas/PipelineSearch";
 import { usePipelineStore } from "@/hooks/usePipelineStore";
@@ -31,6 +32,7 @@ import { useToastStore } from "@/hooks/useToastStore";
 
 const nodeTypes: NodeTypes = {
   custom: CustomNode,
+  group: GroupNode,
 };
 
 const edgeTypes: EdgeTypes = {

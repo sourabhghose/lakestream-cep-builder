@@ -33,7 +33,8 @@ export interface ImportedPipeline {
  */
 export function exportPipeline(): void {
   const state = usePipelineStore.getState();
-  const { nodes, edges, pipelineName, pipelineDescription, codeTarget } = state;
+  const { pipelineName, pipelineDescription, codeTarget, getExpandedNodesAndEdges } = state;
+  const { nodes, edges } = getExpandedNodesAndEdges();
 
   const payload: ExportedPipeline = {
     name: pipelineName,

@@ -6,11 +6,12 @@ import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import { NODE_REGISTRY } from "@/lib/nodeRegistry";
 import { getNodeIcon } from "@/lib/iconRegistry";
-import { Eye, X, Loader2 } from "lucide-react";
+import { Eye, X, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { usePipelineStore } from "@/hooks/usePipelineStore";
 import { getNodePreview } from "@/lib/api";
 import type { PreviewSampleResponse } from "@/lib/api";
 import DataPreview from "@/components/preview/DataPreview";
+import InlinePreview from "@/components/canvas/InlinePreview";
 
 const CATEGORY_BORDER_COLORS: Record<string, string> = {
   source: "border-node-source",
@@ -21,8 +22,9 @@ const CATEGORY_BORDER_COLORS: Record<string, string> = {
 };
 
 function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
-  const { nodes, edges } = usePipelineStore();
+  const { nodes, edges, toggleNodePreview, setNodePreviewData } = usePipelineStore();
   const [showPreview, setShowPreview] = useState(false);
+  const [inlinePreviewLoading, setInlinePreviewLoading] = useState(false);
   const [previewData, setPreviewData] = useState<PreviewSampleResponse | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
 
@@ -41,6 +43,27 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
         .finally(() => setPreviewLoading(false));
     },
     [showPreview, nodes, edges, nodeId]
+  );
+
+  const previewExpanded = data.previewExpanded === true;
+  const inlinePreviewData = data.previewData as { columns: string[]; rows: (string | number | boolean | null)[][] } | undefined;
+
+  const handleInlineExpandClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      const willExpand = !previewExpanded;
+      toggleNodePreview(nodeId);
+      if (willExpand && !inlinePreviewData) {
+        setInlinePreviewLoading(true);
+        getNodePreview({ nodes, edges }, nodeId)
+          .then((res) =>
+            setNodePreviewData(nodeId, { columns: res.columns, rows: res.rows })
+          )
+          .catch(() => setNodePreviewData(nodeId, { columns: [], rows: [] }))
+          .finally(() => setInlinePreviewLoading(false));
+      }
+    },
+    [previewExpanded, inlinePreviewData, toggleNodePreview, setNodePreviewData, nodes, edges, nodeId]
   );
 
   const def = useMemo(
@@ -147,6 +170,46 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
         </div>
       </div>
 
+      <div className="mt-2 flex justify-center border-t border-slate-600/60 pt-2">
+        <button
+          type="button"
+          onClick={handleInlineExpandClick}
+          className="flex items-center gap-1 rounded px-2 py-1 text-slate-400 hover:bg-slate-700/60 hover:text-slate-200"
+          title={previewExpanded ? "Collapse preview" : "Expand preview"}
+        >
+          {previewExpanded ? (
+            <ChevronUp className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronDown className="h-3.5 w-3.5" />
+          )}
+          <span className="text-[10px]">
+            {previewExpanded ? "Collapse" : "Preview"}
+          </span>
+        </button>
+      </div>
+
+      <div
+        className="overflow-hidden transition-[max-height] duration-200 ease-in-out"
+        style={{ maxHeight: previewExpanded ? 120 : 0 }}
+      >
+        <div className="mt-2 pt-2">
+          {inlinePreviewLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+            </div>
+          ) : inlinePreviewData && (inlinePreviewData.columns.length > 0 || inlinePreviewData.rows.length > 0) ? (
+            <InlinePreview
+              columns={inlinePreviewData.columns}
+              rows={inlinePreviewData.rows}
+            />
+          ) : previewExpanded && !inlinePreviewLoading ? (
+            <p className="py-2 text-center text-[10px] text-slate-500">
+              No preview data
+            </p>
+          ) : null}
+        </div>
+      </div>
+
       {showPreview &&
         typeof document !== "undefined" &&
         createPortal(
@@ -205,7 +268,9 @@ function propsAreEqual(
     pd?.label === nd?.label &&
     pd?.hasError === nd?.hasError &&
     pd?.configSummary === nd?.configSummary &&
-    pd?.searchHighlight === nd?.searchHighlight
+    pd?.searchHighlight === nd?.searchHighlight &&
+    pd?.previewExpanded === nd?.previewExpanded &&
+    pd?.previewData === nd?.previewData
   );
 }
 

@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   Sun,
   Moon,
+  Group,
 } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import PipelineCanvas from "@/components/canvas/PipelineCanvas";
@@ -87,6 +88,7 @@ export default function Home() {
     loadPipeline,
     loadPipelineFromServer,
     onNodesChange,
+    createGroup,
   } = usePipelineStore();
   const importFileInputRef = useRef<HTMLInputElement>(null);
   const addToast = useToastStore((s) => s.addToast);
@@ -159,6 +161,17 @@ export default function Home() {
   });
 
   const isEmpty = nodes.length === 0;
+  const selectedCount = nodes.filter(
+    (n) => (n as { selected?: boolean }).selected
+  ).length;
+
+  const handleGroupClick = () => {
+    const name = window.prompt("Enter group name:", "New Group");
+    if (name != null && name.trim()) {
+      createGroup(name.trim());
+      addToast(`Group "${name.trim()}" created`, "success");
+    }
+  };
 
   const handleAutoLayout = () => {
     const laidOut = computeLayout(nodes, edges);
@@ -278,6 +291,15 @@ export default function Home() {
           )}
         </div>
         <div className="flex items-center gap-2">
+          <button
+            className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-slate-200 disabled:opacity-60"
+            onClick={handleGroupClick}
+            disabled={selectedCount < 2}
+            title="Group selected nodes"
+          >
+            <Group className="h-4 w-4" />
+            Group
+          </button>
           <button
             className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-slate-200 disabled:opacity-60"
             onClick={handleAutoLayout}
