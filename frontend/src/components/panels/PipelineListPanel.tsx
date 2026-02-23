@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import * as LucideIcons from "lucide-react";
+import { X, Plus, Loader2, FolderOpen, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import * as api from "@/lib/api";
 import { usePipelineStore } from "@/hooks/usePipelineStore";
@@ -98,7 +98,7 @@ export default function PipelineListPanel({ isOpen, onClose }: PipelineListPanel
             className="rounded p-2 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
             aria-label="Close"
           >
-            <LucideIcons.X className="h-5 w-5" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
@@ -108,7 +108,7 @@ export default function PipelineListPanel({ isOpen, onClose }: PipelineListPanel
               onClick={handleNew}
               className="flex w-full items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
             >
-              <LucideIcons.Plus className="h-4 w-4" />
+              <Plus className="h-4 w-4" />
               New Pipeline
             </button>
           </div>
@@ -116,7 +116,7 @@ export default function PipelineListPanel({ isOpen, onClose }: PipelineListPanel
           <div className="flex-1 overflow-y-auto p-3">
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <LucideIcons.Loader2 className="h-8 w-8 animate-spin text-slate-500" />
+                <Loader2 className="h-8 w-8 animate-spin text-slate-500" />
               </div>
             ) : pipelines.length === 0 ? (
               <div className="py-12 text-center text-sm text-slate-500">
@@ -149,7 +149,7 @@ export default function PipelineListPanel({ isOpen, onClose }: PipelineListPanel
                           className="rounded p-2 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
                           title="Load"
                         >
-                          <LucideIcons.FolderOpen className="h-4 w-4" />
+                          <FolderOpen className="h-4 w-4" />
                         </button>
                         {confirmDeleteId === p.id ? (
                           <span className="flex items-center gap-1">
@@ -159,7 +159,7 @@ export default function PipelineListPanel({ isOpen, onClose }: PipelineListPanel
                               className="rounded bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700 disabled:opacity-50"
                             >
                               {deletingId === p.id ? (
-                                <LucideIcons.Loader2 className="h-3 w-3 animate-spin" />
+                                <Loader2 className="h-3 w-3 animate-spin" />
                               ) : (
                                 "Confirm"
                               )}
@@ -177,7 +177,7 @@ export default function PipelineListPanel({ isOpen, onClose }: PipelineListPanel
                             className="rounded p-2 text-slate-400 hover:bg-slate-700 hover:text-red-400"
                             title="Delete"
                           >
-                            <LucideIcons.Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4" />
                           </button>
                         )}
                       </div>

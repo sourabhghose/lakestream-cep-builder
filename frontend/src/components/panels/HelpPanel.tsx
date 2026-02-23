@@ -1,6 +1,6 @@
 "use client";
 
-import * as LucideIcons from "lucide-react";
+import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface HelpPanelProps {
@@ -24,7 +24,7 @@ export default function HelpPanel({ isOpen, onClose }: HelpPanelProps) {
             onClick={onClose}
             className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
           >
-            <LucideIcons.X className="h-5 w-5" />
+            <X className="h-5 w-5" />
           </button>
         </div>
         <div className="mt-4 space-y-3 text-sm text-slate-300">

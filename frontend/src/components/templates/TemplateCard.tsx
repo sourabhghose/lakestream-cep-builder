@@ -1,8 +1,32 @@
 "use client";
 
-import * as LucideIcons from "lucide-react";
+import {
+  DollarSign,
+  ShoppingCart,
+  Factory,
+  Layers,
+  Cloud,
+  Settings,
+  Megaphone,
+  Truck,
+  Shield,
+  Package,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PipelineTemplate, TemplateDifficulty } from "@/lib/templates";
+
+const INDUSTRY_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  FinServ: DollarSign,
+  "E-commerce": ShoppingCart,
+  Manufacturing: Factory,
+  Any: Layers,
+  SaaS: Cloud,
+  Operations: Settings,
+  Marketing: Megaphone,
+  Logistics: Truck,
+  Cybersecurity: Shield,
+  "Supply Chain": Package,
+};
 
 const INDUSTRY_COLORS: Record<string, string> = {
   FinServ: "border-l-blue-500 bg-blue-500/10",
@@ -23,19 +47,6 @@ const DIFFICULTY_STYLES: Record<TemplateDifficulty, string> = {
   advanced: "bg-red-600/20 text-red-400 border-red-600/40",
 };
 
-const INDUSTRY_ICONS: Record<string, keyof typeof LucideIcons> = {
-  FinServ: "DollarSign",
-  "E-commerce": "ShoppingCart",
-  Manufacturing: "Factory",
-  Any: "Layers",
-  SaaS: "Cloud",
-  Operations: "Settings",
-  Marketing: "Megaphone",
-  Logistics: "Truck",
-  Cybersecurity: "Shield",
-  "Supply Chain": "Package",
-};
-
 interface TemplateCardProps {
   template: PipelineTemplate;
   onUse: () => void;
@@ -54,11 +65,8 @@ export default function TemplateCard({
   const industryColor =
     INDUSTRY_COLORS[template.industry] ?? INDUSTRY_COLORS.Any;
   const difficultyStyle = DIFFICULTY_STYLES[template.difficulty];
-  const iconName = INDUSTRY_ICONS[template.industry] ?? "Layers";
   const IconComponent =
-    (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[
-      iconName
-    ] ?? LucideIcons.Layers;
+    INDUSTRY_ICON_MAP[template.industry] ?? Layers;
 
   return (
     <div

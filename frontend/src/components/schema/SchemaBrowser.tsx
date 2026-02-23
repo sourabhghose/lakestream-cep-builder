@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import * as LucideIcons from "lucide-react";
+import {
+  X,
+  Loader2,
+  ChevronRight,
+  Database,
+  FolderOpen,
+  Table,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   listCatalogs,
@@ -252,7 +259,7 @@ export default function SchemaBrowser({
           className="rounded p-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
           title="Close"
         >
-          <LucideIcons.X className="h-4 w-4" />
+          <X className="h-4 w-4" />
         </button>
       </div>
 
@@ -265,7 +272,7 @@ export default function SchemaBrowser({
             </div>
             {loadingCatalogs ? (
               <div className="flex items-center gap-2 px-2 py-2 text-sm text-slate-500">
-                <LucideIcons.Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
                 Loading...
               </div>
             ) : catalogs.length === 0 ? (
@@ -290,20 +297,20 @@ export default function SchemaBrowser({
                           : "text-slate-300 hover:bg-slate-800"
                       )}
                     >
-                      <LucideIcons.ChevronRight
+                      <ChevronRight
                         className={cn(
                           "h-4 w-4 transition-transform",
                           isExpanded && "rotate-90"
                         )}
                       />
-                      <LucideIcons.Database className="h-4 w-4 shrink-0 text-slate-500" />
+                      <Database className="h-4 w-4 shrink-0 text-slate-500" />
                       <span className="truncate">{c.name}</span>
                     </button>
                     {isExpanded && selectedCatalog === c.name && (
                       <div className="ml-4 mt-0.5 space-y-0.5 border-l border-slate-700 pl-2">
                         {loadingSchemas ? (
                           <div className="flex items-center gap-2 px-2 py-1 text-xs text-slate-500">
-                            <LucideIcons.Loader2 className="h-3 w-3 animate-spin" />
+                            <Loader2 className="h-3 w-3 animate-spin" />
                             Loading...
                           </div>
                         ) : (
@@ -326,13 +333,13 @@ export default function SchemaBrowser({
                                       : "text-slate-300 hover:bg-slate-800"
                                   )}
                                 >
-                                  <LucideIcons.ChevronRight
+                                  <ChevronRight
                                     className={cn(
                                       "h-3 w-3 transition-transform",
                                       schemaExpanded && "rotate-90"
                                     )}
                                   />
-                                  <LucideIcons.FolderOpen className="h-3 w-3 shrink-0 text-slate-500" />
+                                  <FolderOpen className="h-3 w-3 shrink-0 text-slate-500" />
                                   <span className="truncate">{s.name}</span>
                                 </button>
                                 {schemaExpanded &&
@@ -340,7 +347,7 @@ export default function SchemaBrowser({
                                     <div className="ml-4 mt-0.5 space-y-0.5 border-l border-slate-700 pl-2">
                                       {loadingTables ? (
                                         <div className="flex items-center gap-2 px-2 py-1 text-xs text-slate-500">
-                                          <LucideIcons.Loader2 className="h-3 w-3 animate-spin" />
+                                          <Loader2 className="h-3 w-3 animate-spin" />
                                           Loading...
                                         </div>
                                       ) : (
@@ -360,7 +367,7 @@ export default function SchemaBrowser({
                                                   : "text-slate-300 hover:bg-slate-800"
                                               )}
                                             >
-                                              <LucideIcons.Table className="h-3 w-3 shrink-0 text-slate-500" />
+                                              <Table className="h-3 w-3 shrink-0 text-slate-500" />
                                               <span className="truncate">
                                                 {t.name}
                                               </span>
@@ -403,14 +410,14 @@ export default function SchemaBrowser({
                         onClick={handleUseAsSource}
                         className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
                       >
-                        <LucideIcons.Database className="h-4 w-4" />
+                        <Database className="h-4 w-4" />
                         Use as Source
                       </button>
                       <button
                         onClick={handleUseAsSink}
                         className="flex items-center gap-2 rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700"
                       >
-                        <LucideIcons.Database className="h-4 w-4" />
+                        <Database className="h-4 w-4" />
                         Use as Sink
                       </button>
                     </>
@@ -431,7 +438,7 @@ export default function SchemaBrowser({
                 </h3>
                 {loadingColumns ? (
                   <div className="flex items-center gap-2 text-sm text-slate-500">
-                    <LucideIcons.Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                     Loading columns...
                   </div>
                 ) : columns.length === 0 ? (
@@ -470,7 +477,7 @@ export default function SchemaBrowser({
           ) : (
             <div className="flex flex-1 items-center justify-center p-8 text-center text-slate-500">
               <div>
-                <LucideIcons.Table className="mx-auto mb-3 h-12 w-12 text-slate-600" />
+                <Table className="mx-auto mb-3 h-12 w-12 text-slate-600" />
                 <p className="text-sm">
                   Select a catalog, schema, and table to view columns
                 </p>

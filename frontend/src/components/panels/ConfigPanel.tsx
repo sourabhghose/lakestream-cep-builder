@@ -1,10 +1,11 @@
 "use client";
 
 import { useRef, useEffect, useState } from "react";
-import * as LucideIcons from "lucide-react";
+import { Settings2, X, Eye, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePipelineStore } from "@/hooks/usePipelineStore";
 import { NODE_REGISTRY } from "@/lib/nodeRegistry";
+import { getNodeIcon } from "@/lib/iconRegistry";
 import DynamicConfigForm from "@/components/panels/DynamicConfigForm";
 import DataPreview from "@/components/preview/DataPreview";
 import { getNodePreview } from "@/lib/api";
@@ -53,7 +54,7 @@ export default function ConfigPanel({ isOpen, className }: ConfigPanelProps) {
         )}
       >
         <div className="flex h-12 items-center justify-center border-b border-slate-700 text-slate-500">
-          <LucideIcons.Settings2 className="h-5 w-5" />
+          <Settings2 className="h-5 w-5" />
         </div>
         <div className="flex flex-1 items-center justify-center p-2">
           <p className="text-center text-xs text-slate-500">
@@ -79,7 +80,7 @@ export default function ConfigPanel({ isOpen, className }: ConfigPanelProps) {
             className="rounded p-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
             title="Close"
           >
-            <LucideIcons.X className="h-4 w-4" />
+            <X className="h-4 w-4" />
           </button>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
@@ -89,10 +90,7 @@ export default function ConfigPanel({ isOpen, className }: ConfigPanelProps) {
     );
   }
 
-  const IconComponent =
-    (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[
-      definition.icon ?? "Box"
-    ] ?? LucideIcons.Box;
+  const IconComponent = getNodeIcon(definition.icon);
 
   return (
     <div
@@ -116,7 +114,7 @@ export default function ConfigPanel({ isOpen, className }: ConfigPanelProps) {
           className="shrink-0 rounded p-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
           title="Close"
         >
-          <LucideIcons.X className="h-4 w-4" />
+          <X className="h-4 w-4" />
         </button>
       </div>
       <div className="flex-1 overflow-y-auto p-4">
@@ -146,12 +144,12 @@ export default function ConfigPanel({ isOpen, className }: ConfigPanelProps) {
             }
           }}
         >
-          <LucideIcons.Eye className="h-4 w-4" />
+          <Eye className="h-4 w-4" />
             Preview Data
         </button>
         {previewLoading && (
           <div className="mt-3 flex items-center justify-center py-6">
-            <LucideIcons.Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+            <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
           </div>
         )}
         {!previewLoading && previewData && (

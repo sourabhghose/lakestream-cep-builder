@@ -5,7 +5,8 @@ import { createPortal } from "react-dom";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import { NODE_REGISTRY } from "@/lib/nodeRegistry";
-import * as LucideIcons from "lucide-react";
+import { getNodeIcon } from "@/lib/iconRegistry";
+import { Eye, X, Loader2 } from "lucide-react";
 import { usePipelineStore } from "@/hooks/usePipelineStore";
 import { getNodePreview } from "@/lib/api";
 import type { PreviewSampleResponse } from "@/lib/api";
@@ -60,10 +61,7 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
   const outputs = def.outputs ?? 1;
 
   const IconComponent = useMemo(
-    () =>
-      (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[
-        def.icon ?? "Box"
-      ] ?? LucideIcons.Box,
+    () => getNodeIcon(def.icon),
     [def.icon]
   );
 
@@ -119,7 +117,7 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
               className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
               title="Preview data"
             >
-              <LucideIcons.Eye className="h-3.5 w-3.5" />
+              <Eye className="h-3.5 w-3.5" />
             </button>
             {hasError && (
               <span className="rounded bg-red-500/20 px-1.5 py-0.5 text-xs text-red-400">
@@ -167,13 +165,13 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
                   onClick={() => setShowPreview(false)}
                   className="rounded p-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
                 >
-                  <LucideIcons.X className="h-4 w-4" />
+                  <X className="h-4 w-4" />
                 </button>
               </div>
               <div className="p-4">
                 {previewLoading ? (
                   <div className="flex items-center justify-center py-12">
-                    <LucideIcons.Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+                    <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
                   </div>
                 ) : previewData ? (
                   <DataPreview

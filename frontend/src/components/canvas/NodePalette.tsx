@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import * as LucideIcons from "lucide-react";
+import { PanelLeftOpen, PanelLeftClose, ChevronDown } from "lucide-react";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { cn } from "@/lib/utils";
 import { NODE_CATEGORIES, NODE_REGISTRY } from "@/lib/nodeRegistry";
+import { getNodeIcon } from "@/lib/iconRegistry";
 import type { NodeDefinition } from "@/types/nodes";
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -85,7 +86,7 @@ export default function NodePalette({
           className="flex h-12 items-center justify-center border-b border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
           title="Expand palette"
         >
-          <LucideIcons.PanelLeftOpen className="h-5 w-5" />
+          <PanelLeftOpen className="h-5 w-5" />
         </button>
       </div>
     );
@@ -100,7 +101,7 @@ export default function NodePalette({
           className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
           title="Collapse palette"
         >
-          <LucideIcons.PanelLeftClose className="h-4 w-4" />
+          <PanelLeftClose className="h-4 w-4" />
         </button>
       </div>
       <div className="border-b border-slate-700 px-2 pb-2">
@@ -126,7 +127,7 @@ export default function NodePalette({
                   colorClass
                 )}
               >
-                <LucideIcons.ChevronDown
+                <ChevronDown
                   className={cn("h-4 w-4 transition-transform", !isExpanded && "-rotate-90")}
                 />
                 {category.label}
@@ -140,10 +141,7 @@ export default function NodePalette({
                   ).map((nodeType) => {
                     const def = NODE_REGISTRY[nodeType];
                     if (!def) return null;
-                    const IconComponent =
-                      (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[
-                        def.icon
-                      ] ?? LucideIcons.Box;
+                    const IconComponent = getNodeIcon(def.icon);
                     return (
                       <div
                         key={nodeType}

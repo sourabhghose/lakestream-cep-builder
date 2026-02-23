@@ -1,12 +1,25 @@
 "use client";
 
-import * as LucideIcons from "lucide-react";
+import {
+  CheckCircle,
+  AlertCircle,
+  AlertTriangle,
+  Info,
+  X,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToastStore, type Toast as ToastItem, type ToastVariant } from "@/hooks/useToastStore";
 
+const ICON_MAP = {
+  CheckCircle,
+  AlertCircle,
+  AlertTriangle,
+  Info,
+} as const;
+
 const VARIANT_STYLES: Record<
   ToastVariant,
-  { bg: string; border: string; icon: keyof typeof LucideIcons }
+  { bg: string; border: string; icon: keyof typeof ICON_MAP }
 > = {
   success: {
     bg: "bg-emerald-500/15",
@@ -33,10 +46,7 @@ const VARIANT_STYLES: Record<
 function ToastItemComponent({ toast }: { toast: ToastItem }) {
   const removeToast = useToastStore((s) => s.removeToast);
   const style = VARIANT_STYLES[toast.variant];
-  const IconComponent =
-    (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[
-      style.icon
-    ] ?? LucideIcons.Info;
+  const IconComponent = ICON_MAP[style.icon] ?? Info;
 
   return (
     <div
@@ -54,7 +64,7 @@ function ToastItemComponent({ toast }: { toast: ToastItem }) {
         className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-700/50 hover:text-slate-200"
         aria-label="Dismiss"
       >
-        <LucideIcons.X className="h-4 w-4" />
+        <X className="h-4 w-4" />
       </button>
     </div>
   );

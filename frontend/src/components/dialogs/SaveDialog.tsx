@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import * as LucideIcons from "lucide-react";
+import { X, Loader2, Save } from "lucide-react";
 import { usePipelineStore } from "@/hooks/usePipelineStore";
 import { useToastStore } from "@/hooks/useToastStore";
 
@@ -75,7 +75,7 @@ export default function SaveDialog({ isOpen, onClose }: SaveDialogProps) {
             className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
             aria-label="Close"
           >
-            <LucideIcons.X className="h-5 w-5" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
@@ -120,9 +120,9 @@ export default function SaveDialog({ isOpen, onClose }: SaveDialogProps) {
             className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
           >
             {saving ? (
-              <LucideIcons.Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <LucideIcons.Save className="h-4 w-4" />
+              <Save className="h-4 w-4" />
             )}
             Save
           </button>

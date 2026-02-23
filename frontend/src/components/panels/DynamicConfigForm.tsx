@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Editor from "@monaco-editor/react";
-import * as LucideIcons from "lucide-react";
+import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { listCatalogs, listSchemas, listTables } from "@/lib/api";
 import SchemaBrowser from "@/components/schema/SchemaBrowser";
@@ -667,7 +667,7 @@ export function DynamicConfigForm({
             onClick={() => setSchemaBrowserOpen(true)}
             className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-800/50 px-3 py-2 text-sm font-medium text-slate-300 hover:border-slate-500 hover:bg-slate-800 hover:text-slate-200"
           >
-            <LucideIcons.Search className="h-4 w-4" />
+            <Search className="h-4 w-4" />
             Browse schema
           </button>
         </div>

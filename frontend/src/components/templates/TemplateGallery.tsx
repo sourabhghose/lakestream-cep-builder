@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import * as LucideIcons from "lucide-react";
+import { LayoutTemplate, X, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   PIPELINE_TEMPLATES,
@@ -73,7 +73,7 @@ export default function TemplateGallery({
     >
       <div className="flex items-center justify-between border-b border-slate-700 px-4 py-3">
         <h2 className="flex items-center gap-2 font-semibold text-slate-200">
-          <LucideIcons.LayoutTemplate className="h-5 w-5" />
+          <LayoutTemplate className="h-5 w-5" />
           Use Case Templates
         </h2>
         {onClose && (
@@ -82,14 +82,14 @@ export default function TemplateGallery({
             className="rounded p-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
             title="Close"
           >
-            <LucideIcons.X className="h-4 w-4" />
+            <X className="h-4 w-4" />
           </button>
         )}
       </div>
 
       <div className="flex flex-wrap gap-3 border-b border-slate-700 px-4 py-3">
         <div className="relative min-w-[200px] flex-1">
-          <LucideIcons.Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
           <input
             type="text"
             placeholder="Search templates..."
@@ -128,7 +128,7 @@ export default function TemplateGallery({
       <div className="flex-1 overflow-y-auto p-4">
         {filteredTemplates.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-slate-500">
-            <LucideIcons.Search className="mb-2 h-10 w-10" />
+            <Search className="mb-2 h-10 w-10" />
             <p className="text-sm">No templates match your filters</p>
           </div>
         ) : (

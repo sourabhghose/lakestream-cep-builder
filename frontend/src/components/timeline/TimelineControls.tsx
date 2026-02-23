@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import * as LucideIcons from "lucide-react";
+import { Pause, Play, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const SPEED_OPTIONS = [1, 2, 5, 10] as const;
@@ -90,9 +90,9 @@ export default function TimelineControls({
           title={isPlaying ? "Pause" : "Play"}
         >
           {isPlaying ? (
-            <LucideIcons.Pause className="h-4 w-4" />
+            <Pause className="h-4 w-4" />
           ) : (
-            <LucideIcons.Play className="h-4 w-4" />
+            <Play className="h-4 w-4" />
           )}
         </button>
       )}
@@ -142,7 +142,7 @@ export default function TimelineControls({
               : "border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-200"
           )}
         >
-          <LucideIcons.Upload className="h-3.5 w-3.5" />
+          <Upload className="h-3.5 w-3.5" />
           {hasData ? "Data loaded" : "Load Sample Data"}
         </button>
       )}

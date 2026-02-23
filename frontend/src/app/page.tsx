@@ -1,7 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import * as LucideIcons from "lucide-react";
+import {
+  Menu,
+  ChevronDown,
+  FilePlus,
+  FolderOpen,
+  Save,
+  Copy,
+  Trash2,
+  Network,
+  LayoutTemplate,
+  Loader2,
+  Rocket,
+  HelpCircle,
+  Boxes,
+} from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import PipelineCanvas from "@/components/canvas/PipelineCanvas";
 import NodePalette from "@/components/canvas/NodePalette";
@@ -137,9 +151,9 @@ export default function Home() {
                 className="flex items-center gap-2 rounded border border-slate-600 bg-slate-800 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-700"
                 aria-label="Pipeline menu"
               >
-                <LucideIcons.Menu className="h-4 w-4" />
+                <Menu className="h-4 w-4" />
                 <span className="max-w-[180px] truncate">{pipelineName}</span>
-                <LucideIcons.ChevronDown className="h-4 w-4 shrink-0" />
+                <ChevronDown className="h-4 w-4 shrink-0" />
               </button>
             </DropdownMenu.Trigger>
             <DropdownMenu.Portal>
@@ -156,7 +170,7 @@ export default function Home() {
                     addToast("New pipeline", "success");
                   }}
                 >
-                  <LucideIcons.FilePlus className="h-4 w-4" />
+                  <FilePlus className="h-4 w-4" />
                   New
                 </DropdownMenu.Item>
                 <DropdownMenu.Item
@@ -166,7 +180,7 @@ export default function Home() {
                     setMenuOpen(false);
                   }}
                 >
-                  <LucideIcons.FolderOpen className="h-4 w-4" />
+                  <FolderOpen className="h-4 w-4" />
                   Open
                 </DropdownMenu.Item>
                 <DropdownMenu.Item
@@ -176,7 +190,7 @@ export default function Home() {
                     setMenuOpen(false);
                   }}
                 >
-                  <LucideIcons.Save className="h-4 w-4" />
+                  <Save className="h-4 w-4" />
                   Save
                 </DropdownMenu.Item>
                 <DropdownMenu.Item
@@ -187,7 +201,7 @@ export default function Home() {
                     setMenuOpen(false);
                   }}
                 >
-                  <LucideIcons.Copy className="h-4 w-4" />
+                  <Copy className="h-4 w-4" />
                   Save As
                 </DropdownMenu.Item>
                 <DropdownMenu.Separator className="my-1 h-px bg-slate-700" />
@@ -195,7 +209,7 @@ export default function Home() {
                   className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-red-400 outline-none hover:bg-slate-800"
                   onSelect={handleDeletePipeline}
                 >
-                  <LucideIcons.Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4" />
                   Delete
                 </DropdownMenu.Item>
               </DropdownMenu.Content>
@@ -217,14 +231,14 @@ export default function Home() {
             disabled={nodes.length === 0}
             title="Auto-arrange pipeline nodes"
           >
-            <LucideIcons.Network className="h-4 w-4" />
+            <Network className="h-4 w-4" />
             Auto Layout
           </button>
           <button
             className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-slate-200"
             onClick={() => setTemplatesOpen(true)}
           >
-            <LucideIcons.LayoutTemplate className="h-4 w-4" />
+            <LayoutTemplate className="h-4 w-4" />
             Templates
           </button>
           <button
@@ -233,9 +247,9 @@ export default function Home() {
             disabled={isSaving}
           >
             {isSaving ? (
-              <LucideIcons.Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <LucideIcons.Save className="h-4 w-4" />
+              <Save className="h-4 w-4" />
             )}
             Save
           </button>
@@ -245,9 +259,9 @@ export default function Home() {
             disabled={isDeploying}
           >
             {isDeploying ? (
-              <LucideIcons.Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <LucideIcons.Rocket className="h-4 w-4" />
+              <Rocket className="h-4 w-4" />
             )}
             Deploy
           </button>
@@ -259,7 +273,7 @@ export default function Home() {
             )}
             title="Help"
           >
-            <LucideIcons.HelpCircle className="h-5 w-5" />
+            <HelpCircle className="h-5 w-5" />
           </button>
         </div>
       </header>
@@ -278,7 +292,7 @@ export default function Home() {
           {isEmpty && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
               <div className="rounded-xl border border-dashed border-slate-600 bg-slate-900/80 px-8 py-6 text-center backdrop-blur">
-                <LucideIcons.Boxes className="mx-auto mb-3 h-12 w-12 text-slate-500" />
+                <Boxes className="mx-auto mb-3 h-12 w-12 text-slate-500" />
                 <p className="text-sm font-medium text-slate-300">
                   Drag nodes from the palette to start building your pipeline
                 </p>

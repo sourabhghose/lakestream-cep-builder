@@ -2,7 +2,14 @@
 
 import { useState, useEffect, useRef } from "react";
 import Editor from "@monaco-editor/react";
-import * as LucideIcons from "lucide-react";
+import {
+  Loader2,
+  Check,
+  AlertTriangle,
+  AlertCircle,
+  Pencil,
+  ChevronDown,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePipelineStore } from "@/hooks/usePipelineStore";
 import * as api from "@/lib/api";
@@ -101,7 +108,7 @@ export default function CodePreview({
         <div className="flex items-center gap-2">
           {isGenerating && (
             <span className="flex items-center gap-1.5 text-sm text-slate-400">
-              <LucideIcons.Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
               Generating...
             </span>
           )}
@@ -143,25 +150,25 @@ export default function CodePreview({
           )}
           {syncStatus === "synced" && (
             <span className="flex items-center gap-1.5 text-xs text-emerald-400">
-              <LucideIcons.Check className="h-3.5 w-3.5" />
+              <Check className="h-3.5 w-3.5" />
               Canvas synced from code
             </span>
           )}
           {syncStatus === "warnings" && (
             <span className="flex items-center gap-1.5 text-xs text-amber-400" title={syncMessage}>
-              <LucideIcons.AlertTriangle className="h-3.5 w-3.5" />
+              <AlertTriangle className="h-3.5 w-3.5" />
               Parse warnings: {syncMessage.slice(0, 50)}{syncMessage.length > 50 ? "…" : ""}
             </span>
           )}
           {syncStatus === "parsing" && (
             <span className="flex items-center gap-1.5 text-xs text-slate-400">
-              <LucideIcons.Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
               Parsing…
             </span>
           )}
           {syncStatus === "error" && (
             <span className="flex items-center gap-1.5 text-xs text-red-400">
-              <LucideIcons.AlertCircle className="h-3.5 w-3.5" />
+              <AlertCircle className="h-3.5 w-3.5" />
               {syncMessage}
             </span>
           )}
@@ -177,7 +184,7 @@ export default function CodePreview({
             )}
             title={isEditing ? "Read-only mode" : "Edit mode"}
           >
-            <LucideIcons.Pencil className="h-3.5 w-3.5" />
+            <Pencil className="h-3.5 w-3.5" />
             {isEditing ? "Editing" : "Edit"}
           </button>
           <button
@@ -185,7 +192,7 @@ export default function CodePreview({
             className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
             title={collapsed ? "Expand" : "Collapse"}
           >
-            <LucideIcons.ChevronDown
+            <ChevronDown
               className={cn("h-4 w-4 transition-transform", collapsed && "rotate-180")}
             />
           </button>
