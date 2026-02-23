@@ -1,0 +1,275 @@
+"""
+Data preview API router.
+
+Returns synthetic sample data for a given node in a pipeline.
+When connected to Databricks, could query actual data (future enhancement).
+"""
+
+import json
+import random
+import string
+from datetime import datetime, timedelta
+from typing import Any
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
+
+router = APIRouter()
+
+
+class PreviewRequest(BaseModel):
+    """Request body for preview sample endpoint."""
+
+    pipeline: dict[str, Any] = Field(
+        ...,
+        description="Pipeline definition with nodes and edges",
+    )
+    node_id: str = Field(..., description="Target node ID to preview")
+
+
+class PreviewResponse(BaseModel):
+    """Response with sample data in tabular format."""
+
+    columns: list[str] = Field(..., description="Column names")
+    rows: list[list[Any]] = Field(..., description="Row data as arrays")
+    row_count: int = Field(..., description="Number of rows")
+
+
+def _random_string(length: int = 8) -> str:
+    return "".join(random.choices(string.ascii_lowercase + string.digits, k=length))
+
+
+def _random_timestamp() -> str:
+    base = datetime.utcnow() - timedelta(days=1)
+    delta = timedelta(seconds=random.randint(0, 86400))
+    return (base + delta).isoformat() + "Z"
+
+
+def _get_node_by_id(pipeline: dict, node_id: str) -> dict | None:
+    nodes = pipeline.get("nodes", [])
+    for n in nodes:
+        if n.get("id") == node_id:
+            return n
+    return None
+
+
+def _get_upstream_node_ids(pipeline: dict, node_id: str) -> list[str]:
+    edges = pipeline.get("edges", [])
+    return [e["source"] for e in edges if e.get("target") == node_id]
+
+
+def _generate_source_sample(node_type: str, config: dict) -> tuple[list[str], list[list[Any]]]:
+    """Generate synthetic sample for source nodes."""
+    if node_type in ("kafka-topic", "kafka-topic-sink", "cdc-stream", "event-hub-kinesis", "mqtt"):
+        topic = config.get("topics", config.get("topic", "sample-topic"))
+        if isinstance(topic, str) and "," in topic:
+            topic = topic.split(",")[0].strip()
+        columns = ["key", "value", "timestamp", "topic"]
+        rows = []
+        for i in range(5):
+            rows.append([
+                f"key-{_random_string(6)}",
+                json.dumps({"id": i + 1, "event_type": "sample", "amount": random.randint(10, 100)}),
+                _random_timestamp(),
+                topic,
+            ])
+        return columns, rows
+
+    if node_type in ("delta-table-source", "auto-loader", "delta-table-sink", "unity-catalog-table-sink"):
+        columns = ["id", "event_type", "amount", "timestamp", "partition_key"]
+        rows = []
+        for i in range(5):
+            rows.append([
+                f"rec-{i + 1}",
+                random.choice(["A", "B", "C"]),
+                random.randint(10, 500),
+                _random_timestamp(),
+                _random_string(4),
+            ])
+        return columns, rows
+
+    if node_type in ("rest-webhook-source", "rest-webhook-sink"):
+        columns = ["id", "payload", "received_at", "source"]
+        rows = []
+        for i in range(5):
+            rows.append([
+                f"req-{i + 1}",
+                json.dumps({"event": f"event_{i}", "value": random.randint(1, 100)}),
+                _random_timestamp(),
+                "webhook",
+            ])
+        return columns, rows
+
+    # Default for other sources
+    columns = ["id", "value", "timestamp"]
+    rows = [[f"row-{i + 1}", random.randint(1, 100), _random_timestamp()] for i in range(5)]
+    return columns, rows
+
+
+def _apply_filter_best_effort(columns: list[str], rows: list[list[Any]], condition: str) -> list[list[Any]]:
+    """Best-effort filter: try simple numeric checks when condition matches."""
+    if not condition or not rows:
+        return rows[:5]
+    filtered = []
+    for row in rows:
+        row_dict = dict(zip(columns, row))
+        try:
+            keep = True
+            if ">" in condition:
+                for col in columns:
+                    if col in condition and col in row_dict:
+                        val = row_dict[col]
+                        if isinstance(val, (int, float)):
+                            rest = condition.split(">", 1)[1]
+                            threshold = float("".join(c for c in rest if c.isdigit() or c == "." or c == "-"))
+                            keep = val > threshold
+                        break
+            elif "<" in condition:
+                for col in columns:
+                    if col in condition and col in row_dict:
+                        val = row_dict[col]
+                        if isinstance(val, (int, float)):
+                            rest = condition.split("<", 1)[1]
+                            threshold = float("".join(c for c in rest if c.isdigit() or c == "." or c == "-"))
+                            keep = val < threshold
+                        break
+            if keep:
+                filtered.append(row)
+        except Exception:
+            filtered.append(row)
+    return filtered[:5] if filtered else rows[:2]
+
+
+def _generate_aggregate_sample(upstream_columns: list[str], upstream_rows: list[list[Any]], config: dict) -> tuple[list[str], list[list[Any]]]:
+    """Generate grouped/aggregated sample."""
+    group_keys = config.get("groupByKeys", [])
+    if isinstance(group_keys, str):
+        group_keys = [group_keys] if group_keys else []
+    agg_config = config.get("aggregations", [])
+    if isinstance(agg_config, str):
+        try:
+            agg_config = json.loads(agg_config) if agg_config else []
+        except json.JSONDecodeError:
+            agg_config = []
+
+    group_cols = [c for c in (group_keys if isinstance(group_keys, list) else []) if c in upstream_columns]
+    agg_cols = []
+    for a in agg_config:
+        if isinstance(a, dict) and "column" in a and "function" in a:
+            agg_cols.append(f"{a['function']}({a['column']})")
+
+    columns = group_cols + agg_cols if agg_cols else group_cols + ["count", "sum_amount"]
+    rows = []
+    seen = set()
+    for row in upstream_rows[:5]:
+        key = tuple(row[upstream_columns.index(c)] for c in group_cols) if group_cols else (0,)
+        if key not in seen:
+            seen.add(key)
+            agg_vals = [random.randint(1, 100), random.randint(100, 1000)]
+            rows.append(list(key) + agg_vals[: len(columns) - len(group_cols)])
+    if not rows:
+        rows = [["group1", 5, 250], ["group2", 3, 180]]
+    return columns, rows[:5]
+
+
+def _generate_cep_pattern_sample(upstream_columns: list[str], upstream_rows: list[list[Any]], node_type: str) -> tuple[list[str], list[list[Any]]]:
+    """Generate matched pattern events sample."""
+    columns = upstream_columns + ["match_id", "pattern_name", "match_time"]
+    rows = []
+    for i, row in enumerate(upstream_rows[:3]):
+        rows.append(list(row) + [f"match-{i + 1}", "pattern_matched", _random_timestamp()])
+    if not rows:
+        rows = [[f"val-{j}" for j in range(len(columns) - 3)] + ["m1", "pattern", _random_timestamp()]]
+    return columns, rows
+
+
+def _generate_delta_sink_schema_sample(upstream_columns: list[str], upstream_rows: list[list[Any]]) -> tuple[list[str], list[list[Any]]]:
+    """Show final output schema for Delta sink."""
+    if upstream_columns and upstream_rows:
+        return upstream_columns, upstream_rows[:5]
+    columns = ["id", "event_type", "amount", "timestamp"]
+    rows = [[f"out-{i}", "sample", 100 + i, _random_timestamp()] for i in range(5)]
+    return columns, rows
+
+
+def _get_node_category(node_type: str) -> str:
+    """Map node type to category."""
+    source_types = {"kafka-topic", "delta-table-source", "auto-loader", "rest-webhook-source", "cdc-stream", "event-hub-kinesis", "mqtt", "custom-python-source"}
+    sink_types = {"delta-table-sink", "kafka-topic-sink", "rest-webhook-sink", "slack-teams-pagerduty", "email-sink", "sql-warehouse-sink", "unity-catalog-table-sink", "dead-letter-queue"}
+    pattern_types = {"sequence-detector", "absence-detector", "count-threshold", "velocity-detector", "geofence-location", "temporal-correlation", "trend-detector", "outlier-anomaly", "session-detector", "deduplication", "match-recognize-sql", "custom-stateful-processor"}
+    if node_type in source_types:
+        return "source"
+    if node_type in sink_types:
+        return "sink"
+    if node_type in pattern_types:
+        return "cep-pattern"
+    return "transform"
+
+
+def _get_upstream_sample(pipeline: dict, node_id: str, visited: set[str]) -> tuple[list[str], list[list[Any]]]:
+    """Recursively get sample from upstream nodes."""
+    if node_id in visited:
+        return ["id", "value"], [["circular", 0]]
+    visited.add(node_id)
+    node = _get_node_by_id(pipeline, node_id)
+    if not node:
+        return ["id", "value"], [["unknown", 0]]
+
+    node_type = node.get("type", "map-select")
+    config = node.get("config", {})
+
+    upstream_ids = _get_upstream_node_ids(pipeline, node_id)
+    if upstream_ids:
+        cols, rows = _get_upstream_sample(pipeline, upstream_ids[0], visited)
+        category = _get_node_category(node_type)
+
+        if category == "transform" and node_type == "filter":
+            cond = config.get("condition", "")
+            rows = _apply_filter_best_effort(cols, rows, cond)
+            return cols, rows
+
+        if category == "transform" and node_type == "window-aggregate":
+            return _generate_aggregate_sample(cols, rows, config)
+
+        if category in ("cep-pattern", "pattern"):
+            return _generate_cep_pattern_sample(cols, rows, node_type)
+
+        if category == "sink":
+            return _generate_delta_sink_schema_sample(cols, rows)
+
+        return cols, rows[:5]
+
+    # Source node
+    return _generate_source_sample(node_type, config)
+
+
+@router.post("/sample", response_model=PreviewResponse)
+async def preview_sample(request: PreviewRequest) -> PreviewResponse:
+    """
+    Return synthetic sample data for the given node in the pipeline.
+
+    For now generates synthetic data based on node type.
+    TODO: When connected to Databricks, query actual data from sources/tables.
+    """
+    pipeline = request.pipeline
+    node_id = request.node_id
+
+    node = _get_node_by_id(pipeline, node_id)
+    if not node:
+        raise HTTPException(status_code=404, detail=f"Node {node_id} not found")
+
+    if "nodes" not in pipeline:
+        pipeline = {"nodes": [], "edges": []}
+    if "edges" not in pipeline:
+        pipeline["edges"] = pipeline.get("edges", [])
+
+    try:
+        columns, rows = _get_upstream_sample(pipeline, node_id, set())
+        rows = rows[:10]
+        return PreviewResponse(
+            columns=columns,
+            rows=rows,
+            row_count=len(rows),
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Preview generation failed: {str(e)}") from e

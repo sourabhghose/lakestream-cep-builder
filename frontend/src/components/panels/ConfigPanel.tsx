@@ -1,11 +1,13 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import * as LucideIcons from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePipelineStore } from "@/hooks/usePipelineStore";
 import { NODE_REGISTRY } from "@/lib/nodeRegistry";
 import DynamicConfigForm from "@/components/panels/DynamicConfigForm";
+import DataPreview from "@/components/preview/DataPreview";
+import { getNodePreview } from "@/lib/api";
 import type { NodeType } from "@/types/nodes";
 
 interface ConfigPanelProps {
@@ -17,10 +19,17 @@ export default function ConfigPanel({ isOpen, className }: ConfigPanelProps) {
   const {
     selectedNodeId,
     nodes,
+    edges,
     deselectNode,
     updateNode,
     triggerCodeGen,
   } = usePipelineStore();
+  const [previewData, setPreviewData] = useState<{
+    columns: string[];
+    rows: (string | number | boolean | null)[][];
+    row_count: number;
+  } | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const lastSavedConfigRef = useRef<Record<string, unknown>>({});
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId);
@@ -120,6 +129,40 @@ export default function ConfigPanel({ isOpen, className }: ConfigPanelProps) {
             }
           }}
         />
+      </div>
+      <div className="border-t border-slate-700 px-4 py-3">
+        <h4 className="mb-2 text-sm font-medium text-slate-300">Preview Data</h4>
+        <button
+          type="button"
+          className="flex w-full items-center justify-center gap-2 rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700"
+          onClick={() => {
+            if (selectedNodeId) {
+              setPreviewLoading(true);
+              setPreviewData(null);
+              getNodePreview({ nodes, edges }, selectedNodeId)
+                .then(setPreviewData)
+                .catch(() => setPreviewData({ columns: [], rows: [], row_count: 0 }))
+                .finally(() => setPreviewLoading(false));
+            }
+          }}
+        >
+          <LucideIcons.Eye className="h-4 w-4" />
+            Preview Data
+        </button>
+        {previewLoading && (
+          <div className="mt-3 flex items-center justify-center py-6">
+            <LucideIcons.Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+          </div>
+        )}
+        {!previewLoading && previewData && (
+          <div className="mt-3">
+            <DataPreview
+              columns={previewData.columns}
+              rows={previewData.rows}
+              rowCount={previewData.row_count}
+            />
+          </div>
+        )}
       </div>
       <div className="flex gap-2 border-t border-slate-700 px-4 py-3">
         <button

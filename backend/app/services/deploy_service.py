@@ -362,6 +362,79 @@ class DeployService:
         except Exception:
             return []
 
+    def list_tables(
+        self, catalog_name: str, schema_name: str
+    ) -> list[dict[str, Any]]:
+        """
+        List tables in a Unity Catalog schema.
+
+        Returns list of {name, table_type, columns} per table.
+        When not connected: returns empty list.
+        """
+        if not self._config.is_configured:
+            return []
+        try:
+            w = self._get_client()
+            result: list[dict[str, Any]] = []
+            for t in w.tables.list(
+                catalog_name=catalog_name,
+                schema_name=schema_name,
+                max_results=1000,
+            ):
+                cols = []
+                if getattr(t, "columns", None):
+                    for c in t.columns:
+                        cols.append(
+                            {
+                                "name": getattr(c, "name", ""),
+                                "type": getattr(c, "type_name", "STRING"),
+                                "nullable": getattr(c, "nullable", True),
+                            }
+                        )
+                result.append(
+                    {
+                        "name": getattr(t, "name", ""),
+                        "table_type": getattr(t, "table_type", "MANAGED") or "MANAGED",
+                        "columns": cols,
+                    }
+                )
+            return result
+        except Exception:
+            return []
+
+    def list_columns(
+        self, catalog_name: str, schema_name: str, table_name: str
+    ) -> list[dict[str, Any]]:
+        """
+        List columns for a Unity Catalog table.
+
+        Uses w.tables.get(full_name). Returns list of {name, type, nullable}.
+        When not connected: returns mock sample data.
+        """
+        if not self._config.is_configured:
+            return [
+                {"name": "id", "type": "LONG", "nullable": False},
+                {"name": "event_time", "type": "TIMESTAMP", "nullable": True},
+                {"name": "value", "type": "STRING", "nullable": True},
+            ]
+        try:
+            w = self._get_client()
+            full_name = f"{catalog_name}.{schema_name}.{table_name}"
+            t = w.tables.get(full_name=full_name)
+            cols: list[dict[str, Any]] = []
+            if getattr(t, "columns", None):
+                for c in t.columns:
+                    cols.append(
+                        {
+                            "name": getattr(c, "name", ""),
+                            "type": getattr(c, "type_name", "STRING"),
+                            "nullable": getattr(c, "nullable", True),
+                        }
+                    )
+            return cols
+        except Exception:
+            return []
+
     def get_job_status(self, job_id: str, deployment_type: str = "job") -> str:
         """
         Get the status of a deployed job or pipeline run.

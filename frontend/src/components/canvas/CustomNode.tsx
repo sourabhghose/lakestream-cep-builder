@@ -1,10 +1,15 @@
 "use client";
 
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import { NODE_REGISTRY } from "@/lib/nodeRegistry";
 import * as LucideIcons from "lucide-react";
+import { usePipelineStore } from "@/hooks/usePipelineStore";
+import { getNodePreview } from "@/lib/api";
+import type { PreviewSampleResponse } from "@/lib/api";
+import DataPreview from "@/components/preview/DataPreview";
 
 const CATEGORY_BORDER_COLORS: Record<string, string> = {
   source: "border-node-source",
@@ -14,7 +19,29 @@ const CATEGORY_BORDER_COLORS: Record<string, string> = {
   sink: "border-node-sink",
 };
 
-function CustomNodeInner({ data, selected }: NodeProps) {
+function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
+  const { nodes, edges } = usePipelineStore();
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewData, setPreviewData] = useState<PreviewSampleResponse | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+
+  const handlePreviewClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (showPreview) {
+        setShowPreview(false);
+        return;
+      }
+      setPreviewLoading(true);
+      setShowPreview(true);
+      getNodePreview({ nodes, edges }, nodeId)
+        .then((res) => setPreviewData(res))
+        .catch(() => setPreviewData({ columns: [], rows: [], row_count: 0 }))
+        .finally(() => setPreviewLoading(false));
+    },
+    [showPreview, nodes, edges, nodeId]
+  );
+
   const def = useMemo(
     () =>
       NODE_REGISTRY[data.type as keyof typeof NODE_REGISTRY] ?? {
@@ -86,6 +113,14 @@ function CustomNodeInner({ data, selected }: NodeProps) {
             <span className="truncate font-medium text-slate-100">
               {String(data.label ?? def.label ?? "Unknown")}
             </span>
+            <button
+              type="button"
+              onClick={handlePreviewClick}
+              className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+              title="Preview data"
+            >
+              <LucideIcons.Eye className="h-3.5 w-3.5" />
+            </button>
             {hasError && (
               <span className="rounded bg-red-500/20 px-1.5 py-0.5 text-xs text-red-400">
                 Error
@@ -111,6 +146,49 @@ function CustomNodeInner({ data, selected }: NodeProps) {
           )}
         </div>
       </div>
+
+      {showPreview &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowPreview(false);
+            }}
+          >
+            <div
+              className="max-h-[80vh] w-full max-w-2xl overflow-hidden rounded-lg border border-slate-700 bg-slate-900 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-slate-700 px-4 py-2">
+                <h3 className="font-medium text-slate-200">Data Preview</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowPreview(false)}
+                  className="rounded p-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                >
+                  <LucideIcons.X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="p-4">
+                {previewLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <LucideIcons.Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+                  </div>
+                ) : previewData ? (
+                  <DataPreview
+                    columns={previewData.columns}
+                    rows={previewData.rows}
+                    rowCount={previewData.row_count}
+                  />
+                ) : (
+                  <p className="py-4 text-center text-sm text-slate-500">No preview data</p>
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

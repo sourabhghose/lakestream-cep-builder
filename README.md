@@ -2,6 +2,8 @@
 
 **Visual Complex Event Processing for Databricks**
 
+[![CI](https://github.com/sourabhghose/lakestream-cep-builder/actions/workflows/ci.yml/badge.svg)](https://github.com/sourabhghose/lakestream-cep-builder/actions/workflows/ci.yml)
+[![Deploy](https://github.com/sourabhghose/lakestream-cep-builder/actions/workflows/deploy.yml/badge.svg)](https://github.com/sourabhghose/lakestream-cep-builder/actions/workflows/deploy.yml)
 [![Build](https://img.shields.io/badge/build-passing-brightgreen)]()
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)]()
 [![Databricks](https://img.shields.io/badge/Databricks-Lakeflow-orange)]()
@@ -247,3 +249,5 @@ MIT License. See LICENSE file.
 ## Contributing
 
 Contributions are welcome. Please open an issue or submit a pull request. Ensure tests pass and linting is clean before submitting.
+
+> **Note:** Replace `OWNER/REPO` in the CI and Deploy badge URLs above with your GitHub org/repo (e.g. `myorg/lakestream-cep-builder`).

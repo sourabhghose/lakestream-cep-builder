@@ -3,6 +3,49 @@ import axios from "axios";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const api = axios.create({ baseURL: API_BASE });
 
+/** Map React Flow nodes to API format */
+function nodesToApi(nodes: { id: string; type?: string; position?: { x: number; y: number }; data?: { type?: string; config?: Record<string, unknown>; label?: string } }[]) {
+  return nodes.map((n) => ({
+    id: n.id,
+    type: n.data?.type || n.type || "map-select",
+    position: n.position ?? { x: 0, y: 0 },
+    config: n.data?.config ?? {},
+    label: n.data?.label ?? n.id,
+  }));
+}
+
+/** Map React Flow edges to API format */
+function edgesToApi(edges: { id: string; source: string; target: string; sourceHandle?: string | null; targetHandle?: string | null }[]) {
+  return edges.map((e) => ({
+    id: e.id,
+    source: e.source,
+    target: e.target,
+    sourceHandle: e.sourceHandle ?? null,
+    targetHandle: e.targetHandle ?? null,
+  }));
+}
+
+export interface PipelineSummary {
+  id: string;
+  name: string;
+  description: string;
+  updated_at: string;
+  node_count: number;
+  edge_count: number;
+}
+
+export interface PipelineDefinition {
+  id: string;
+  name: string;
+  description: string;
+  nodes: { id: string; type: string; position: { x: number; y: number }; config: Record<string, unknown>; label: string | null }[];
+  edges: { id: string; source: string; target: string; sourceHandle: string | null; targetHandle: string | null }[];
+  created_at: string;
+  updated_at: string;
+  version: number;
+  status: string;
+}
+
 export async function generateCode(pipeline: {
   name: string;
   description: string;
@@ -13,20 +56,8 @@ export async function generateCode(pipeline: {
     id: "temp",
     name: pipeline.name,
     description: pipeline.description,
-    nodes: pipeline.nodes.map((n) => ({
-      id: n.id,
-      type: n.data?.type || n.type,
-      position: n.position,
-      config: n.data?.config || {},
-      label: n.data?.label || n.id,
-    })),
-    edges: pipeline.edges.map((e) => ({
-      id: e.id,
-      source: e.source,
-      target: e.target,
-      sourceHandle: e.sourceHandle || null,
-      targetHandle: e.targetHandle || null,
-    })),
+    nodes: nodesToApi(pipeline.nodes),
+    edges: edgesToApi(pipeline.edges),
   });
   return res.data; // { sdp_code, sss_code, code_target, warnings }
 }
@@ -40,9 +71,73 @@ export async function parseCode(code: string): Promise<{
   return res.data;
 }
 
-export async function savePipeline(pipeline: any) {
-  const res = await api.post("/api/pipelines", pipeline);
+export async function listPipelines(): Promise<PipelineSummary[]> {
+  const res = await api.get("/api/pipelines");
   return res.data;
+}
+
+export async function getPipeline(id: string): Promise<PipelineDefinition> {
+  const res = await api.get(`/api/pipelines/${id}`);
+  return res.data;
+}
+
+export async function createPipeline(data: {
+  name: string;
+  description: string;
+  nodes: any[];
+  edges: any[];
+}): Promise<PipelineDefinition> {
+  const res = await api.post("/api/pipelines", {
+    name: data.name,
+    description: data.description,
+    nodes: nodesToApi(data.nodes),
+    edges: edgesToApi(data.edges),
+  });
+  return res.data;
+}
+
+export async function updatePipeline(
+  id: string,
+  data: { name?: string; description?: string; nodes?: any[]; edges?: any[] }
+): Promise<PipelineDefinition> {
+  const payload: Record<string, unknown> = {};
+  if (data.name != null) payload.name = data.name;
+  if (data.description != null) payload.description = data.description;
+  if (data.nodes != null) payload.nodes = nodesToApi(data.nodes);
+  if (data.edges != null) payload.edges = edgesToApi(data.edges);
+  const res = await api.put(`/api/pipelines/${id}`, payload);
+  return res.data;
+}
+
+export async function deletePipeline(id: string): Promise<void> {
+  await api.delete(`/api/pipelines/${id}`);
+}
+
+export async function savePipeline(pipeline: {
+  id?: string | null;
+  name: string;
+  description: string;
+  nodes: any[];
+  edges: any[];
+}): Promise<{ id: string }> {
+  const nodes = nodesToApi(pipeline.nodes);
+  const edges = edgesToApi(pipeline.edges);
+  if (pipeline.id) {
+    const res = await api.put(`/api/pipelines/${pipeline.id}`, {
+      name: pipeline.name,
+      description: pipeline.description,
+      nodes,
+      edges,
+    });
+    return { id: res.data.id };
+  }
+  const res = await api.post("/api/pipelines", {
+    name: pipeline.name,
+    description: pipeline.description,
+    nodes,
+    edges,
+  });
+  return { id: res.data.id };
 }
 
 export async function deployPipeline(request: {
@@ -52,6 +147,80 @@ export async function deployPipeline(request: {
 }) {
   const res = await api.post("/api/deploy", request);
   return res.data;
+}
+
+export interface PreviewSampleResponse {
+  columns: string[];
+  rows: (string | number | boolean | null)[][];
+  row_count: number;
+}
+
+export async function getNodePreview(
+  pipeline: { nodes: any[]; edges: any[] },
+  nodeId: string
+): Promise<PreviewSampleResponse> {
+  const res = await api.post("/api/preview/sample", {
+    pipeline: {
+      nodes: nodesToApi(pipeline.nodes),
+      edges: edgesToApi(pipeline.edges),
+    },
+    node_id: nodeId,
+  });
+  return res.data;
+}
+
+// Schema discovery (Unity Catalog)
+export interface CatalogInfo {
+  name: string;
+  comment?: string;
+}
+
+export interface SchemaInfo {
+  name: string;
+  comment?: string;
+}
+
+export interface TableInfo {
+  name: string;
+  table_type: string;
+  columns?: { name: string; type: string; nullable: boolean }[];
+}
+
+export interface ColumnInfo {
+  name: string;
+  type: string;
+  nullable: boolean;
+}
+
+export async function listCatalogs(): Promise<CatalogInfo[]> {
+  const res = await api.get("/api/schema/catalogs");
+  return res.data ?? [];
+}
+
+export async function listSchemas(catalog: string): Promise<SchemaInfo[]> {
+  const res = await api.get(`/api/schema/catalogs/${encodeURIComponent(catalog)}/schemas`);
+  return res.data ?? [];
+}
+
+export async function listTables(
+  catalog: string,
+  schema: string
+): Promise<TableInfo[]> {
+  const res = await api.get(
+    `/api/schema/catalogs/${encodeURIComponent(catalog)}/schemas/${encodeURIComponent(schema)}/tables`
+  );
+  return res.data ?? [];
+}
+
+export async function listColumns(
+  catalog: string,
+  schema: string,
+  table: string
+): Promise<ColumnInfo[]> {
+  const res = await api.get(
+    `/api/schema/catalogs/${encodeURIComponent(catalog)}/schemas/${encodeURIComponent(schema)}/tables/${encodeURIComponent(table)}/columns`
+  );
+  return res.data ?? [];
 }
 
 export default api;

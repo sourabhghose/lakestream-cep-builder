@@ -2,24 +2,46 @@
 
 import { useState } from "react";
 import * as LucideIcons from "lucide-react";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import PipelineCanvas from "@/components/canvas/PipelineCanvas";
 import NodePalette from "@/components/canvas/NodePalette";
 import ConfigPanel from "@/components/panels/ConfigPanel";
 import HelpPanel from "@/components/panels/HelpPanel";
+import PipelineListPanel from "@/components/panels/PipelineListPanel";
 import CodePreview from "@/components/editors/CodePreview";
 import TemplateGallery from "@/components/templates/TemplateGallery";
+import SaveDialog from "@/components/dialogs/SaveDialog";
 import Toast from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
 import { usePipelineStore } from "@/hooks/usePipelineStore";
 import { useToastStore } from "@/hooks/useToastStore";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { computeLayout } from "@/lib/autoLayout";
+import * as api from "@/lib/api";
+
+function formatLastSaved(iso: string | null): string {
+  if (!iso) return "Never saved";
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
+}
 
 export default function Home() {
   const [paletteCollapsed, setPaletteCollapsed] = useState(false);
   const [codePreviewCollapsed, setCodePreviewCollapsed] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [pipelineListOpen, setPipelineListOpen] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const {
     pipelineName,
     selectedNodeId,
@@ -32,18 +54,34 @@ export default function Home() {
     deployPipeline,
     validatePipeline,
     pipelineId,
+    lastSavedAt,
+    pipelineVersion,
+    resetPipeline,
+    loadPipelineFromServer,
     onNodesChange,
   } = usePipelineStore();
   const addToast = useToastStore((s) => s.addToast);
 
-  async function handleSave() {
-    try {
-      await savePipeline();
-      addToast("Pipeline saved successfully", "success");
-    } catch {
-      addToast("Failed to save pipeline", "error");
+  function handleSaveClick() {
+    setSaveDialogOpen(true);
+  }
+
+  async function handleDeletePipeline() {
+    if (!pipelineId) {
+      resetPipeline();
+      addToast("Pipeline cleared", "success");
+      setMenuOpen(false);
+      return;
     }
-  };
+    try {
+      await api.deletePipeline(pipelineId);
+      resetPipeline();
+      addToast("Pipeline deleted", "success");
+    } catch {
+      addToast("Failed to delete pipeline", "error");
+    }
+    setMenuOpen(false);
+  }
 
   const handleDeploy = async () => {
     const validation = validatePipeline();
@@ -72,7 +110,7 @@ export default function Home() {
   }
 
   useKeyboardShortcuts({
-    onSave: handleSave,
+    onSave: handleSaveClick,
     onGenerateCode: () => usePipelineStore.getState().triggerCodeGen(),
     onDeploy: handleDeploy,
   });
@@ -93,18 +131,82 @@ export default function Home() {
           <h1 className="text-lg font-semibold text-slate-200">
             LakeStream CEP Builder
           </h1>
-          <input
-            type="text"
-            value={pipelineName}
-            onChange={(e) =>
-              usePipelineStore.getState().setPipelineName(e.target.value)
-            }
-            className="rounded border border-slate-600 bg-slate-800 px-3 py-1.5 text-sm text-slate-200 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            placeholder="Pipeline name"
-          />
+          <DropdownMenu.Root open={menuOpen} onOpenChange={setMenuOpen}>
+            <DropdownMenu.Trigger asChild>
+              <button
+                className="flex items-center gap-2 rounded border border-slate-600 bg-slate-800 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-700"
+                aria-label="Pipeline menu"
+              >
+                <LucideIcons.Menu className="h-4 w-4" />
+                <span className="max-w-[180px] truncate">{pipelineName}</span>
+                <LucideIcons.ChevronDown className="h-4 w-4 shrink-0" />
+              </button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                className="min-w-[180px] rounded-lg border border-slate-700 bg-slate-900 py-1 shadow-xl"
+                align="start"
+                sideOffset={4}
+              >
+                <DropdownMenu.Item
+                  className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-slate-200 outline-none hover:bg-slate-800"
+                  onSelect={() => {
+                    resetPipeline();
+                    setMenuOpen(false);
+                    addToast("New pipeline", "success");
+                  }}
+                >
+                  <LucideIcons.FilePlus className="h-4 w-4" />
+                  New
+                </DropdownMenu.Item>
+                <DropdownMenu.Item
+                  className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-slate-200 outline-none hover:bg-slate-800"
+                  onSelect={() => {
+                    setPipelineListOpen(true);
+                    setMenuOpen(false);
+                  }}
+                >
+                  <LucideIcons.FolderOpen className="h-4 w-4" />
+                  Open
+                </DropdownMenu.Item>
+                <DropdownMenu.Item
+                  className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-slate-200 outline-none hover:bg-slate-800"
+                  onSelect={() => {
+                    setSaveDialogOpen(true);
+                    setMenuOpen(false);
+                  }}
+                >
+                  <LucideIcons.Save className="h-4 w-4" />
+                  Save
+                </DropdownMenu.Item>
+                <DropdownMenu.Item
+                  className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-slate-200 outline-none hover:bg-slate-800"
+                  onSelect={() => {
+                    usePipelineStore.setState({ pipelineId: null });
+                    setSaveDialogOpen(true);
+                    setMenuOpen(false);
+                  }}
+                >
+                  <LucideIcons.Copy className="h-4 w-4" />
+                  Save As
+                </DropdownMenu.Item>
+                <DropdownMenu.Separator className="my-1 h-px bg-slate-700" />
+                <DropdownMenu.Item
+                  className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-red-400 outline-none hover:bg-slate-800"
+                  onSelect={handleDeletePipeline}
+                >
+                  <LucideIcons.Trash2 className="h-4 w-4" />
+                  Delete
+                </DropdownMenu.Item>
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
+          <span className="text-xs text-slate-500">
+            v{pipelineVersion} · {formatLastSaved(lastSavedAt)}
+          </span>
           {isDirty && (
             <span className="rounded bg-amber-500/20 px-2 py-0.5 text-xs text-amber-400">
-              Unsaved
+              Modified
             </span>
           )}
         </div>
@@ -127,7 +229,7 @@ export default function Home() {
           </button>
           <button
             className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-slate-200 disabled:opacity-60"
-            onClick={handleSave}
+            onClick={handleSaveClick}
             disabled={isSaving}
           >
             {isSaving ? (
@@ -192,7 +294,18 @@ export default function Home() {
         <ConfigPanel isOpen={!!selectedNodeId} />
         {/* Help Panel */}
         <HelpPanel isOpen={helpOpen} onClose={() => setHelpOpen(false)} />
+        {/* Pipeline List Panel */}
+        <PipelineListPanel
+          isOpen={pipelineListOpen}
+          onClose={() => setPipelineListOpen(false)}
+        />
       </div>
+
+      {/* Save Dialog */}
+      <SaveDialog
+        isOpen={saveDialogOpen}
+        onClose={() => setSaveDialogOpen(false)}
+      />
 
       {/* Bottom panel: Code Preview */}
       <CodePreview

@@ -50,6 +50,10 @@ interface PipelineState {
   pipelineDescription: string;
   isDirty: boolean;
   pipelineId: string | null;
+  /** Last saved timestamp (ISO string) for display */
+  lastSavedAt: string | null;
+  /** Pipeline version from server */
+  pipelineVersion: number;
   codeTarget: CodeTarget;
   warnings: string[];
   isGenerating: boolean;
@@ -62,6 +66,8 @@ interface PipelineState {
 
   addNode: (node: Node) => void;
   loadPipeline: (nodes: Node[], edges: Edge[], name?: string, description?: string) => void;
+  resetPipeline: () => void;
+  loadPipelineFromServer: (id: string) => Promise<void>;
   syncFromCode: (nodes: PipelineNodeInput[], edges: PipelineEdgeInput[]) => void;
   removeNode: (id: string) => void;
   removeNodes: (ids: string[]) => void;
@@ -113,6 +119,8 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
   pipelineDescription: "",
   isDirty: false,
   pipelineId: null,
+  lastSavedAt: null,
+  pipelineVersion: 1,
   codeTarget: null,
   warnings: [],
   isGenerating: false,
@@ -216,6 +224,67 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
       pipelineDescription: description ?? "",
       isDirty: true,
     }),
+
+  resetPipeline: () =>
+    set({
+      nodes: [],
+      edges: [],
+      selectedNodeId: null,
+      pipelineName: "Untitled Pipeline",
+      pipelineDescription: "",
+      pipelineId: null,
+      lastSavedAt: null,
+      pipelineVersion: 1,
+      isDirty: false,
+      undoStack: [],
+      redoStack: [],
+      generatedSdpCode: "",
+      generatedSssCode: "",
+      codeTarget: null,
+    }),
+
+  loadPipelineFromServer: async (id) => {
+    const pipeline = await api.getPipeline(id);
+    const nodes: Node[] = pipeline.nodes.map((n) => ({
+      id: n.id,
+      type: "custom" as const,
+      position: n.position ?? { x: 0, y: 0 },
+      data: {
+        type: (n.type || "map-select") as NodeType,
+        label: n.label ?? n.id,
+        config: n.config ?? {},
+        hasError: hasNodeConfigError({
+          id: n.id,
+          type: "custom",
+          position: n.position ?? { x: 0, y: 0 },
+          data: { type: n.type, label: n.label, config: n.config ?? {} },
+        } as Node),
+      },
+    }));
+    const edges: Edge[] = pipeline.edges.map((e) => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      sourceHandle: e.sourceHandle ?? undefined,
+      targetHandle: e.targetHandle ?? undefined,
+    }));
+    set({
+      nodes: nodes.map((n) => ({
+        ...n,
+        data: { ...n.data, hasError: hasNodeConfigError(n) },
+      })),
+      edges: markInvalidEdges(nodes, edges),
+      pipelineName: pipeline.name,
+      pipelineDescription: pipeline.description ?? "",
+      pipelineId: pipeline.id,
+      lastSavedAt: pipeline.updated_at,
+      pipelineVersion: pipeline.version ?? 1,
+      isDirty: false,
+      selectedNodeId: null,
+      undoStack: [],
+      redoStack: [],
+    });
+  },
 
   syncFromCode: (inputNodes, inputEdges) => {
     const nodeIds = new Set(inputNodes.map((n) => n.id));
@@ -432,8 +501,12 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
         nodes,
         edges,
       });
+      // Refetch to get updated_at and version for display
+      const full = await api.getPipeline(result.id);
       set({
         pipelineId: result.id,
+        lastSavedAt: full.updated_at,
+        pipelineVersion: full.version ?? 1,
         isDirty: false,
         isSaving: false,
       });

@@ -1,8 +1,11 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Editor from "@monaco-editor/react";
+import * as LucideIcons from "lucide-react";
 import { cn } from "@/lib/utils";
+import { listCatalogs, listSchemas, listTables } from "@/lib/api";
+import SchemaBrowser from "@/components/schema/SchemaBrowser";
 import type {
   NodeDefinition,
   ConfigField,
@@ -39,16 +42,106 @@ function isFieldVisible(
   return actualValue === dep.value;
 }
 
+const SCHEMA_FIELD_KEYS = ["catalog", "schema", "table", "table_name"];
+
+function SchemaSelectInput({
+  fieldKey,
+  value,
+  onChange,
+  config,
+  className,
+}: {
+  fieldKey: string;
+  value: string;
+  onChange: (v: string) => void;
+  config: Record<string, unknown>;
+  className?: string;
+}) {
+  const [options, setOptions] = useState<{ value: string; label: string }[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (fieldKey === "catalog") {
+      setLoading(true);
+      listCatalogs()
+        .then((data) =>
+          setOptions(data.map((c) => ({ value: c.name, label: c.name })))
+        )
+        .finally(() => setLoading(false));
+      return;
+    }
+    if (fieldKey === "schema") {
+      const catalog = config.catalog as string | undefined;
+      if (!catalog) {
+        setOptions([]);
+        return;
+      }
+      setLoading(true);
+      listSchemas(catalog)
+        .then((data) =>
+          setOptions(data.map((s) => ({ value: s.name, label: s.name })))
+        )
+        .finally(() => setLoading(false));
+      return;
+    }
+    if (fieldKey === "table" || fieldKey === "table_name") {
+      const catalog = config.catalog as string | undefined;
+      const schema = config.schema as string | undefined;
+      if (!catalog || !schema) {
+        setOptions([]);
+        return;
+      }
+      setLoading(true);
+      listTables(catalog, schema)
+        .then((data) =>
+          setOptions(data.map((t) => ({ value: t.name, label: t.name })))
+        )
+        .finally(() => setLoading(false));
+      return;
+    }
+    setOptions([]);
+  }, [fieldKey, config.catalog, config.schema]);
+
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      onChange(e.target.value);
+    },
+    [onChange]
+  );
+
+  return (
+    <select
+      value={value ?? ""}
+      onChange={handleChange}
+      disabled={loading}
+      className={cn(
+        "w-full rounded-md border bg-slate-800/50 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500",
+        "border-slate-600",
+        className
+      )}
+    >
+      <option value="">Select...</option>
+      {options.map((opt) => (
+        <option key={opt.value} value={opt.value}>
+          {opt.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 function ConfigFieldInput({
   field,
   value,
   onChange,
+  config,
   availableColumns = [],
   invalid,
 }: {
   field: ConfigField;
   value: unknown;
   onChange: (v: unknown) => void;
+  config: Record<string, unknown>;
   availableColumns?: string[];
   invalid?: boolean;
 }) {
@@ -95,6 +188,21 @@ function ConfigFieldInput({
     },
     [onChange]
   );
+
+  if (
+    field.type === "text" &&
+    SCHEMA_FIELD_KEYS.includes(field.key)
+  ) {
+    return (
+      <SchemaSelectInput
+        fieldKey={field.key}
+        value={(value as string) ?? ""}
+        onChange={(v) => onChange(v)}
+        config={config}
+        className={errorClass}
+      />
+    );
+  }
 
   switch (field.type) {
     case "text":
@@ -416,7 +524,19 @@ export function DynamicConfigForm({
   className,
 }: DynamicConfigFormProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [schemaBrowserOpen, setSchemaBrowserOpen] = useState(false);
   const [touched, setTouched] = useState<Set<string>>(new Set());
+
+  const hasSchemaFields = useMemo(
+    () =>
+      (definition.configFields ?? []).some((f) =>
+        SCHEMA_FIELD_KEYS.includes(f.key)
+      ) ||
+      (definition.advancedFields ?? []).some((f) =>
+        SCHEMA_FIELD_KEYS.includes(f.key)
+      ),
+    [definition.configFields, definition.advancedFields]
+  );
 
   const allFields = useMemo(() => {
     const main = definition.configFields ?? [];
@@ -427,6 +547,17 @@ export function DynamicConfigForm({
   const updateConfig = useCallback(
     (key: string, value: unknown) => {
       const next = { ...config, [key]: value };
+      if (key === "catalog") {
+        next.schema = undefined;
+        next.table = undefined;
+        next.table_name = undefined;
+      } else if (key === "schema") {
+        next.table = undefined;
+        next.table_name = undefined;
+      } else if (key === "table" || key === "table_name") {
+        next.table = value;
+        next.table_name = value;
+      }
       onChange(next);
       setTouched((t) => new Set(t).add(key));
     },
@@ -489,6 +620,7 @@ export function DynamicConfigForm({
                         field={f}
                         value={val}
                         onChange={(v) => updateConfig(f.key, v)}
+                        config={config}
                         availableColumns={availableColumns}
                         invalid={hasError}
                       />
@@ -512,8 +644,34 @@ export function DynamicConfigForm({
     );
   };
 
+  const handleSchemaSelect = useCallback(
+    (sel: { catalog: string; schema: string; table: string }) => {
+      onChange({
+        ...config,
+        catalog: sel.catalog,
+        schema: sel.schema,
+        table: sel.table,
+        table_name: sel.table,
+      });
+      setSchemaBrowserOpen(false);
+    },
+    [config, onChange]
+  );
+
   return (
     <div className={cn("space-y-6", className)}>
+      {hasSchemaFields && (
+        <div>
+          <button
+            type="button"
+            onClick={() => setSchemaBrowserOpen(true)}
+            className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-800/50 px-3 py-2 text-sm font-medium text-slate-300 hover:border-slate-500 hover:bg-slate-800 hover:text-slate-200"
+          >
+            <LucideIcons.Search className="h-4 w-4" />
+            Browse schema
+          </button>
+        </div>
+      )}
       {renderFieldGroup(allFields.main)}
 
       {allFields.adv.length > 0 && (
@@ -531,6 +689,17 @@ export function DynamicConfigForm({
               {renderFieldGroup(allFields.adv)}
             </div>
           )}
+        </div>
+      )}
+
+      {schemaBrowserOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="flex h-[80vh] max-h-[700px] w-full max-w-4xl">
+            <SchemaBrowser
+              onClose={() => setSchemaBrowserOpen(false)}
+              onSelect={handleSchemaSelect}
+            />
+          </div>
         </div>
       )}
     </div>
