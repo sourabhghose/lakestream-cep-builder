@@ -48,7 +48,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: frontend-build
-          path: frontend/.next/
+          path: frontend/out/
 
   package:
     name: Package Backend + Frontend
@@ -62,14 +62,14 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: frontend-build
-          path: frontend/.next
+          path: frontend/out
 
       - name: Create deployment package
         run: |
           mkdir -p dist
           cp -r backend frontend dist/
-          cp databricks.yml app.yml dist/ 2>/dev/null || true
-          cd dist && tar --exclude='node_modules' --exclude='__pycache__' --exclude='.pytest_cache' -czvf deploy-package.tar.gz backend frontend databricks.yml app.yml
+          cp app.yaml dist/
+          cd dist && tar --exclude='node_modules' --exclude='__pycache__' --exclude='.pytest_cache' -czvf deploy-package.tar.gz backend frontend app.yaml
 
       - name: Upload deployment package
         uses: actions/upload-artifact@v4

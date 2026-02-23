@@ -25,7 +25,7 @@ deploy:
 
 lint:
 	cd frontend && npm run lint
-	cd backend && ruff check . 2>/dev/null || true
+	cd backend && python3 -m flake8 --max-line-length=120 . 2>/dev/null || true
 
 test:
 	cd frontend && npm test 2>/dev/null || echo "Frontend tests not configured"
