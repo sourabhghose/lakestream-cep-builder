@@ -6,8 +6,9 @@ Includes validate_connection, list_catalogs, list_schemas for UC browsing.
 Deploy history is recorded when using Lakebase (PGHOST set).
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from app.auth import UserInfo, get_current_user
 from app.codegen.router import generate
 from app.models.pipeline import DeployHistoryEntry, DeployRequest, DeployResponse
 from app.services.deploy_history import DeployRecord, list_deploys, record_deploy
@@ -19,7 +20,10 @@ deploy_service = DeployService()
 
 
 @router.post("", response_model=DeployResponse)
-async def deploy_pipeline(request: DeployRequest) -> DeployResponse:
+async def deploy_pipeline(
+    request: DeployRequest,
+    user: UserInfo = Depends(get_current_user),
+) -> DeployResponse:
     """
     Deploy a pipeline to Databricks.
 
@@ -79,6 +83,7 @@ async def deploy_pipeline(request: DeployRequest) -> DeployResponse:
             code=code,
             cluster_config=request.cluster_config,
             deployment_type=result.get("deployment_type", "job"),
+            deployed_by=user.email,
         )
         return DeployResponse(
             job_id=result["job_id"],
@@ -92,12 +97,41 @@ async def deploy_pipeline(request: DeployRequest) -> DeployResponse:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
 
+@router.get("/history/{pipeline_id}/details", response_model=list[DeployHistoryEntry])
+async def get_deploy_history_details(pipeline_id: str) -> list[DeployHistoryEntry]:
+    """
+    List full deploy history for a pipeline including deployed_code.
+
+    Returns empty list when not using Lakebase (PGHOST not set).
+    """
+    records = list_deploys(pipeline_id)
+    return [
+        DeployHistoryEntry(
+            id=r.id,
+            pipeline_id=r.pipeline_id,
+            pipeline_version=r.pipeline_version,
+            code_target=r.code_target,
+            databricks_job_id=r.databricks_job_id,
+            databricks_pipeline_id=r.databricks_pipeline_id,
+            job_url=r.job_url,
+            deploy_status=r.deploy_status,
+            deployed_code=r.deployed_code,
+            cluster_config=r.cluster_config,
+            deployed_by=r.deployed_by,
+            deployed_at=r.deployed_at,
+            error_message=r.error_message,
+        )
+        for r in records
+    ]
+
+
 @router.get("/history/{pipeline_id}", response_model=list[DeployHistoryEntry])
 async def get_deploy_history(pipeline_id: str) -> list[DeployHistoryEntry]:
     """
     List deploy history for a pipeline.
 
     Returns empty list when not using Lakebase (PGHOST not set).
+    Includes deployed_code in response.
     """
     records = list_deploys(pipeline_id)
     return [

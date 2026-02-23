@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.api import codegen, codeparse, deploy, pipelines, preview, schema_discovery
+from app.api import codegen, codeparse, deploy, pipelines, preferences, preview, schema_discovery
 from app.db import init_db
 
 
@@ -50,6 +50,7 @@ app.include_router(pipelines.router, prefix="/api/pipelines", tags=["pipelines"]
 app.include_router(codegen.router, prefix="/api/codegen", tags=["codegen"])
 app.include_router(codeparse.router, prefix="/api/codeparse", tags=["codeparse"])
 app.include_router(deploy.router, prefix="/api/deploy", tags=["deploy"])
+app.include_router(preferences.router, prefix="/api/preferences", tags=["preferences"])
 app.include_router(preview.router, prefix="/api/preview", tags=["preview"])
 app.include_router(schema_discovery.router, prefix="/api/schema", tags=["schema"])
 

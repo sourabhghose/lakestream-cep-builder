@@ -93,6 +93,10 @@ interface PipelineState {
     pipeline_id: string;
     job_name: string;
     cluster_config?: Record<string, unknown>;
+    code_target?: "sdp" | "sss";
+    schedule?: string;
+    max_retries?: number;
+    checkpoint_location?: string;
   }) => Promise<{ job_id: string; job_url: string; status: string }>;
 }
 

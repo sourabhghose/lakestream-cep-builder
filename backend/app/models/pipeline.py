@@ -71,6 +71,10 @@ class PipelineDefinition(BaseModel):
     )
     version: int = Field(default=1, description="Pipeline version")
     status: str = Field(default="draft", description="Pipeline status (draft, deployed)")
+    created_by: str | None = Field(
+        default=None,
+        description="User email who created the pipeline",
+    )
 
 
 class PipelineCreateRequest(BaseModel):

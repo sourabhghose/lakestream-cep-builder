@@ -7,8 +7,9 @@ Uses PipelineStore for persistence (LocalFileStore or DatabricksVolumeStore).
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from app.auth import UserInfo, get_current_user
 from app.models.pipeline import (
     PipelineCreateRequest,
     PipelineDefinition,
@@ -25,7 +26,10 @@ def _store():
 
 
 @router.post("", response_model=PipelineDefinition)
-async def create_pipeline(request: PipelineCreateRequest) -> PipelineDefinition:
+async def create_pipeline(
+    request: PipelineCreateRequest,
+    user: UserInfo = Depends(get_current_user),
+) -> PipelineDefinition:
     """Create a new pipeline."""
     pipeline_id = str(uuid.uuid4())
     now = datetime.now(tz=timezone.utc)
@@ -39,6 +43,7 @@ async def create_pipeline(request: PipelineCreateRequest) -> PipelineDefinition:
         updated_at=now,
         version=1,
         status="draft",
+        created_by=user.email,
     )
     _store().save(pipeline)
     return pipeline
@@ -61,7 +66,9 @@ async def get_pipeline(pipeline_id: str) -> PipelineDefinition:
 
 @router.put("/{pipeline_id}", response_model=PipelineDefinition)
 async def update_pipeline(
-    pipeline_id: str, request: PipelineUpdateRequest
+    pipeline_id: str,
+    request: PipelineUpdateRequest,
+    user: UserInfo = Depends(get_current_user),
 ) -> PipelineDefinition:
     """Update an existing pipeline."""
     existing = _store().get(pipeline_id)

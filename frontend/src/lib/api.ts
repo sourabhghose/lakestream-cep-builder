@@ -141,13 +141,62 @@ export async function savePipeline(pipeline: {
   return { id: res.data.id };
 }
 
-export async function deployPipeline(request: {
+export interface DeployRequest {
   pipeline_id: string;
   job_name: string;
-  cluster_config?: any;
-}) {
+  cluster_config?: Record<string, unknown>;
+  code_target?: "sdp" | "sss";
+  schedule?: string;
+  max_retries?: number;
+  checkpoint_location?: string;
+}
+
+export interface DeployResponse {
+  job_id: string;
+  job_url: string;
+  status: string;
+  deployment_type?: string;
+}
+
+export async function deployPipeline(request: DeployRequest): Promise<DeployResponse> {
   const res = await api.post("/api/deploy", request);
   return res.data;
+}
+
+export interface ValidateConnectionResponse {
+  success: boolean;
+  message: string;
+  mode?: string;
+}
+
+export async function validateDeployConnection(): Promise<ValidateConnectionResponse> {
+  const res = await api.get("/api/deploy/validate");
+  return res.data;
+}
+
+export interface DeployHistoryEntry {
+  id: string;
+  pipeline_id: string;
+  pipeline_version: number;
+  code_target: string;
+  databricks_job_id: string | null;
+  databricks_pipeline_id: string | null;
+  job_url: string | null;
+  deploy_status: string;
+  deployed_code: string | null;
+  cluster_config: Record<string, unknown> | null;
+  deployed_by: string | null;
+  deployed_at: string;
+  error_message: string | null;
+}
+
+export async function getDeployHistory(
+  pipelineId: string
+): Promise<DeployHistoryEntry[]> {
+  const res = await api.get(
+    `/api/deploy/history/${encodeURIComponent(pipelineId)}/details`
+  );
+  return res.data ?? [];
 }
 
 export interface PreviewSampleResponse {

@@ -250,9 +250,9 @@ class LakebaseStore(PipelineStore):
                     """
                     INSERT INTO pipelines (
                         id, name, description, canvas_json, version, status,
-                        created_at, updated_at
+                        created_at, updated_at, created_by
                     ) VALUES (
-                        %s, %s, %s, %s::jsonb, %s, %s, %s, %s
+                        %s, %s, %s, %s::jsonb, %s, %s, %s, %s, %s
                     )
                     """,
                     (
@@ -264,6 +264,7 @@ class LakebaseStore(PipelineStore):
                         pipeline.status,
                         pipeline.created_at,
                         pipeline.updated_at,
+                        pipeline.created_by,
                     ),
                 )
         return pipeline_id

@@ -15,6 +15,7 @@ import {
   Rocket,
   HelpCircle,
   Boxes,
+  History,
 } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import PipelineCanvas from "@/components/canvas/PipelineCanvas";
@@ -22,9 +23,11 @@ import NodePalette from "@/components/canvas/NodePalette";
 import ConfigPanel from "@/components/panels/ConfigPanel";
 import HelpPanel from "@/components/panels/HelpPanel";
 import PipelineListPanel from "@/components/panels/PipelineListPanel";
+import DeployHistoryPanel from "@/components/panels/DeployHistoryPanel";
 import CodePreview from "@/components/editors/CodePreview";
 import TemplateGallery from "@/components/templates/TemplateGallery";
 import SaveDialog from "@/components/dialogs/SaveDialog";
+import DeployDialog from "@/components/dialogs/DeployDialog";
 import Toast from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
 import { usePipelineStore } from "@/hooks/usePipelineStore";
@@ -54,7 +57,9 @@ export default function Home() {
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [pipelineListOpen, setPipelineListOpen] = useState(false);
+  const [deployHistoryOpen, setDeployHistoryOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [deployDialogOpen, setDeployDialogOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const {
     pipelineName,
@@ -63,10 +68,7 @@ export default function Home() {
     nodes,
     edges,
     isSaving,
-    isDeploying,
     savePipeline,
-    deployPipeline,
-    validatePipeline,
     pipelineId,
     lastSavedAt,
     pipelineVersion,
@@ -97,36 +99,14 @@ export default function Home() {
     setMenuOpen(false);
   }
 
-  const handleDeploy = async () => {
-    const validation = validatePipeline();
-    if (!validation.valid) {
-      addToast(validation.errors.join(". "), "error");
-      return;
-    }
-    try {
-      let id = pipelineId;
-      if (!id) {
-        await savePipeline();
-        id = usePipelineStore.getState().pipelineId;
-      }
-      if (!id) {
-        addToast("Failed to get pipeline ID after save", "error");
-        return;
-      }
-      await deployPipeline({
-        pipeline_id: id,
-        job_name: pipelineName.replace(/\s+/g, "-") || "default-job",
-      });
-      addToast("Pipeline deployed successfully", "success");
-    } catch {
-      addToast("Deployment failed", "error");
-    }
+  function handleDeployClick() {
+    setDeployDialogOpen(true);
   }
 
   useKeyboardShortcuts({
     onSave: handleSaveClick,
     onGenerateCode: () => usePipelineStore.getState().triggerCodeGen(),
-    onDeploy: handleDeploy,
+    onDeploy: handleDeployClick,
   });
 
   const isEmpty = nodes.length === 0;
@@ -254,15 +234,20 @@ export default function Home() {
             Save
           </button>
           <button
-            className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
-            onClick={handleDeploy}
-            disabled={isDeploying}
-          >
-            {isDeploying ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Rocket className="h-4 w-4" />
+            className={cn(
+              "rounded-md p-2 text-slate-400 hover:bg-slate-800 hover:text-slate-200",
+              deployHistoryOpen && "bg-slate-800 text-slate-200"
             )}
+            onClick={() => setDeployHistoryOpen((o) => !o)}
+            title="Deploy History"
+          >
+            <History className="h-5 w-5" />
+          </button>
+          <button
+            className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+            onClick={handleDeployClick}
+          >
+            <Rocket className="h-4 w-4" />
             Deploy
           </button>
           <button
@@ -313,12 +298,24 @@ export default function Home() {
           isOpen={pipelineListOpen}
           onClose={() => setPipelineListOpen(false)}
         />
+        {/* Deploy History Panel */}
+        <DeployHistoryPanel
+          isOpen={deployHistoryOpen}
+          onClose={() => setDeployHistoryOpen(false)}
+          pipelineId={pipelineId}
+        />
       </div>
 
       {/* Save Dialog */}
       <SaveDialog
         isOpen={saveDialogOpen}
         onClose={() => setSaveDialogOpen(false)}
+      />
+
+      {/* Deploy Dialog */}
+      <DeployDialog
+        isOpen={deployDialogOpen}
+        onClose={() => setDeployDialogOpen(false)}
       />
 
       {/* Bottom panel: Code Preview */}
