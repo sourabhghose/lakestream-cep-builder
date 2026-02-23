@@ -4,12 +4,91 @@ SDP (Lakeflow Declarative Pipelines) code generator.
 Generates SQL/Python for Databricks Lakeflow from pipeline graphs.
 """
 
+import re
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from app.codegen.graph_utils import get_upstream_nodes, topological_sort
 from app.models.pipeline import PipelineDefinition, PipelineNode
+
+
+def _camel_to_snake(name: str) -> str:
+    """Convert camelCase to snake_case."""
+    s1 = re.sub(r'([A-Z])', r'_\1', name)
+    return s1.lower().lstrip('_')
+
+
+def _normalize_config(config: dict) -> dict:
+    """Normalize config keys from frontend camelCase to generator snake_case.
+    Also handles common aliases (e.g., 'topics' -> 'topic')."""
+    if not config:
+        return {}
+    result = {}
+    ALIASES = {
+        'topics': 'topic',
+        'bootstrapservers': 'bootstrap_servers',
+        'tablename': 'table_name',
+        'keycolumn': 'key_column',
+        'valuecolumn': 'value_column',
+        'eventtimecolumn': 'event_time_column',
+        'windowduration': 'window_duration',
+        'slideduration': 'slide_duration',
+        'watermarkcolumn': 'watermark_column',
+        'watermarkdelay': 'watermark_delay',
+        'checkpointlocation': 'checkpoint_location',
+        'outputmode': 'output_mode',
+        'deserializationformat': 'deserialization_format',
+        'consumergroup': 'consumer_group',
+        'startingoffset': 'starting_offset',
+        'contiguitymode': 'contiguity_mode',
+        'withinduration': 'within_duration',
+        'ratethreshold': 'rate_threshold',
+        'rateunit': 'rate_unit',
+        'gapduration': 'gap_duration',
+        'numconsecutive': 'num_consecutive',
+        'minsamples': 'min_samples',
+        'scdtype': 'scd_type',
+        'sequenceby': 'sequence_by',
+        'applyasdelete': 'apply_as_delete',
+        'joinkey': 'join_key',
+        'lookuptable': 'lookup_table',
+        'lookupkey': 'lookup_key',
+        'lookupcolumns': 'lookup_columns',
+        'joinkeyb': 'join_key_b',
+        'joinkeya': 'join_key_a',
+        'selectexpression': 'select_expression',
+        'watermarkcolumna': 'watermark_column_a',
+        'watermarkcolumnb': 'watermark_column_b',
+        'statictable': 'static_table',
+        'statickey': 'static_key',
+        'selectexpr': 'select_expr',
+        'arraycolumn': 'array_column',
+        'webhookurl': 'webhook_url',
+        'smtphost': 'smtp_host',
+        'smtpport': 'smtp_port',
+        'smtpuser': 'smtp_user',
+        'smtppassword': 'smtp_password',
+        'fromemail': 'from_email',
+        'toemail': 'to_email',
+        'subjectprefix': 'subject_prefix',
+        'constraintname': 'constraint_name',
+        'expectcondition': 'expect_condition',
+        'warehouseid': 'warehouse_id',
+        'dlqtable': 'dlq_table',
+    }
+    for key, value in config.items():
+        snake_key = _camel_to_snake(key)
+        # Check aliases
+        alias = ALIASES.get(key.lower())
+        if alias:
+            result[alias] = value
+        else:
+            result[snake_key] = value
+        # Also keep original for backward compat
+        if key != snake_key and key not in result:
+            result[key] = value
+    return result
 
 # Template directory relative to this file
 _TEMPLATE_DIR = Path(__file__).resolve().parent.parent.parent / "templates" / "sdp"
@@ -34,7 +113,7 @@ def _node_label(node: PipelineNode) -> str:
 
 def _render_node_snippet(node: PipelineNode, edges: list) -> str:
     """Render the SDP snippet for a single node based on its type."""
-    config = node.config or {}
+    config = _normalize_config(node.config or {})
 
     def _source_table() -> str:
         upstream = get_upstream_nodes(node.id, edges)

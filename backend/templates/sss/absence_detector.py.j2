@@ -1,26 +1,62 @@
 # Absence Detector: {{ node_id }}
+# Detects when an expected event is missing within a timeout window
 # Expected event: {{ expected_event }}
-# Absence timeout: {{ absence_timeout_seconds }} seconds
-# Uses TransformWithState for absence detection
 
-from pyspark.sql.streaming import TransformWithState
+from pyspark.sql.streaming import StatefulProcessor, StatefulProcessorHandle
+from pyspark.sql.types import StructType, StructField, StringType, TimestampType, LongType, BooleanType
+import pandas as pd
+from datetime import datetime
 
-def absence_detector_state_func(key, batch_iter, state):
-    """Stateful function for absence/expectation violation detection."""
-    # TODO: Implement full absence logic - expected: {{ expected_event }}
-    # absence_timeout_seconds: {{ absence_timeout_seconds }}
-    for batch in batch_iter:
-        for row in batch:
-            yield row
+class AbsenceDetector_{{ node_id | replace("-", "_") }}(StatefulProcessor):
+    """Fires when expected event is not seen within timeout."""
+
+    def init(self, handle: StatefulProcessorHandle):
+        self.state = handle.getValueState("last_seen", "LONG")
+
+    def handleInputRows(self, key, rows, timerValues):
+        now_ms = timerValues.getCurrentProcessingTimeInMs() or 0
+        timeout_ms = {{ absence_timeout_ms }}
+        last_seen = self.state.getOption()
+        event_seen = False
+
+        for pdf in rows:
+            if not pdf.empty:
+                event_seen = True
+                self.state.update(now_ms)
+
+        if not event_seen and last_seen:
+            if (now_ms - last_seen) > timeout_ms:
+                key_val = key[0] if isinstance(key, (list, tuple)) else key
+                yield pd.DataFrame({
+                    "{{ key_column }}": [key_val],
+                    "expected_event": ["{{ expected_event }}"],
+                    "is_absent": [True],
+                    "detected_at": [datetime.utcnow()],
+                    "absence_duration_ms": [now_ms - last_seen],
+                })
+                self.state.update(now_ms)
+
+    def handleExpiredTimer(self, key, timerValues, expiredTimerInfo):
+        pass
+
+    def close(self):
+        pass
+
+_absence_schema_{{ node_id | replace("-", "_") }} = StructType([
+    StructField("{{ key_column }}", StringType()),
+    StructField("expected_event", StringType()),
+    StructField("is_absent", BooleanType()),
+    StructField("detected_at", TimestampType()),
+    StructField("absence_duration_ms", LongType()),
+])
 
 df_{{ node_id | replace("-", "_") }} = (
     {{ upstream_var }}
     .groupBy(F.col("{{ key_column }}"))
-    .applyInPandasWithState(
-        absence_detector_state_func,
-        outputSchema="...",  # Define output schema
-        stateSchema="...",  # Define state schema
-        outputMode="append",
-        timeoutConf="{{ absence_timeout_seconds }} seconds"
+    .transformWithStateInPandas(
+        statefulProcessor=AbsenceDetector_{{ node_id | replace("-", "_") }}(),
+        outputStructType=_absence_schema_{{ node_id | replace("-", "_") }},
+        outputMode="Append",
+        timeMode="ProcessingTime",
     )
 )

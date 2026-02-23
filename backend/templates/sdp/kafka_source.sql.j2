@@ -1,11 +1,6 @@
 -- Kafka source: {{ node_id }}
-CREATE OR REFRESH STREAMING TABLE {{ node_id }}
-AS SELECT * FROM stream(
-  TABLE(
-    kafka_read(
-      "{{ bootstrap_servers }}",
-      "{{ topic }}",
-      schema => "{{ schema }}"
-    )
-  )
+CREATE OR REFRESH STREAMING TABLE {{ node_id }} AS
+SELECT * FROM read_kafka(
+  bootstrapServers => '{{ bootstrap_servers }}',
+  subscribe => '{{ topic }}'
 );

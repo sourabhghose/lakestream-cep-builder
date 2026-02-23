@@ -4,6 +4,7 @@ SSS (Spark Structured Streaming) code generator.
 Generates PySpark code with TransformWithState for CEP pattern nodes.
 """
 
+import json
 import re
 from pathlib import Path
 
@@ -20,6 +21,62 @@ _env = Environment(
     autoescape=select_autoescape(enabled_extensions=()),
 )
 _env.filters["pyvar"] = lambda s: str(s).replace("-", "_")
+
+
+def _camel_to_snake(name: str) -> str:
+    s1 = re.sub(r'([A-Z])', r'_\1', name)
+    return s1.lower().lstrip('_')
+
+
+def _normalize_config(config: dict) -> dict:
+    if not config:
+        return {}
+    result = {}
+    ALIASES = {
+        'topics': 'topic', 'bootstrapservers': 'bootstrap_servers',
+        'tablename': 'table_name', 'keycolumn': 'key_column',
+        'valuecolumn': 'value_column', 'eventtimecolumn': 'event_time_column',
+        'windowduration': 'window_duration', 'slideduration': 'slide_duration',
+        'watermarkcolumn': 'watermark_column', 'watermarkdelay': 'watermark_delay',
+        'checkpointlocation': 'checkpoint_location', 'outputmode': 'output_mode',
+        'deserializationformat': 'deserialization_format',
+        'consumergroup': 'consumer_group', 'startingoffset': 'starting_offset',
+        'contiguitymode': 'contiguity_mode', 'withinduration': 'within_duration',
+        'ratethreshold': 'rate_threshold', 'rateunit': 'rate_unit',
+        'gapduration': 'gap_duration', 'numconsecutive': 'num_consecutive',
+        'minsamples': 'min_samples', 'joinkey': 'join_key',
+        'lookuptable': 'lookup_table', 'arraycolumn': 'array_column',
+        'webhookurl': 'webhook_url', 'smtphost': 'smtp_host',
+        'smtpport': 'smtp_port', 'smtpuser': 'smtp_user',
+        'smtppassword': 'smtp_password', 'fromemail': 'from_email',
+        'toemail': 'to_email', 'dlqtable': 'dlq_table',
+        'warehouseid': 'warehouse_id', 'selectexprs': 'select_exprs',
+        'joincondition': 'join_condition', 'jointype': 'join_type',
+        'statictable': 'static_table', 'lefttimecolumn': 'left_time_column',
+        'righttimecolumn': 'right_time_column', 'leftwatermark': 'left_watermark',
+        'rightwatermark': 'right_watermark', 'udfcode': 'udf_code',
+        'udfname': 'udf_name', 'udfreturntype': 'udf_return_type',
+        'outputcolumn': 'output_column', 'processorclassname': 'processor_class_name',
+        'usercode': 'user_code', 'outputschema': 'output_schema',
+        'inputview': 'input_view', 'partitionby': 'partition_by',
+        'orderby': 'order_by', 'rawsql': 'raw_sql',
+        'latcolumn': 'lat_column', 'loncolumn': 'lon_column',
+        'centerlat': 'center_lat', 'centerlon': 'center_lon',
+        'radiusmeters': 'radius_meters', 'streamacolumn': 'stream_a_column',
+        'streambcolumn': 'stream_b_column', 'keycolumns': 'key_columns',
+        'expectedevent': 'expected_event', 'absencetimeoutseconds': 'absence_timeout_seconds',
+        'timeoutseconds': 'timeout_seconds',
+    }
+    for key, value in config.items():
+        snake_key = _camel_to_snake(key)
+        alias = ALIASES.get(key.lower())
+        if alias:
+            result[alias] = value
+        else:
+            result[snake_key] = value
+        if key != snake_key and key not in result:
+            result[key] = value
+    return result
 
 
 def _node_label(node: PipelineNode) -> str:
@@ -64,17 +121,22 @@ def _get_upstream_vars(node: PipelineNode, pipeline: PipelineDefinition) -> list
 
 def _render_node_snippet(node: PipelineNode, pipeline: PipelineDefinition) -> str:
     """Render the SSS snippet for a single node based on its type."""
-    config = node.config or {}
+    config = _normalize_config(node.config or {})
 
     # MVP: Implement sequence-detector, absence-detector
     if node.type == "sequence-detector":
         template = _env.get_template("sequence_detector.py.j2")
         upstream = _get_upstream_var(node, pipeline)
+        pattern = config.get("pattern", "A -> B -> C")
+        steps = [s.strip() for s in re.split(r"\s*->\s*", str(pattern))] if pattern else ["A", "B"]
+        steps_json = json.dumps(steps)
+        timeout_seconds = config.get("timeout_seconds", 60)
         return template.render(
             node_id=node.id,
             upstream_var=upstream,
-            pattern=config.get("pattern", "A -> B -> C"),
-            timeout_seconds=config.get("timeout_seconds", 60),
+            pattern=pattern,
+            steps=steps_json,
+            timeout_ms=timeout_seconds * 1000,
             key_column=config.get("key_column", "key"),
             event_time_column=config.get("event_time_column", "event_time"),
         )
@@ -82,11 +144,12 @@ def _render_node_snippet(node: PipelineNode, pipeline: PipelineDefinition) -> st
     if node.type == "absence-detector":
         template = _env.get_template("absence_detector.py.j2")
         upstream = _get_upstream_var(node, pipeline)
+        absence_timeout_seconds = config.get("absence_timeout_seconds", 300)
         return template.render(
             node_id=node.id,
             upstream_var=upstream,
             expected_event=config.get("expected_event", "heartbeat"),
-            absence_timeout_seconds=config.get("absence_timeout_seconds", 300),
+            absence_timeout_ms=absence_timeout_seconds * 1000,
             key_column=config.get("key_column", "key"),
             event_time_column=config.get("event_time_column", "event_time"),
         )
@@ -255,13 +318,27 @@ df_{node.id.replace("-", "_")} = spark.sql('''
 
     # Non-CEP nodes: sources, transforms, sinks
     if node.type == "kafka-topic":
-        return f"""# Kafka source for {node.id}
-df_{node.id.replace("-", "_")} = (
+        safe_id = node.id.replace("-", "_")
+        bootstrap = config.get("bootstrap_servers", "localhost:9092")
+        topic = config.get("topic", "events")
+        starting = config.get("starting_offset", "latest")
+        return f"""# Kafka source: {node.id}
+df_{safe_id} = (
     spark.readStream
     .format("kafka")
-    .option("kafka.bootstrap.servers", "{config.get('bootstrap_servers', 'localhost:9092')}")
-    .option("subscribe", "{config.get('topic', 'events')}")
+    .option("kafka.bootstrap.servers", "{bootstrap}")
+    .option("subscribe", "{topic}")
+    .option("startingOffsets", "{starting}")
     .load()
+    .selectExpr(
+        "CAST(key AS STRING) AS key",
+        "CAST(value AS STRING) AS value",
+        "topic",
+        "partition",
+        "offset",
+        "timestamp AS event_time",
+        "timestampType"
+    )
 )
 """
 
@@ -273,11 +350,21 @@ df_{node.id.replace("-", "_")} = {upstream}.filter("{config.get('condition', '1=
 
     if node.type == "delta-table-sink":
         upstream = _get_upstream_var(node, pipeline)
-        return f"""# Delta sink for {node.id}
-{upstream}.writeStream
+        safe_id = node.id.replace("-", "_")
+        catalog = config.get("catalog", "main")
+        schema = config.get("schema", "default")
+        table = config.get("table_name", "output_table")
+        checkpoint = config.get("checkpoint_location", f"/tmp/checkpoints/{node.id}")
+        mode = config.get("output_mode", "append")
+        return f"""# Delta sink: {node.id}
+query_{safe_id} = (
+    {upstream}
+    .writeStream
     .format("delta")
-    .option("checkpointLocation", "{config.get('checkpoint_location', f'/tmp/checkpoints/{node.id}')}")
-    .table("{config.get('catalog', 'main')}.{config.get('schema', 'default')}.{config.get('table_name', 'output_table')}")
+    .outputMode("{mode}")
+    .option("checkpointLocation", "{checkpoint}")
+    .toTable("{catalog}.{schema}.{table}")
+)
 """
 
     # Sources

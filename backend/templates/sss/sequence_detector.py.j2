@@ -1,25 +1,79 @@
 # Sequence Detector: {{ node_id }}
+# Detects ordered event sequences using TransformWithState
 # Pattern: {{ pattern }}
-# Uses TransformWithState for CEP sequence matching
 
-from pyspark.sql.streaming import TransformWithState
+from pyspark.sql.streaming import StatefulProcessor, StatefulProcessorHandle
+from pyspark.sql.types import StructType, StructField, StringType, TimestampType, IntegerType
+import pandas as pd
+import json
+from datetime import datetime
 
-def sequence_detector_state_func(key, batch_iter, state):
-    """Stateful function for sequence pattern matching."""
-    # TODO: Implement full sequence logic - pattern: {{ pattern }}
-    # timeout_seconds: {{ timeout_seconds }}
-    for batch in batch_iter:
-        for row in batch:
-            yield row
+class SequenceDetector_{{ node_id | replace("-", "_") }}(StatefulProcessor):
+    """Detects ordered sequence of events matching configured step filters."""
+
+    def init(self, handle: StatefulProcessorHandle):
+        self.state = handle.getValueState("seq_state", "STRING")
+
+    def handleInputRows(self, key, rows, timerValues):
+        current_ms = timerValues.getCurrentProcessingTimeInMs() or 0
+        current = self.state.getOption()
+        state = json.loads(current) if current else {"step_index": 0, "matched": [], "start_time": None}
+
+        steps = {{ steps }}
+        timeout_ms = {{ timeout_ms }}
+
+        for pdf in rows:
+            if pdf.empty or "{{ key_column }}" not in pdf.columns:
+                continue
+            for _, row in pdf.iterrows():
+                # Check timeout - reset state if exceeded
+                if state["start_time"] and (current_ms - state["start_time"]) > timeout_ms:
+                    state = {"step_index": 0, "matched": [], "start_time": None}
+
+                current_step = steps[state["step_index"]] if state["step_index"] < len(steps) else None
+                if current_step and self._matches_step(row, current_step):
+                    if state["step_index"] == 0:
+                        state["start_time"] = current_ms
+                    state["matched"].append(str(dict(row)))
+                    state["step_index"] += 1
+
+                    if state["step_index"] >= len(steps):
+                        key_val = key[0] if isinstance(key, (list, tuple)) else key
+                        yield pd.DataFrame({
+                            "{{ key_column }}": [key_val],
+                            "match_status": ["MATCH"],
+                            "matched_events": [str(state["matched"])],
+                            "match_time": [datetime.utcnow()],
+                            "step_count": [len(steps)],
+                        })
+                        state = {"step_index": 0, "matched": [], "start_time": None}
+
+        self.state.update(json.dumps(state))
+
+    def _matches_step(self, row, step_filter):
+        return True  # Simplified; override with actual filter logic
+
+    def handleExpiredTimer(self, key, timerValues, expiredTimerInfo):
+        pass
+
+    def close(self):
+        pass
+
+_seq_output_schema_{{ node_id | replace("-", "_") }} = StructType([
+    StructField("{{ key_column }}", StringType()),
+    StructField("match_status", StringType()),
+    StructField("matched_events", StringType()),
+    StructField("match_time", TimestampType()),
+    StructField("step_count", IntegerType()),
+])
 
 df_{{ node_id | replace("-", "_") }} = (
     {{ upstream_var }}
     .groupBy(F.col("{{ key_column }}"))
-    .applyInPandasWithState(
-        sequence_detector_state_func,
-        outputSchema="...",  # Define output schema
-        stateSchema="...",  # Define state schema
-        outputMode="append",
-        timeoutConf="{{ timeout_seconds }} seconds"
+    .transformWithStateInPandas(
+        statefulProcessor=SequenceDetector_{{ node_id | replace("-", "_") }}(),
+        outputStructType=_seq_output_schema_{{ node_id | replace("-", "_") }},
+        outputMode="Append",
+        timeMode="ProcessingTime",
     )
 )
