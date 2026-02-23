@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import { NODE_REGISTRY } from "@/lib/nodeRegistry";
@@ -14,13 +14,17 @@ const CATEGORY_BORDER_COLORS: Record<string, string> = {
   sink: "border-node-sink",
 };
 
-function CustomNode({ data, selected }: NodeProps) {
-  const def = NODE_REGISTRY[data.type as keyof typeof NODE_REGISTRY] ?? {
-    label: data.label ?? "Unknown",
-    description: "",
-    category: "transform",
-    codeTarget: "sdp-or-sss",
-  };
+function CustomNodeInner({ data, selected }: NodeProps) {
+  const def = useMemo(
+    () =>
+      NODE_REGISTRY[data.type as keyof typeof NODE_REGISTRY] ?? {
+        label: data.label ?? "Unknown",
+        description: "",
+        category: "transform",
+        codeTarget: "sdp-or-sss",
+      },
+    [data.type, data.label]
+  );
 
   const category = def.category ?? "transform";
   const borderColor = CATEGORY_BORDER_COLORS[category] ?? "border-node-transform";
@@ -28,14 +32,20 @@ function CustomNode({ data, selected }: NodeProps) {
   const inputs = def.inputs ?? 1;
   const outputs = def.outputs ?? 1;
 
-  const IconComponent =
-    (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[
-      def.icon ?? "Box"
-    ] ?? LucideIcons.Box;
+  const IconComponent = useMemo(
+    () =>
+      (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[
+        def.icon ?? "Box"
+      ] ?? LucideIcons.Box,
+    [def.icon]
+  );
 
-  const badges: string[] = [];
-  if (def.codeTarget === "sdp" || def.codeTarget === "sdp-or-sss") badges.push("SDP");
-  if (def.codeTarget === "sss" || def.codeTarget === "sdp-or-sss") badges.push("SSS");
+  const badges = useMemo(() => {
+    const b: string[] = [];
+    if (def.codeTarget === "sdp" || def.codeTarget === "sdp-or-sss") b.push("SDP");
+    if (def.codeTarget === "sss" || def.codeTarget === "sdp-or-sss") b.push("SSS");
+    return b;
+  }, [def.codeTarget]);
 
   return (
     <div
@@ -105,4 +115,19 @@ function CustomNode({ data, selected }: NodeProps) {
   );
 }
 
-export default memo(CustomNode);
+function propsAreEqual(
+  prev: NodeProps,
+  next: NodeProps
+): boolean {
+  if (prev.id !== next.id || prev.selected !== next.selected) return false;
+  const pd = prev.data;
+  const nd = next.data;
+  return (
+    pd?.type === nd?.type &&
+    pd?.label === nd?.label &&
+    pd?.hasError === nd?.hasError &&
+    pd?.configSummary === nd?.configSummary
+  );
+}
+
+export default memo(CustomNodeInner, propsAreEqual);

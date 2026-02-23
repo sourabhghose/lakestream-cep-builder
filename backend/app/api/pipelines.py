@@ -5,7 +5,7 @@ Uses PipelineStore for persistence (LocalFileStore or DatabricksVolumeStore).
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException
 
@@ -28,7 +28,7 @@ def _store():
 async def create_pipeline(request: PipelineCreateRequest) -> PipelineDefinition:
     """Create a new pipeline."""
     pipeline_id = str(uuid.uuid4())
-    now = datetime.utcnow()
+    now = datetime.now(tz=timezone.utc)
     pipeline = PipelineDefinition(
         id=pipeline_id,
         name=request.name,

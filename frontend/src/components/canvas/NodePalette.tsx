@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import * as LucideIcons from "lucide-react";
+import * as Tooltip from "@radix-ui/react-tooltip";
 import { cn } from "@/lib/utils";
 import { NODE_CATEGORIES, NODE_REGISTRY } from "@/lib/nodeRegistry";
+import type { NodeDefinition } from "@/types/nodes";
 
 const CATEGORY_COLORS: Record<string, string> = {
   blue: "border-l-blue-500 bg-blue-500/5",
@@ -11,6 +13,25 @@ const CATEGORY_COLORS: Record<string, string> = {
   green: "border-l-green-500 bg-green-500/5",
   orange: "border-l-orange-500 bg-orange-500/5",
 };
+
+function getCodeTargetLabel(def: NodeDefinition): string {
+  const t = def.codeTarget;
+  if (t === "sdp") return "SDP";
+  if (t === "sss") return "SSS";
+  if (t === "sdp-or-sss") return "Both (SDP & SSS)";
+  return "Both";
+}
+
+function getRequiredConfigFields(def: NodeDefinition): string[] {
+  const fields: string[] = [];
+  for (const f of def.configFields ?? []) {
+    if (f.required) fields.push(f.label);
+  }
+  for (const f of def.advancedFields ?? []) {
+    if (f.required) fields.push(f.label);
+  }
+  return fields;
+}
 
 interface NodePaletteProps {
   collapsed?: boolean;
@@ -21,12 +42,15 @@ export default function NodePalette({
   collapsed = false,
   onToggleCollapse,
 }: NodePaletteProps) {
+  const [searchQuery, setSearchQuery] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
     source: true,
     pattern: true,
     transform: true,
     sink: true,
   } as Record<string, boolean>);
+  const [expandedCategoryNodes, setExpandedCategoryNodes] = useState<Record<string, boolean>>({});
+  const NODES_BEFORE_SHOW_MORE = 5;
 
   const toggleCategory = (id: string) => {
     setExpandedCategories((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -35,6 +59,22 @@ export default function NodePalette({
   const handleDragStart = (e: React.DragEvent, nodeType: string) => {
     e.dataTransfer.setData("application/reactflow", nodeType);
     e.dataTransfer.effectAllowed = "move";
+  };
+
+  const filteredCategories = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return NODE_CATEGORIES;
+    return NODE_CATEGORIES.map((cat) => ({
+      ...cat,
+      nodes: cat.nodes.filter((nodeType) => {
+        const def = NODE_REGISTRY[nodeType];
+        return def?.label?.toLowerCase().includes(q);
+      }),
+    })).filter((cat) => cat.nodes.length > 0);
+  }, [searchQuery]);
+
+  const toggleShowMore = (categoryId: string) => {
+    setExpandedCategoryNodes((prev) => ({ ...prev, [categoryId]: !prev[categoryId] }));
   };
 
   if (collapsed) {
@@ -63,8 +103,17 @@ export default function NodePalette({
           <LucideIcons.PanelLeftClose className="h-4 w-4" />
         </button>
       </div>
+      <div className="border-b border-slate-700 px-2 pb-2">
+        <input
+          type="text"
+          placeholder="Search nodes..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        />
+      </div>
       <div className="flex-1 overflow-y-auto p-2">
-        {NODE_CATEGORIES.map((category) => {
+        {filteredCategories.map((category) => {
           const isExpanded = expandedCategories[category.id] ?? true;
           const colorClass = CATEGORY_COLORS[category.color] ?? CATEGORY_COLORS.blue;
 
@@ -84,7 +133,11 @@ export default function NodePalette({
               </button>
               {isExpanded && (
                 <div className="mt-1 space-y-0.5 pl-2">
-                  {category.nodes.map((nodeType) => {
+                  {(expandedCategoryNodes[category.id] ||
+                    category.nodes.length <= NODES_BEFORE_SHOW_MORE
+                    ? category.nodes
+                    : category.nodes.slice(0, NODES_BEFORE_SHOW_MORE)
+                  ).map((nodeType) => {
                     const def = NODE_REGISTRY[nodeType];
                     if (!def) return null;
                     const IconComponent =
@@ -118,6 +171,16 @@ export default function NodePalette({
                       </div>
                     );
                   })}
+                  {category.nodes.length > NODES_BEFORE_SHOW_MORE && (
+                    <button
+                      onClick={() => toggleShowMore(category.id)}
+                      className="mt-1 w-full rounded px-2 py-1 text-left text-xs text-slate-500 hover:bg-slate-800/50 hover:text-slate-300"
+                    >
+                      {expandedCategoryNodes[category.id]
+                        ? "Show less"
+                        : `Show more (${category.nodes.length - NODES_BEFORE_SHOW_MORE})`}
+                    </button>
+                  )}
                 </div>
               )}
             </div>

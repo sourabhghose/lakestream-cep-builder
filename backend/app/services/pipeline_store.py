@@ -9,7 +9,7 @@ import json
 import os
 import uuid
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from app.models.pipeline import PipelineDefinition, PipelineSummary
@@ -53,7 +53,7 @@ def _ensure_pipeline_id(pipeline: PipelineDefinition) -> str:
 
 def _ensure_timestamps(pipeline: PipelineDefinition, is_update: bool = False) -> PipelineDefinition:
     """Ensure pipeline has created_at and updated_at timestamps."""
-    now = datetime.utcnow()
+    now = datetime.now(tz=timezone.utc)
     updates = {"updated_at": now}
     if not is_update and not getattr(pipeline, "created_at", None):
         updates["created_at"] = now
@@ -126,7 +126,7 @@ class LocalFileStore(PipelineStore):
             update={
                 "id": pipeline_id,
                 "created_at": existing.created_at,
-                "updated_at": datetime.utcnow(),
+                "updated_at": datetime.now(tz=timezone.utc),
                 "version": existing.version + 1,
             }
         )
@@ -217,7 +217,7 @@ class DatabricksVolumeStore(PipelineStore):
             update={
                 "id": pipeline_id,
                 "created_at": existing.created_at,
-                "updated_at": datetime.utcnow(),
+                "updated_at": datetime.now(tz=timezone.utc),
                 "version": existing.version + 1,
             }
         )

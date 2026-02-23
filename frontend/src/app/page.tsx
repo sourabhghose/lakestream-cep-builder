@@ -5,31 +5,38 @@ import * as LucideIcons from "lucide-react";
 import PipelineCanvas from "@/components/canvas/PipelineCanvas";
 import NodePalette from "@/components/canvas/NodePalette";
 import ConfigPanel from "@/components/panels/ConfigPanel";
+import HelpPanel from "@/components/panels/HelpPanel";
 import CodePreview from "@/components/editors/CodePreview";
 import TemplateGallery from "@/components/templates/TemplateGallery";
 import Toast from "@/components/ui/Toast";
+import { cn } from "@/lib/utils";
 import { usePipelineStore } from "@/hooks/usePipelineStore";
 import { useToastStore } from "@/hooks/useToastStore";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { computeLayout } from "@/lib/autoLayout";
 
 export default function Home() {
   const [paletteCollapsed, setPaletteCollapsed] = useState(false);
   const [codePreviewCollapsed, setCodePreviewCollapsed] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const {
     pipelineName,
     selectedNodeId,
     isDirty,
     nodes,
+    edges,
     isSaving,
     isDeploying,
     savePipeline,
     deployPipeline,
     validatePipeline,
     pipelineId,
+    onNodesChange,
   } = usePipelineStore();
   const addToast = useToastStore((s) => s.addToast);
 
-  const handleSave = async () => {
+  async function handleSave() {
     try {
       await savePipeline();
       addToast("Pipeline saved successfully", "success");
@@ -62,9 +69,21 @@ export default function Home() {
     } catch {
       addToast("Deployment failed", "error");
     }
-  };
+  }
+
+  useKeyboardShortcuts({
+    onSave: handleSave,
+    onGenerateCode: () => usePipelineStore.getState().triggerCodeGen(),
+    onDeploy: handleDeploy,
+  });
 
   const isEmpty = nodes.length === 0;
+
+  const handleAutoLayout = () => {
+    const laidOut = computeLayout(nodes, edges);
+    onNodesChange(laidOut);
+    addToast("Layout applied", "success");
+  };
 
   return (
     <div className="flex h-screen flex-col bg-slate-950">
@@ -90,6 +109,15 @@ export default function Home() {
           )}
         </div>
         <div className="flex items-center gap-2">
+          <button
+            className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-slate-200 disabled:opacity-60"
+            onClick={handleAutoLayout}
+            disabled={nodes.length === 0}
+            title="Auto-arrange pipeline nodes"
+          >
+            <LucideIcons.Network className="h-4 w-4" />
+            Auto Layout
+          </button>
           <button
             className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-slate-200"
             onClick={() => setTemplatesOpen(true)}
@@ -120,6 +148,16 @@ export default function Home() {
               <LucideIcons.Rocket className="h-4 w-4" />
             )}
             Deploy
+          </button>
+          <button
+            onClick={() => setHelpOpen((o) => !o)}
+            className={cn(
+              "rounded-md p-2 text-slate-400 hover:bg-slate-800 hover:text-slate-200",
+              helpOpen && "bg-slate-800 text-slate-200"
+            )}
+            title="Help"
+          >
+            <LucideIcons.HelpCircle className="h-5 w-5" />
           </button>
         </div>
       </header>
@@ -152,6 +190,8 @@ export default function Home() {
 
         {/* Right sidebar: Config Panel */}
         <ConfigPanel isOpen={!!selectedNodeId} />
+        {/* Help Panel */}
+        <HelpPanel isOpen={helpOpen} onClose={() => setHelpOpen(false)} />
       </div>
 
       {/* Bottom panel: Code Preview */}

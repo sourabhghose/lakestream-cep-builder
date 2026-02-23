@@ -33,3 +33,4 @@ htmlcov/
 # Misc
 *.log
 tmp/
+frontend/tsconfig.tsbuildinfo

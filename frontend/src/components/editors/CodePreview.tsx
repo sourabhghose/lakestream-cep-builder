@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Editor from "@monaco-editor/react";
 import * as LucideIcons from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePipelineStore } from "@/hooks/usePipelineStore";
+import * as api from "@/lib/api";
 
 interface CodePreviewProps {
   collapsed?: boolean;
@@ -23,11 +24,16 @@ export default function CodePreview({
     generatedSdpCode,
     generatedSssCode,
     setGeneratedCode,
+    syncFromCode,
     codeTarget,
     isGenerating,
   } = usePipelineStore();
   const [activeTab, setActiveTab] = useState<"sdp" | "sss">("sdp");
   const [isEditing, setIsEditing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<"synced" | "warnings" | "parsing" | "error" | null>(null);
+  const [syncMessage, setSyncMessage] = useState<string>("");
+  const parseTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const userEditedRef = useRef(false);
 
   const hasSdp = !!generatedSdpCode;
   const hasSss = !!generatedSssCode;
@@ -42,12 +48,46 @@ export default function CodePreview({
   const displayCode = code || PLACEHOLDER;
 
   const handleEditorChange = (value: string | undefined) => {
+    userEditedRef.current = true;
     if (activeTab === "sdp") {
       setGeneratedCode(value ?? "", generatedSssCode);
     } else {
       setGeneratedCode(generatedSdpCode, value ?? "");
     }
   };
+
+  // Debounced parse: when user edits SDP code, parse after 1s and sync to canvas
+  useEffect(() => {
+    if (!isEditing || activeTab !== "sdp" || !userEditedRef.current) return;
+    const code = generatedSdpCode || "";
+    if (!code.trim() || code === PLACEHOLDER) return;
+
+    clearTimeout(parseTimeoutRef.current);
+    parseTimeoutRef.current = setTimeout(async () => {
+      setSyncStatus("parsing");
+      try {
+        const result = await api.parseCode(code);
+        if (result.nodes.length > 0) {
+          syncFromCode(result.nodes, result.edges);
+          userEditedRef.current = false;
+          if (result.warnings.length > 0) {
+            setSyncStatus("warnings");
+            setSyncMessage(result.warnings.join("; "));
+          } else {
+            setSyncStatus("synced");
+            setSyncMessage("");
+          }
+        } else {
+          setSyncStatus(null);
+        }
+      } catch {
+        setSyncStatus("error");
+        setSyncMessage("Parse failed");
+      }
+      setTimeout(() => setSyncStatus(null), 4000);
+    }, 1000);
+    return () => clearTimeout(parseTimeoutRef.current);
+  }, [isEditing, activeTab, generatedSdpCode, syncFromCode]);
 
   return (
     <div
@@ -99,6 +139,30 @@ export default function CodePreview({
           {!hasSdp && !hasSss && !isGenerating && (
             <span className="text-sm text-slate-500">
               Add nodes to generate code
+            </span>
+          )}
+          {syncStatus === "synced" && (
+            <span className="flex items-center gap-1.5 text-xs text-emerald-400">
+              <LucideIcons.Check className="h-3.5 w-3.5" />
+              Canvas synced from code
+            </span>
+          )}
+          {syncStatus === "warnings" && (
+            <span className="flex items-center gap-1.5 text-xs text-amber-400" title={syncMessage}>
+              <LucideIcons.AlertTriangle className="h-3.5 w-3.5" />
+              Parse warnings: {syncMessage.slice(0, 50)}{syncMessage.length > 50 ? "…" : ""}
+            </span>
+          )}
+          {syncStatus === "parsing" && (
+            <span className="flex items-center gap-1.5 text-xs text-slate-400">
+              <LucideIcons.Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Parsing…
+            </span>
+          )}
+          {syncStatus === "error" && (
+            <span className="flex items-center gap-1.5 text-xs text-red-400">
+              <LucideIcons.AlertCircle className="h-3.5 w-3.5" />
+              {syncMessage}
             </span>
           )}
         </div>

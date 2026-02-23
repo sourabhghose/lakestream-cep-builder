@@ -175,11 +175,21 @@ function PipelineCanvasInner() {
           className="!border-slate-700 !bg-slate-800 !shadow-lg"
         />
         <MiniMap
-          className="!rounded-lg !border-slate-700 !bg-slate-900"
-            nodeColor={(node) => {
+          position="bottom-right"
+          className="!rounded-lg !border-slate-700 !bg-slate-900 !shadow-lg"
+          maskColor="rgba(15, 23, 42, 0.8)"
+          nodeColor={(node) => {
             const def = NODE_REGISTRY[node.data?.type as keyof typeof NODE_REGISTRY];
             if (!def) return "#64748b";
-            return def.color ?? "#64748b";
+            const cat = def.category ?? "transform";
+            const CATEGORY_COLORS: Record<string, string> = {
+              source: "#22c55e",
+              "cep-pattern": "#8b5cf6",
+              pattern: "#8b5cf6",
+              transform: "#3b82f6",
+              sink: "#f97316",
+            };
+            return CATEGORY_COLORS[cat] ?? "#64748b";
           }}
         />
       </ReactFlow>

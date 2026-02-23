@@ -8,7 +8,7 @@ to Databricks Lakeflow (SDP) or Spark Structured Streaming.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import codegen, deploy, pipelines
+from app.api import codegen, codeparse, deploy, pipelines
 
 app = FastAPI(
     title="LakeStream CEP Builder API",
@@ -28,6 +28,7 @@ app.add_middleware(
 # Include routers
 app.include_router(pipelines.router, prefix="/api/pipelines", tags=["pipelines"])
 app.include_router(codegen.router, prefix="/api/codegen", tags=["codegen"])
+app.include_router(codeparse.router, prefix="/api/codeparse", tags=["codeparse"])
 app.include_router(deploy.router, prefix="/api/deploy", tags=["deploy"])
 
 

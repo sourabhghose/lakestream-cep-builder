@@ -5,8 +5,27 @@ import { markInvalidEdges } from "@/lib/edgeValidator";
 import { NODE_REGISTRY } from "@/lib/nodeRegistry";
 import { hasNodeConfigError } from "@/lib/configValidator";
 import { useToastStore } from "@/hooks/useToastStore";
+import type { NodeType } from "@/types/nodes";
+
+const MAX_HISTORY = 50;
 
 type CodeTarget = "sdp" | "sss" | "hybrid" | null;
+
+/** Parsed node from code parse API (id, type, position, config, label) */
+export interface PipelineNodeInput {
+  id: string;
+  type: string;
+  position?: { x: number; y: number };
+  config?: Record<string, unknown>;
+  label?: string;
+}
+
+/** Parsed edge from code parse API */
+export interface PipelineEdgeInput {
+  id: string;
+  source: string;
+  target: string;
+}
 
 export interface ValidationResult {
   valid: boolean;
@@ -15,6 +34,11 @@ export interface ValidationResult {
 }
 
 let codeGenTimeout: ReturnType<typeof setTimeout> | undefined;
+
+interface HistoryEntry {
+  nodes: Node[];
+  edges: Edge[];
+}
 
 interface PipelineState {
   nodes: Node[];
@@ -31,20 +55,30 @@ interface PipelineState {
   isGenerating: boolean;
   isSaving: boolean;
   isDeploying: boolean;
+  /** Undo stack: past states (oldest first) */
+  undoStack: HistoryEntry[];
+  /** Redo stack: future states after undo */
+  redoStack: HistoryEntry[];
 
   addNode: (node: Node) => void;
   loadPipeline: (nodes: Node[], edges: Edge[], name?: string, description?: string) => void;
+  syncFromCode: (nodes: PipelineNodeInput[], edges: PipelineEdgeInput[]) => void;
   removeNode: (id: string) => void;
+  removeNodes: (ids: string[]) => void;
   updateNode: (id: string, data: Partial<Node["data"]>) => void;
   onNodesChange: (nodes: Node[]) => void;
   onEdgesChange: (edges: Edge[]) => void;
   onConnect: (connection: Connection) => void;
   selectNode: (id: string | null) => void;
   deselectNode: () => void;
+  deleteSelected: () => void;
   setPipelineName: (name: string) => void;
   setPipelineDescription: (desc: string) => void;
   setGeneratedCode: (sdp: string, sss: string) => void;
   setDirty: (dirty: boolean) => void;
+  pushHistory: () => void;
+  undo: () => void;
+  redo: () => void;
   triggerCodeGen: () => void;
   generateCode: () => Promise<void>;
   validatePipeline: () => ValidationResult;
@@ -54,6 +88,19 @@ interface PipelineState {
     job_name: string;
     cluster_config?: Record<string, unknown>;
   }) => Promise<{ job_id: string; job_url: string; status: string }>;
+}
+
+function cloneState(nodes: Node[], edges: Edge[]): HistoryEntry {
+  return {
+    nodes: nodes.map((n) => ({ ...n, data: { ...n.data } })),
+    edges: edges.map((e) => ({ ...e })),
+  };
+}
+
+function withHistoryPush(state: { nodes: Node[]; edges: Edge[]; undoStack: HistoryEntry[]; redoStack: HistoryEntry[] }): Partial<PipelineState> {
+  const entry = cloneState(state.nodes, state.edges);
+  const undoStack = [...state.undoStack, entry].slice(-MAX_HISTORY);
+  return { undoStack, redoStack: [] };
 }
 
 export const usePipelineStore = create<PipelineState>((set, get) => ({
@@ -71,6 +118,78 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
   isGenerating: false,
   isSaving: false,
   isDeploying: false,
+  undoStack: [],
+  redoStack: [],
+
+  pushHistory: () =>
+    set((state) => {
+      const entry = cloneState(state.nodes, state.edges);
+      const undoStack = [...state.undoStack, entry].slice(-MAX_HISTORY);
+      return { undoStack, redoStack: [] };
+    }),
+
+  undo: () =>
+    set((state) => {
+      if (state.undoStack.length === 0) return state;
+      const entry = state.undoStack[state.undoStack.length - 1];
+      const currentEntry = cloneState(state.nodes, state.edges);
+      return {
+        nodes: entry.nodes,
+        edges: markInvalidEdges(entry.nodes, entry.edges),
+        selectedNodeId: null,
+        undoStack: state.undoStack.slice(0, -1),
+        redoStack: [...state.redoStack, currentEntry],
+        isDirty: true,
+      };
+    }),
+
+  redo: () =>
+    set((state) => {
+      if (state.redoStack.length === 0) return state;
+      const entry = state.redoStack[state.redoStack.length - 1];
+      const currentEntry = cloneState(state.nodes, state.edges);
+      return {
+        nodes: entry.nodes,
+        edges: markInvalidEdges(entry.nodes, entry.edges),
+        selectedNodeId: null,
+        undoStack: [...state.undoStack, currentEntry],
+        redoStack: state.redoStack.slice(0, -1),
+        isDirty: true,
+      };
+    }),
+
+  deleteSelected: () =>
+    set((state) => {
+      const selectedIds = new Set(
+        state.nodes.filter((n) => (n as Node & { selected?: boolean }).selected).map((n) => n.id)
+      );
+      const selectedEdgeIds = new Set(
+        state.edges
+          .filter(
+            (e) =>
+              (e as Edge & { selected?: boolean }).selected ||
+              selectedIds.has(e.source) ||
+              selectedIds.has(e.target)
+          )
+          .map((e) => e.id)
+      );
+      if (selectedIds.size === 0 && selectedEdgeIds.size === 0) return state;
+      const entry = cloneState(state.nodes, state.edges);
+      const newNodes = state.nodes.filter((n) => !selectedIds.has(n.id));
+      const newEdges = state.edges.filter((e) => !selectedEdgeIds.has(e.id));
+      const clearedNodes = newNodes.map((n) => ({
+        ...n,
+        data: { ...n.data, hasError: hasNodeConfigError(n) },
+      }));
+      return {
+        nodes: clearedNodes,
+        edges: markInvalidEdges(clearedNodes, newEdges),
+        selectedNodeId: state.selectedNodeId && selectedIds.has(state.selectedNodeId) ? null : state.selectedNodeId,
+        undoStack: [...state.undoStack, entry].slice(-MAX_HISTORY),
+        redoStack: [],
+        isDirty: true,
+      };
+    }),
 
   addNode: (node) =>
     set((state) => {
@@ -79,7 +198,11 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
         ...node,
         data: { ...node.data, hasError },
       };
-      return { nodes: [...state.nodes, nodeWithError], isDirty: true };
+      return {
+        ...withHistoryPush(state),
+        nodes: [...state.nodes, nodeWithError],
+        isDirty: true,
+      };
     }),
 
   loadPipeline: (nodes, edges, name, description) =>
@@ -94,13 +217,81 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
       isDirty: true,
     }),
 
+  syncFromCode: (inputNodes, inputEdges) => {
+    const nodeIds = new Set(inputNodes.map((n) => n.id));
+    const edges = inputEdges
+      .filter((e) => nodeIds.has(e.source) && nodeIds.has(e.target))
+      .map((e) => ({ id: e.id, source: e.source, target: e.target }));
+
+    // Compute depth for each node (topological order)
+    const depth = new Map<string, number>();
+    const getDepth = (id: string): number => {
+      if (depth.has(id)) return depth.get(id)!;
+      const incoming = edges.filter((e) => e.target === id);
+      const d = incoming.length === 0 ? 0 : 1 + Math.max(...incoming.map((e) => getDepth(e.source)));
+      depth.set(id, d);
+      return d;
+    };
+    inputNodes.forEach((n) => getDepth(n.id));
+
+    // Group by depth, assign positions
+    const byDepth = new Map<number, string[]>();
+    inputNodes.forEach((n) => {
+      const d = depth.get(n.id) ?? 0;
+      if (!byDepth.has(d)) byDepth.set(d, []);
+      byDepth.get(d)!.push(n.id);
+    });
+    const SPACING_X = 250;
+    const SPACING_Y = 80;
+
+    const nodes: Node[] = inputNodes.map((input) => {
+      const d = depth.get(input.id) ?? 0;
+      const row = byDepth.get(d)!.indexOf(input.id);
+      const x = d * SPACING_X;
+      const y = row * SPACING_Y;
+      return {
+        id: input.id,
+        type: "custom" as const,
+        position: { x, y },
+        data: {
+          type: (input.type || "map-select") as NodeType,
+          label: input.label ?? input.id,
+          config: input.config ?? {},
+          hasError: false,
+        },
+      };
+    });
+
+    get().loadPipeline(nodes, edges);
+  },
+
   removeNode: (id) =>
     set((state) => ({
+      ...withHistoryPush(state),
       nodes: state.nodes.filter((n) => n.id !== id),
       edges: state.edges.filter((e) => e.source !== id && e.target !== id),
       selectedNodeId: state.selectedNodeId === id ? null : state.selectedNodeId,
       isDirty: true,
     })),
+
+  removeNodes: (ids) =>
+    set((state) => {
+      const idSet = new Set(ids);
+      const newNodes = state.nodes.filter((n) => !idSet.has(n.id));
+      const newEdges = state.edges.filter(
+        (e) => !idSet.has(e.source) && !idSet.has(e.target)
+      );
+      return {
+        ...withHistoryPush(state),
+        nodes: newNodes,
+        edges: markInvalidEdges(newNodes, newEdges),
+        selectedNodeId:
+          state.selectedNodeId && idSet.has(state.selectedNodeId)
+            ? null
+            : state.selectedNodeId,
+        isDirty: true,
+      };
+    }),
 
   updateNode: (id, data) =>
     set((state) => {
@@ -118,11 +309,23 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
   onEdgesChange: (edges) =>
     set((state) => {
       const marked = markInvalidEdges(state.nodes, edges);
-      return { edges: marked, isDirty: true };
+      const edgeIds = (e: Edge) => e.id;
+      const prevIds = new Set(state.edges.map(edgeIds));
+      const nextIds = new Set(marked.map(edgeIds));
+      const edgesChanged =
+        prevIds.size !== nextIds.size ||
+        marked.some((e) => !prevIds.has(e.id)) ||
+        state.edges.some((e) => !nextIds.has(e.id));
+      return {
+        ...(edgesChanged ? withHistoryPush(state) : {}),
+        edges: marked,
+        isDirty: true,
+      };
     }),
 
   onConnect: (connection) =>
     set((state) => ({
+      ...withHistoryPush(state),
       edges: [
         ...state.edges,
         {
