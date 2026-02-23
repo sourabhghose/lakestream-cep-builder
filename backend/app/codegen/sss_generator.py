@@ -19,6 +19,7 @@ _env = Environment(
     loader=FileSystemLoader(str(_TEMPLATE_DIR)),
     autoescape=select_autoescape(enabled_extensions=()),
 )
+_env.filters["pyvar"] = lambda s: str(s).replace("-", "_")
 
 
 def _parse_duration_to_ms(duration: str) -> int:

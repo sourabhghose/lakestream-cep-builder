@@ -25,38 +25,44 @@ LakeStream CEP Builder — Visual CEP Pipeline Builder for Databricks
 
 **WS8: Timeline + templates** — Pattern timeline visualization (SVG, design/test modes), timeline controls (play/pause, speed, data loader), 10 pre-built use case templates with template gallery
 
+### Round 3 (2026-02-23)
+
+**WS9: Build verification** — Both frontend (Next.js build) and backend (uvicorn import) pass with zero errors. End-to-end API test: pipeline CRUD, SDP code gen, SSS/CEP code gen all verified working.
+
+**WS10: Real Databricks deploy service** — Replaced mock deploy with real Databricks SDK implementation. Creates notebooks in workspace, DLT pipelines (SDP), or Jobs (SSS). Falls back to mock when DATABRICKS_HOST is unset. New endpoints: /validate, /catalogs, /catalogs/{name}/schemas. Added DatabricksConfig pydantic settings.
+
+**WS11: Unity Catalog pipeline storage** — Replaced in-memory dict with persistent storage. LocalFileStore (saves to ~/.lakestream/pipelines/) for dev, DatabricksVolumeStore (Unity Catalog volumes via Files API) for production. Pipelines get UUID, created_at, updated_at. PipelineSummary model added.
+
+**WS12: Frontend polish** — Semantic edge validation (rejects invalid connections with toast), Toast notification system (success/error/warning/info with auto-dismiss), Pipeline validation before deploy (checks sources, sinks, orphan nodes), Node error states (red border for missing required config), Empty state UX for blank canvas, Loading spinners for save/deploy.
+
 ## Current State
 
 | Component | Coverage |
 | --- | --- |
 | Frontend components | All built and wired |
-| Backend API | All endpoints working |
+| Backend API | 8 endpoints: health, pipelines CRUD, codegen, deploy + validate + catalogs |
 | SDP code gen | 22 templates — all node types covered |
 | SSS code gen | 29 templates — all node types covered |
 | CEP patterns | All 12 implemented |
 | Templates | 10 pre-built use cases |
 | Pattern timeline | Built (design + test modes) |
 | Frontend ↔ Backend | Wired via API calls |
+| Deploy service | Real Databricks SDK (with mock fallback) |
+| Pipeline storage | Persistent (local files or UC volumes) |
+| Edge validation | Semantic validation with toasts |
+| Error handling | Toasts, loading states, empty states |
 
 ## Remaining Work
 
-### Integration & Testing
-- Verify full app runs locally (npm run dev + uvicorn)
-- Fix any TypeScript/Python import errors
-- End-to-end test: drag nodes → generate code → deploy
-
-### Production Features
-- Real Databricks SDK deployment (currently mocked)
-- Unity Catalog pipeline storage (currently in-memory)
-- OAuth configuration for Databricks App
-- Bidirectional Monaco ↔ Canvas sync
-- Pipeline version diff view
-- Semantic edge validation (type checking between nodes)
+### Production Hardening
+- OAuth configuration for Databricks App hosting
+- Bidirectional Monaco ↔ Canvas sync (edit code → update canvas)
 - Schema registry integration
 - Live data preview at each node
-- Error handling and user-facing messages
-- Performance optimization (virtual scrolling, lazy loading)
-- In-app documentation and help
+- Pipeline version diff view
+- Performance optimization (virtual scrolling, lazy loading for large pipelines)
+- In-app documentation and help tooltips
+- Comprehensive test suite (unit + integration + E2E)
 
 ---
-*Updated: 2026-02-22 after Round 2*
+*Updated: 2026-02-23 after Round 3*

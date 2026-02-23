@@ -1,8 +1,18 @@
 import { create } from "zustand";
 import type { Node, Edge, Connection } from "@xyflow/react";
 import * as api from "@/lib/api";
+import { markInvalidEdges } from "@/lib/edgeValidator";
+import { NODE_REGISTRY } from "@/lib/nodeRegistry";
+import { hasNodeConfigError } from "@/lib/configValidator";
+import { useToastStore } from "@/hooks/useToastStore";
 
 type CodeTarget = "sdp" | "sss" | "hybrid" | null;
+
+export interface ValidationResult {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+}
 
 let codeGenTimeout: ReturnType<typeof setTimeout> | undefined;
 
@@ -37,6 +47,7 @@ interface PipelineState {
   setDirty: (dirty: boolean) => void;
   triggerCodeGen: () => void;
   generateCode: () => Promise<void>;
+  validatePipeline: () => ValidationResult;
   savePipeline: () => Promise<void>;
   deployPipeline: (request: {
     pipeline_id: string;
@@ -62,15 +73,22 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
   isDeploying: false,
 
   addNode: (node) =>
-    set((state) => ({
-      nodes: [...state.nodes, node],
-      isDirty: true,
-    })),
+    set((state) => {
+      const hasError = hasNodeConfigError(node);
+      const nodeWithError = {
+        ...node,
+        data: { ...node.data, hasError },
+      };
+      return { nodes: [...state.nodes, nodeWithError], isDirty: true };
+    }),
 
   loadPipeline: (nodes, edges, name, description) =>
     set({
-      nodes,
-      edges,
+      nodes: nodes.map((n) => ({
+        ...n,
+        data: { ...n.data, hasError: hasNodeConfigError(n) },
+      })),
+      edges: markInvalidEdges(nodes, edges),
       pipelineName: name ?? "Untitled Pipeline",
       pipelineDescription: description ?? "",
       isDirty: true,
@@ -85,16 +103,23 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
     })),
 
   updateNode: (id, data) =>
-    set((state) => ({
-      nodes: state.nodes.map((n) =>
-        n.id === id ? { ...n, data: { ...n.data, ...data } } : n
-      ),
-      isDirty: true,
-    })),
+    set((state) => {
+      const updatedNodes = state.nodes.map((n) => {
+        if (n.id !== id) return n;
+        const merged = { ...n.data, ...data };
+        const hasError = hasNodeConfigError({ ...n, data: merged });
+        return { ...n, data: { ...merged, hasError } };
+      });
+      return { nodes: updatedNodes, isDirty: true };
+    }),
 
   onNodesChange: (nodes) => set({ nodes, isDirty: true }),
 
-  onEdgesChange: (edges) => set({ edges, isDirty: true }),
+  onEdgesChange: (edges) =>
+    set((state) => {
+      const marked = markInvalidEdges(state.nodes, edges);
+      return { edges: marked, isDirty: true };
+    }),
 
   onConnect: (connection) =>
     set((state) => ({
@@ -126,6 +151,47 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
     get().generateCode();
   },
 
+  validatePipeline: () => {
+    const { nodes, edges } = get();
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    const sourceNodes = nodes.filter(
+      (n) => (NODE_REGISTRY[n.data?.type as keyof typeof NODE_REGISTRY]?.category ?? "") === "source"
+    );
+    const sinkNodes = nodes.filter(
+      (n) => (NODE_REGISTRY[n.data?.type as keyof typeof NODE_REGISTRY]?.category ?? "") === "sink"
+    );
+
+    if (sourceNodes.length === 0) {
+      errors.push("At least one source node is required");
+    }
+    if (sinkNodes.length === 0) {
+      errors.push("At least one sink node is required");
+    }
+
+    const connectedNodeIds = new Set<string>();
+    for (const e of edges) {
+      connectedNodeIds.add(e.source);
+      connectedNodeIds.add(e.target);
+    }
+    const orphanNodes = nodes.filter((n) => !connectedNodeIds.has(n.id));
+    if (orphanNodes.length > 0) {
+      errors.push(`${orphanNodes.length} orphan node(s) - all nodes must be connected`);
+    }
+
+    const invalidEdges = edges.filter((e) => e.data?.isInvalid === true);
+    if (invalidEdges.length > 0) {
+      errors.push(`${invalidEdges.length} invalid connection(s) - check edge semantics`);
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors,
+      warnings,
+    };
+  },
+
   generateCode: async () => {
     const { nodes, edges, pipelineName, pipelineDescription } = get();
     if (nodes.length === 0) return;
@@ -147,6 +213,7 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
       });
     } catch {
       set({ isGenerating: false, warnings: ["Code generation failed"] });
+      useToastStore.getState().addToast("Code generation failed", "error");
     }
   },
 

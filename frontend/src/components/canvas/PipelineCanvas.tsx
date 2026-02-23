@@ -25,6 +25,8 @@ import CustomNode from "@/components/canvas/CustomNode";
 import CustomEdge from "@/components/canvas/CustomEdge";
 import { usePipelineStore } from "@/hooks/usePipelineStore";
 import { NODE_REGISTRY } from "@/lib/nodeRegistry";
+import { validateConnection } from "@/lib/edgeValidator";
+import { useToastStore } from "@/hooks/useToastStore";
 
 const nodeTypes: NodeTypes = {
   custom: CustomNode,
@@ -67,13 +69,29 @@ function PipelineCanvasInner() {
     [edges, storeOnEdgesChange, triggerCodeGen]
   );
 
+  const addToast = useToastStore((s) => s.addToast);
+
   const handleConnect: OnConnect = useCallback(
     (connection: Connection) => {
-      const nextEdges = addEdge(connection, edges);
+      const sourceNode = nodes.find((n) => n.id === connection.source);
+      const targetNode = nodes.find((n) => n.id === connection.target);
+      if (!sourceNode || !targetNode) {
+        addToast("Could not find source or target node", "error");
+        return;
+      }
+      const result = validateConnection(sourceNode, targetNode, edges);
+      if (!result.valid) {
+        addToast(result.reason ?? "Invalid connection", "error");
+        return;
+      }
+      const nextEdges = addEdge(
+        { ...connection, type: "custom" },
+        edges.map((e) => ({ ...e, type: "custom" }))
+      );
       storeOnEdgesChange(nextEdges);
       triggerCodeGen();
     },
-    [edges, storeOnEdgesChange, triggerCodeGen]
+    [nodes, edges, storeOnEdgesChange, triggerCodeGen, addToast]
   );
 
   const handleDrop = useCallback(

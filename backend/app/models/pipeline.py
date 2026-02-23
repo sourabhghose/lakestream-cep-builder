@@ -39,6 +39,20 @@ class PipelineEdge(BaseModel):
     targetHandle: str | None = Field(default=None, description="Target handle/port")
 
 
+class PipelineSummary(BaseModel):
+    """Summary of a pipeline for listing (id, name, description, updated_at, node_count, edge_count)."""
+
+    id: str = Field(..., description="Unique pipeline identifier")
+    name: str = Field(..., description="Pipeline display name")
+    description: str = Field(default="", description="Pipeline description")
+    updated_at: datetime = Field(
+        ...,
+        description="Last update timestamp",
+    )
+    node_count: int = Field(default=0, description="Number of nodes in the pipeline")
+    edge_count: int = Field(default=0, description="Number of edges in the pipeline")
+
+
 class PipelineDefinition(BaseModel):
     """Complete pipeline definition with metadata."""
 
@@ -102,7 +116,7 @@ class DeployRequest(BaseModel):
     """Request body for deploying a pipeline to Databricks."""
 
     pipeline_id: str = Field(..., description="Pipeline to deploy")
-    job_name: str = Field(..., min_length=1, description="Databricks job name")
+    job_name: str = Field(..., min_length=1, description="Databricks job/pipeline name")
     cluster_config: dict[str, Any] = Field(
         default_factory=dict,
         description="Cluster configuration (instance type, workers, etc.)",
@@ -111,11 +125,27 @@ class DeployRequest(BaseModel):
         default=None,
         description="Cron schedule expression (e.g., '0 0 * * *' for daily)",
     )
+    catalog: str | None = Field(
+        default=None,
+        description="Unity Catalog catalog for SDP pipeline target",
+    )
+    target_schema: str | None = Field(
+        default=None,
+        description="Unity Catalog schema for SDP pipeline target",
+    )
+    code_target: Literal["sdp", "sss"] | None = Field(
+        default=None,
+        description="Which code to deploy (sdp or sss). If hybrid, must be specified.",
+    )
 
 
 class DeployResponse(BaseModel):
     """Response from deployment endpoint."""
 
-    job_id: str = Field(..., description="Databricks job ID")
-    job_url: str = Field(..., description="URL to the Databricks job")
-    status: str = Field(..., description="Deployment status")
+    job_id: str = Field(..., description="Databricks job or pipeline ID")
+    job_url: str = Field(..., description="URL to the Databricks job or pipeline")
+    status: str = Field(..., description="Deployment status (created, updated)")
+    deployment_type: str = Field(
+        default="job",
+        description="Type: 'job', 'pipeline', or 'mock'",
+    )

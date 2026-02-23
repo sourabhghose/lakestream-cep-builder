@@ -1,13 +1,16 @@
 """
 Deployment API router.
 
-Deploys pipelines to Databricks as jobs. Placeholder implementation returns mock responses.
+Deploys pipelines to Databricks as DLT pipelines (SDP) or Jobs (SSS).
+Includes validate_connection, list_catalogs, and list_schemas for UC browsing.
 """
 
 from fastapi import APIRouter, HTTPException
 
+from app.codegen.router import generate
 from app.models.pipeline import DeployRequest, DeployResponse
-from app.services.deploy_service import DeployService
+from app.services.deploy_service import DatabricksDeployError, DeployService
+from app.services.pipeline_store import get_pipeline_store
 
 router = APIRouter()
 deploy_service = DeployService()
@@ -16,13 +19,42 @@ deploy_service = DeployService()
 @router.post("", response_model=DeployResponse)
 async def deploy_pipeline(request: DeployRequest) -> DeployResponse:
     """
-    Deploy a pipeline to Databricks as a job.
+    Deploy a pipeline to Databricks.
 
-    Placeholder implementation - returns mock job_id and job_url.
+    Fetches the pipeline, generates code (SDP or SSS), creates a notebook
+    in the workspace, and creates/updates a DLT pipeline (SDP) or Job (SSS).
     """
-    # TODO: Fetch pipeline and generated code from storage
-    # For now, use placeholder code
-    code = "# Placeholder - integrate with codegen to get actual code"
+    pipeline = get_pipeline_store().get(request.pipeline_id)
+    if pipeline is None:
+        raise HTTPException(status_code=404, detail="Pipeline not found")
+
+    try:
+        codegen_result = generate(pipeline)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    # Determine code target: from request, or from codegen (default sdp for hybrid)
+    code_target = request.code_target
+    if code_target is None:
+        ct = codegen_result.code_target
+        code_target = "sdp" if ct in ("sdp", "hybrid") else "sss"
+
+    # Select code to deploy
+    if code_target == "sdp":
+        code = codegen_result.sdp_code
+        if not code:
+            raise HTTPException(
+                status_code=400,
+                detail="Pipeline does not generate SDP code. Use code_target='sss' or adjust pipeline.",
+            )
+    else:
+        code = codegen_result.sss_code
+        if not code:
+            raise HTTPException(
+                status_code=400,
+                detail="Pipeline does not generate SSS code. Use code_target='sdp' or adjust pipeline.",
+            )
+
     try:
         result = deploy_service.deploy(
             pipeline_id=request.pipeline_id,
@@ -30,11 +62,48 @@ async def deploy_pipeline(request: DeployRequest) -> DeployResponse:
             cluster_config=request.cluster_config,
             schedule=request.schedule,
             code=code,
+            code_target=code_target,
+            pipeline_name=pipeline.name,
+            catalog=request.catalog,
+            schema=request.target_schema,
         )
         return DeployResponse(
             job_id=result["job_id"],
             job_url=result["job_url"],
             status=result["status"],
+            deployment_type=result.get("deployment_type", "job"),
         )
+    except DatabricksDeployError as e:
+        raise HTTPException(status_code=502, detail=str(e)) from e
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@router.get("/validate", response_model=dict)
+async def validate_connection() -> dict:
+    """
+    Test whether the Databricks connection is working.
+
+    Returns success, message, and mode (mock or databricks).
+    """
+    return deploy_service.validate_connection()
+
+
+@router.get("/catalogs")
+async def list_catalogs() -> list[dict[str, str]]:
+    """
+    List Unity Catalog catalogs available to the user.
+
+    Used for picking deployment target. Returns empty list when not connected.
+    """
+    return deploy_service.list_catalogs()
+
+
+@router.get("/catalogs/{catalog_name}/schemas")
+async def list_schemas(catalog_name: str) -> list[dict[str, str]]:
+    """
+    List schemas in a Unity Catalog catalog.
+
+    Used for picking deployment target. Returns empty list when not connected.
+    """
+    return deploy_service.list_schemas(catalog_name)
