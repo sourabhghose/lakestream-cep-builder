@@ -4,6 +4,29 @@
 bundle:
   name: lakestream-cep-builder
 
+sync:
+  include:
+    - frontend/out/**
+
+  exclude:
+    - frontend/src/**
+    - frontend/node_modules/**
+    - frontend/package.json
+    - frontend/package-lock.json
+    - frontend/tsconfig.json
+    - frontend/next.config.js
+    - frontend/tailwind.config.ts
+    - frontend/postcss.config.js
+    - frontend/next-env.d.ts
+    - frontend/.next/**
+    - docs/**
+    - .github/**
+    - backend/tests/**
+    - "*.md"
+    - docker-compose.yml
+    - Makefile
+    - .env.example
+
 resources:
   apps:
     lakestream_cep_builder:
