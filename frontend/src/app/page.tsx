@@ -74,7 +74,7 @@ function formatLastSaved(iso: string | null): string {
 
 export default function Home() {
   const [paletteCollapsed, setPaletteCollapsed] = useState(false);
-  const [codePreviewCollapsed, setCodePreviewCollapsed] = useState(false);
+  const [codePreviewCollapsed, setCodePreviewCollapsed] = useState(true);
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [pipelineListOpen, setPipelineListOpen] = useState(false);
@@ -109,10 +109,18 @@ export default function Home() {
   const toasts = useToastStore((s) => s.toasts);
   const activeJobs = useJobStatusStore((s) => s.activeJobs);
   const { theme, toggleTheme, initTheme } = useThemeStore();
+  const generatedSdpCode = usePipelineStore((s) => s.generatedSdpCode);
+  const generatedSssCode = usePipelineStore((s) => s.generatedSssCode);
 
   useEffect(() => {
     initTheme();
   }, [initTheme]);
+
+  useEffect(() => {
+    if (generatedSdpCode || generatedSssCode) {
+      setCodePreviewCollapsed(false);
+    }
+  }, [generatedSdpCode, generatedSssCode]);
 
   function handleSaveClick() {
     setSaveDialogOpen(true);

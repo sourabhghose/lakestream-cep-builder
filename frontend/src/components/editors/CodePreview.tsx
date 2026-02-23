@@ -311,7 +311,7 @@ export default function CodePreview({
         </div>
       </div>
       {!collapsed && (
-        <div className="h-[300px] overflow-hidden" aria-label="Generated code editor">
+        <div className="h-[180px] overflow-hidden" aria-label="Generated code editor">
           {diffMode ? (
             diffLoading ? (
               <div className="flex h-full items-center justify-center text-slate-400">
@@ -324,7 +324,7 @@ export default function CodePreview({
               </div>
             ) : (
               <DiffEditor
-                height="300px"
+                height="180px"
                 original={lastDeployedCode ?? ""}
                 modified={displayCode}
                 language={language}
@@ -339,7 +339,7 @@ export default function CodePreview({
             )
           ) : (
             <Editor
-              height="300px"
+              height="180px"
               defaultLanguage={language}
               value={displayCode}
               theme="vs-dark"
