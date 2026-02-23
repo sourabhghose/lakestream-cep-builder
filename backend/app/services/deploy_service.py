@@ -33,7 +33,7 @@ class DeployService:
     """
 
     def __init__(self, config: DatabricksConfig | None = None) -> None:
-        self._config = config or DatabricksConfig()
+        self._config = config or DatabricksConfig.from_env()
 
     def _get_client(self) -> WorkspaceClient:
         """Create WorkspaceClient; raises if credentials are missing."""
