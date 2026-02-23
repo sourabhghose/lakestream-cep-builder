@@ -1,161 +1,151 @@
 # LakeStream CEP Builder
 
-**Visual Complex Event Processing for Databricks**
+**Visual Complex Event Processing Pipeline Builder for Databricks**
 
 [![CI](https://github.com/sourabhghose/lakestream-cep-builder/actions/workflows/ci.yml/badge.svg)](https://github.com/sourabhghose/lakestream-cep-builder/actions/workflows/ci.yml)
 [![Deploy](https://github.com/sourabhghose/lakestream-cep-builder/actions/workflows/deploy.yml/badge.svg)](https://github.com/sourabhghose/lakestream-cep-builder/actions/workflows/deploy.yml)
-[![Build](https://img.shields.io/badge/build-passing-brightgreen)]()
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)]()
-[![Databricks](https://img.shields.io/badge/Databricks-Lakeflow-orange)]()
+[![Databricks](https://img.shields.io/badge/Databricks_App-Lakeflow-FF3621)]()
+[![Lakebase](https://img.shields.io/badge/Database-Lakebase_PostgreSQL-336791)]()
+[![Python 3.13](https://img.shields.io/badge/python-3.13-blue)]()
+[![Next.js 14](https://img.shields.io/badge/Next.js-14-black)]()
 
 ---
 
-## Overview
+## What Is This?
 
-LakeStream CEP Builder is a visual pipeline builder for designing Complex Event Processing (CEP) workflows on Databricks. It provides a drag-and-drop canvas where you compose streaming pipelines from 38 node types—sources, CEP patterns, transforms, and sinks—and generates production-ready code for either **Lakeflow Declarative Pipelines (SDP)** or **Spark Structured Streaming** with one-click deploy to Databricks Lakeflow Jobs.
+LakeStream CEP Builder is a **Databricks App** that lets you design Complex Event Processing pipelines visually using drag-and-drop, then deploy them to Databricks with one click. You compose streaming pipelines from **38 node types** — sources, CEP patterns, transforms, and sinks — and the backend generates production-ready code for **Lakeflow Declarative Pipelines (SDP)** or **Spark Structured Streaming + TransformWithState**.
 
-The tool bridges the gap between visual design and code: you design pipelines graphically, configure nodes via forms, and the backend generates Databricks notebooks and SQL that run natively on Lakeflow. CEP patterns are inspired by Flink CEP, Esper, and Siddhi, and leverage Spark 4.0's TransformWithState for stateful pattern matching when targeting SSS.
+No other tool on Databricks provides visual CEP capabilities. Lakeflow Designer is batch-first with no pattern matching. This tool fills that gap.
 
 ---
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    subgraph Frontend["React Frontend"]
-        RF[React Flow Canvas]
-        ME[Monaco Editor]
-        PT[Pattern Timeline]
-    end
+Deployed as a **Databricks App** — a single FastAPI process serves the React frontend and REST API. All state is stored in **Lakebase** (Databricks' serverless PostgreSQL).
 
-    subgraph Backend["FastAPI Backend"]
-        API[REST API]
-        CGR[Code Gen Router]
-    end
-
-    subgraph Generators["Code Generators"]
-        SDP[SDP Generator]
-        SSS[SSS Generator]
-    end
-
-    subgraph Runtime["Databricks Runtime"]
-        LF[Lakeflow Jobs]
-    end
-
-    RF --> API
-    ME --> API
-    API --> CGR
-    CGR --> SDP
-    CGR --> SSS
-    SDP --> LF
-    SSS --> LF
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        Databricks App                               │
+│                                                                     │
+│  ┌──────────────────────┐    ┌────────────────────────────────────┐ │
+│  │   React Frontend     │    │       FastAPI Backend              │ │
+│  │                      │    │                                    │ │
+│  │  React Flow Canvas   │───▶│  /api/pipelines     (CRUD)        │ │
+│  │  38-Node Palette     │    │  /api/codegen       (SDP + SSS)   │ │
+│  │  Monaco Editor       │    │  /api/deploy        (SDK)         │ │
+│  │  Schema Browser      │    │  /api/schema        (UC discovery)│ │
+│  │  Pattern Timeline    │    │  /api/preview       (sample data) │ │
+│  │  Template Gallery    │    │  /api/codeparse     (code→canvas) │ │
+│  └──────────────────────┘    └──────────┬─────────────────────────┘ │
+│        Static files at /                │                           │
+│        API at /api/*                    │                           │
+└─────────────────────────────────────────┼───────────────────────────┘
+                                          │
+                    ┌─────────────────────┼─────────────────────┐
+                    │                     │                     │
+            ┌───────▼───────┐   ┌────────▼────────┐   ┌───────▼───────┐
+            │   Lakebase    │   │  Lakeflow Jobs  │   │ Unity Catalog │
+            │  PostgreSQL   │   │  DLT Pipelines  │   │    Schemas    │
+            │               │   │  SSS Jobs       │   │    Tables     │
+            │  pipelines    │   └─────────────────┘   └───────────────┘
+            │  deploy_hist  │
+            │  user_prefs   │
+            │  templates    │
+            └───────────────┘
 ```
 
 ---
 
 ## Key Features
 
-- **38 drag-and-drop node types**: 8 sources, 12 CEP patterns, 10 transforms, 8 sinks
-- **Dual code generation**: Lakeflow Declarative Pipelines (SDP) + Spark Structured Streaming
-- **12 CEP pattern nodes** inspired by Flink CEP, Esper, and Siddhi
-- **TransformWithState** (Spark 4.0) for stateful pattern matching
-- **Monaco code editor** with bidirectional sync
-- **Pattern timeline visualization**
-- **10 pre-built use case templates**
-- **One-click deploy** to Databricks Lakeflow Jobs
-- **Unity Catalog integration** for pipeline metadata
-
----
-
-## Node Library
-
-| Category | Node | Code Target |
-|----------|------|-------------|
-| **Sources (8)** | Kafka Topic | sdp-or-sss |
-| | Delta Table Source | sdp-or-sss |
-| | Auto Loader | sdp-or-sss |
-| | REST/Webhook Source | sdp-or-sss |
-| | CDC Stream | sdp-or-sss |
-| | Event Hub / Kinesis | sdp-or-sss |
-| | MQTT | sdp-or-sss |
-| | Custom Python Source | sss |
-| **CEP Patterns (12)** | Sequence Detector | sdp-or-sss |
-| | Absence Detector | sdp-or-sss |
-| | Count Threshold | sdp-or-sss |
-| | Velocity Detector | sdp-or-sss |
-| | Geofence / Location | sdp-or-sss |
-| | Temporal Correlation | sdp-or-sss |
-| | Trend Detector | sdp-or-sss |
-| | Outlier / Anomaly | sdp-or-sss |
-| | Session Detector | sdp-or-sss |
-| | Deduplication | sdp-or-sss |
-| | MATCH_RECOGNIZE SQL | sdp |
-| | Custom StatefulProcessor | sss |
-| **Transforms (10)** | Filter | sdp-or-sss |
-| | Map / Select | sdp-or-sss |
-| | Flatten / Explode | sdp-or-sss |
-| | Lookup Enrichment | sdp-or-sss |
-| | Window Aggregate | sdp-or-sss |
-| | Stream-Stream Join | sdp-or-sss |
-| | Stream-Static Join | sdp-or-sss |
-| | Union / Merge | sdp-or-sss |
-| | Rename / Cast | sdp-or-sss |
-| | Custom Python UDF | sss |
-| **Sinks (8)** | Delta Table Sink | sdp-or-sss |
-| | Kafka Topic Sink | sdp-or-sss |
-| | REST/Webhook Sink | sdp-or-sss |
-| | Slack / Teams / PagerDuty | sdp-or-sss |
-| | Email Sink | sdp-or-sss |
-| | SQL Warehouse Sink | sdp-or-sss |
-| | Unity Catalog Table Sink | sdp-or-sss |
-| | Dead Letter Queue | sdp-or-sss |
+| Feature | Description |
+|---------|-------------|
+| **38 Node Types** | 8 sources, 12 CEP patterns, 10 transforms, 8 sinks |
+| **Dual Code Generation** | Lakeflow Declarative Pipelines (SDP) + Spark Structured Streaming |
+| **12 CEP Patterns** | Sequence, absence, count, velocity, geofence, correlation, trend, outlier, session, dedup, MATCH_RECOGNIZE, custom |
+| **TransformWithState** | Spark 4.0 stateful processing for advanced CEP patterns |
+| **Monaco Editor** | Bidirectional sync — edit code to update canvas, or vice versa |
+| **Schema Discovery** | Browse Unity Catalog catalogs/schemas/tables with cascading dropdowns |
+| **Data Preview** | Synthetic sample data at each node for pipeline validation |
+| **Pattern Timeline** | SVG visualization of event sequences in design and test modes |
+| **10 Templates** | Pre-built pipelines: fraud detection, IoT monitoring, e-commerce funnel, etc. |
+| **One-Click Deploy** | Create Databricks notebooks + DLT pipelines or Jobs via SDK |
+| **Pipeline Management** | Save, load, version, delete pipelines with deploy history audit trail |
+| **Lakebase Storage** | All state persisted in Databricks' serverless PostgreSQL |
+| **Undo/Redo** | 50-entry history stack with keyboard shortcuts |
+| **Auto Layout** | Topological sort layout algorithm for clean pipeline visualization |
+| **Help System** | Node tooltips, keyboard shortcuts, quick start guide |
 
 ---
 
 ## Tech Stack
 
-| Layer | Technologies |
-|-------|--------------|
-| **Frontend** | Next.js 14, React Flow v12, Monaco Editor, Zustand, shadcn/ui, Tailwind CSS |
-| **Backend** | FastAPI, Jinja2, Databricks SDK, Pydantic v2 |
+| Layer | Technology |
+|-------|------------|
+| **Frontend** | Next.js 14 (static export), React Flow v12, Monaco Editor, Zustand, Tailwind CSS, Radix UI |
+| **Backend** | FastAPI, Jinja2 (51 templates), Databricks SDK, Pydantic v2, psycopg3 |
+| **Database** | Lakebase PostgreSQL (Databricks App resource) — falls back to local files for dev |
 | **Runtime** | Lakeflow Declarative Pipelines (SDP), Spark Structured Streaming + TransformWithState |
+| **CI/CD** | GitHub Actions (backend tests, frontend build, linting, deploy) |
+| **Tests** | pytest (37 backend tests), pytest-asyncio |
 
 ---
 
 ## Quick Start
 
-### Prerequisites
+### Option 1: Deploy as Databricks App (Production)
 
-- **Node.js** 20+
-- **Python** 3.10+
-- **Databricks workspace** with Lakeflow enabled
+1. **Create a Databricks App** in your workspace
+2. **Add a Lakebase database** as an App resource (permission: "Can connect and create")
+3. **Deploy the code**:
+   ```bash
+   make build-app
+   databricks apps deploy
+   ```
+4. The app will be available at your Databricks App URL
 
-### Frontend Setup
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Frontend runs at http://localhost:3000
-
-### Backend Setup
+### Option 2: Local Development
 
 ```bash
-cd backend
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+# Clone the repository
+git clone https://github.com/sourabhghose/lakestream-cep-builder.git
+cd lakestream-cep-builder
+
+# Install dependencies
+make install
+
+# Start both frontend (port 3000) and backend (port 8000)
+make dev
 ```
 
-Backend runs at http://localhost:8000
+Or run the unified build (FastAPI serves everything on port 8000):
+
+```bash
+make build-app
+cd backend && uvicorn app.main:app --port 8000
+# Open http://localhost:8000
+```
 
 ### Environment Variables
 
-Copy `.env.example` to `.env` and configure:
+Copy `.env.example` to `.env`:
 
 ```bash
-cp .env.example .env
+# Lakebase PostgreSQL (auto-injected by Databricks Apps)
+PGHOST=                          # PostgreSQL host
+PGUSER=                          # Service principal client ID
+PGDATABASE=databricks_postgres   # Database name
+PGPORT=5432
+PGSSLMODE=require
+
+# Databricks (auto-injected by Databricks Apps)
+DATABRICKS_HOST=                 # Workspace URL
+DATABRICKS_TOKEN=                # PAT or OAuth token
+
+# Local development only
+ENVIRONMENT=development
+NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
 ---
@@ -164,90 +154,121 @@ cp .env.example .env
 
 ```
 lakestream-cep-builder/
-├── frontend/                 # Next.js React app
+├── frontend/                    # Next.js 14 React app (static export)
 │   ├── src/
-│   │   ├── components/       # Canvas, nodes, panels, editors
-│   │   ├── lib/              # nodeRegistry, stores
-│   │   └── types/           # Node types, pipeline models
+│   │   ├── app/                # Main page
+│   │   ├── components/         # Canvas, nodes, panels, editors, schema browser
+│   │   │   ├── canvas/         # PipelineCanvas, CustomNode, CustomEdge, NodePalette
+│   │   │   ├── editors/        # CodePreview (Monaco)
+│   │   │   ├── panels/         # ConfigPanel, HelpPanel, PipelineListPanel
+│   │   │   ├── preview/        # DataPreview
+│   │   │   ├── schema/         # SchemaBrowser
+│   │   │   ├── timeline/       # PatternTimeline
+│   │   │   ├── templates/      # TemplateGallery
+│   │   │   ├── dialogs/        # SaveDialog
+│   │   │   └── ui/             # Toast
+│   │   ├── hooks/              # usePipelineStore, useToastStore, useKeyboardShortcuts
+│   │   ├── lib/                # api, nodeRegistry, edgeValidator, autoLayout, iconRegistry
+│   │   └── types/              # nodes.ts, pipeline.ts
 │   └── package.json
-├── backend/                  # FastAPI app
+├── backend/                     # FastAPI backend
 │   ├── app/
-│   │   ├── api/             # REST routes (pipelines, codegen, deploy)
-│   │   ├── codegen/         # SDP and SSS generators
-│   │   ├── models/          # Pydantic models
-│   │   └── main.py
-│   ├── templates/           # Jinja2 templates (sdp/, sss/)
+│   │   ├── api/                # pipelines, codegen, codeparse, deploy, schema_discovery, preview
+│   │   ├── codegen/            # SDP generator, SSS generator, router, graph_utils
+│   │   ├── models/             # Pydantic models
+│   │   ├── services/           # deploy_service, pipeline_store, deploy_history
+│   │   ├── config.py           # DatabricksConfig
+│   │   ├── db.py               # Lakebase PostgreSQL connection pool
+│   │   ├── db_schema.sql       # Database DDL
+│   │   └── main.py             # FastAPI app + static file serving
+│   ├── templates/              # Jinja2 code gen templates
+│   │   ├── sdp/                # 22 SDP SQL templates
+│   │   └── sss/                # 29 SSS PySpark templates
+│   ├── tests/                  # 37 pytest tests
 │   └── requirements.txt
-├── docs/
-│   └── ARCHITECTURE.md
-├── databricks.yml           # Databricks Asset Bundle config
-├── app.yml                  # Databricks App config
-├── docker-compose.yml
+├── .github/workflows/           # CI + Deploy workflows
+├── docs/ARCHITECTURE.md
+├── app.yaml                     # Databricks App config
+├── databricks.yml               # Asset Bundle config
 ├── Makefile
 └── README.md
 ```
 
 ---
 
-## Development
+## Development Commands
 
 | Command | Description |
 |---------|-------------|
-| `make install` | Install frontend and backend dependencies |
-| `make dev-frontend` | Run Next.js dev server |
-| `make dev-backend` | Run FastAPI with reload |
-| `make dev` | Run both frontend and backend |
-| `make lint` | Run linting |
-| `make test` | Run tests |
-| `make build` | Build frontend for production |
+| `make install` | Install frontend + backend dependencies |
+| `make dev` | Run frontend (port 3000) + backend (port 8000) for local dev |
+| `make dev-backend` | Run FastAPI backend only with hot reload |
+| `make dev-frontend` | Run Next.js dev server only |
+| `make build-frontend` | Build static frontend to `frontend/out/` |
+| `make build-app` | Build frontend + prepare for Databricks App deployment |
+| `make test` | Run all backend tests |
+| `make lint` | Run linting (frontend + backend) |
+| `make deploy` | Deploy to Databricks Apps |
 | `make clean` | Remove build artifacts |
 
 ---
 
-## CEP Patterns
+## CEP Pattern Reference
 
-| Pattern | Description |
-|---------|-------------|
-| **Sequence Detector** | Detect ordered sequences of events (A to B to C) with contiguity modes |
-| **Absence Detector** | Detect when expected events are missing within a time window |
-| **Count Threshold** | Trigger when event count exceeds threshold in a window |
-| **Velocity Detector** | Detect rate anomalies (events per second/minute/hour) |
-| **Geofence / Location** | Spatial event detection (enter/exit/dwell) for lat/lon |
-| **Temporal Correlation** | Correlate events from two streams by time and key |
-| **Trend Detector** | Detect upward/downward trends in numeric values |
-| **Outlier / Anomaly** | Statistical anomaly detection (Z-score, IQR, MAD) |
-| **Session Detector** | Group events into sessions by gap duration |
-| **Deduplication** | Remove duplicate events by key with watermark |
-| **MATCH_RECOGNIZE SQL** | SQL-based pattern matching (partition, order, measures, pattern) |
-| **Custom StatefulProcessor** | Custom stateful processing in Python (TransformWithState) |
+| Pattern | Description | Implementation |
+|---------|-------------|----------------|
+| **Sequence Detector** | Ordered events (A → B → C) with contiguity modes | TransformWithState |
+| **Absence Detector** | Expected event missing within time window | TransformWithState + timers |
+| **Count Threshold** | Event count exceeds N in a window | Windowed aggregation |
+| **Velocity Detector** | Rate anomalies (events/sec) | Sliding window + threshold |
+| **Geofence / Location** | Spatial events (enter/exit/dwell) | TransformWithState + geometry |
+| **Temporal Correlation** | Events from two streams within time window | TransformWithState |
+| **Trend Detector** | Monotonic increase/decrease detection | TransformWithState |
+| **Outlier / Anomaly** | Statistical deviation (Z-score, IQR, MAD) | TransformWithState + stats |
+| **Session Detector** | Group events by inactivity gap | Session windows |
+| **Deduplication** | Exactly-once by key within watermark | dropDuplicatesWithinWatermark |
+| **MATCH_RECOGNIZE SQL** | SQL pattern matching (ISO standard) | Native Spark SQL |
+| **Custom StatefulProcessor** | User-written TransformWithState Python | Direct code |
 
 ---
 
-## Templates
+## Database Schema (Lakebase)
 
-| Template | Use Case |
-|----------|----------|
-| Fraud Detection | Login velocity, sequence anomalies, threshold alerts |
-| IoT Sensor Monitoring | Geofence, outlier detection, session grouping |
-| E-commerce Funnel | Sequence (view to add to checkout), session analysis |
-| Network Security | Velocity, absence (heartbeat), temporal correlation |
-| Supply Chain Tracking | CDC plus geofence, temporal correlation, deduplication |
-| Real-time Analytics | Window aggregates, stream-stream join, Delta sink |
-| Alerting Pipeline | Count threshold, velocity, Slack/Teams/Email sink |
-| Data Quality | Deduplication, outlier, dead letter queue |
-| Multi-stream Correlation | Temporal correlation, stream-stream join |
-| Custom CEP | MATCH_RECOGNIZE, Custom StatefulProcessor |
+| Table | Purpose |
+|-------|---------|
+| `pipelines` | Pipeline definitions — canvas JSON, generated code, version, status |
+| `deploy_history` | Deployment audit trail — job IDs, status, timestamps, errors |
+| `user_preferences` | Per-user settings — default catalog/schema, canvas preferences |
+| `saved_templates` | Built-in (10) + user-created pipeline templates |
+
+---
+
+## API Reference
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/pipelines` | GET, POST | List/create pipelines |
+| `/api/pipelines/{id}` | GET, PUT, DELETE | Get/update/delete pipeline |
+| `/api/codegen/generate` | POST | Generate SDP/SSS code from pipeline |
+| `/api/codeparse/parse` | POST | Parse SDP SQL back to canvas nodes |
+| `/api/deploy` | POST | Deploy pipeline to Databricks |
+| `/api/deploy/validate` | GET | Check Databricks connection status |
+| `/api/deploy/catalogs` | GET | List Unity Catalog catalogs |
+| `/api/deploy/history/{id}` | GET | Get deploy history for pipeline |
+| `/api/schema/catalogs` | GET | Browse catalogs |
+| `/api/schema/.../tables` | GET | Browse tables in a schema |
+| `/api/schema/.../columns` | GET | Get column definitions |
+| `/api/preview/sample` | POST | Get synthetic data preview for a node |
+| `/health` | GET | Health check |
 
 ---
 
 ## License
 
-MIT License. See LICENSE file.
+MIT License. See [LICENSE](LICENSE).
 
 ---
 
 ## Contributing
 
-Contributions are welcome. Please open an issue or submit a pull request. Ensure tests pass and linting is clean before submitting.
-
-> **Note:** Replace `OWNER/REPO` in the CI and Deploy badge URLs above with your GitHub org/repo (e.g. `myorg/lakestream-cep-builder`).
+Contributions welcome. Please open an issue or submit a pull request. Ensure `make test` and `make lint` pass before submitting.
