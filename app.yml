@@ -6,9 +6,8 @@ name: lakestream-cep-builder
 description: Visual Complex Event Processing Pipeline Builder for Databricks. Design streaming pipelines with 38 node types, generate Lakeflow SDP or Spark Structured Streaming code, and deploy to Lakeflow Jobs.
 
 command:
-  - sh
-  - -c
-  - "cd backend && python startup.py"
+  - python3
+  - backend/startup.py
 
 env:
   - name: ENVIRONMENT
