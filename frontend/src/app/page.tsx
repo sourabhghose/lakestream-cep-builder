@@ -16,7 +16,6 @@ import {
   Loader2,
   Rocket,
   HelpCircle,
-  Boxes,
   History,
   ShieldCheck,
   Sun,
@@ -184,7 +183,6 @@ export default function Home() {
     onDeploy: handleDeployClick,
   });
 
-  const isEmpty = nodes.length === 0;
   const selectedCount = nodes.filter(
     (n) => (n as { selected?: boolean }).selected
   ).length;
@@ -451,19 +449,6 @@ export default function Home() {
         <main id="main-canvas" className="relative flex-1 min-w-0" tabIndex={-1}>
           <ErrorBoundary>
             <PipelineCanvas />
-          {isEmpty && (
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <div className="rounded-xl border border-dashed border-gray-300 bg-white/80 px-8 py-6 text-center backdrop-blur dark:border-slate-600 dark:bg-slate-900/80">
-                <Boxes className="mx-auto mb-3 h-12 w-12 text-gray-500 dark:text-slate-500" />
-                <p className="text-sm font-medium text-gray-700 dark:text-slate-300">
-                  Drag nodes from the palette to start building your pipeline
-                </p>
-                <p className="mt-1 text-xs text-gray-500 dark:text-slate-500">
-                  Add sources, transforms, CEP patterns, and sinks
-                </p>
-              </div>
-            </div>
-          )}
           </ErrorBoundary>
         </main>
 

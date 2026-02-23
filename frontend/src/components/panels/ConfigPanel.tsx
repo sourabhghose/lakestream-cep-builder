@@ -46,23 +46,7 @@ export default function ConfigPanel({ isOpen, className }: ConfigPanelProps) {
   const definition = nodeType ? NODE_REGISTRY[nodeType] : undefined;
 
   if (!isOpen || !selectedNode) {
-    return (
-      <div
-        className={cn(
-          "flex w-12 flex-col border-l border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900/95",
-          className
-        )}
-      >
-        <div className="flex h-12 items-center justify-center border-b border-slate-700 text-slate-500">
-          <Settings2 className="h-5 w-5" />
-        </div>
-        <div className="flex flex-1 items-center justify-center p-2">
-          <p className="text-center text-xs text-slate-500">
-            Select a node to configure
-          </p>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   if (!definition) {
