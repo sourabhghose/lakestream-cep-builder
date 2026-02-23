@@ -190,8 +190,7 @@ export default function CodePreview({
   return (
     <div
       className={cn(
-        "flex flex-col border-t border-slate-700 bg-slate-900/95",
-        collapsed && "max-h-12",
+        "flex shrink-0 flex-col border-t border-slate-700 bg-slate-900/95",
         className
       )}
     >
@@ -312,7 +311,7 @@ export default function CodePreview({
         </div>
       </div>
       {!collapsed && (
-        <div className="h-[300px] min-h-[300px] flex-1 overflow-hidden" aria-label="Generated code editor">
+        <div className="h-[300px] overflow-hidden" aria-label="Generated code editor">
           {diffMode ? (
             diffLoading ? (
               <div className="flex h-full items-center justify-center text-slate-400">
