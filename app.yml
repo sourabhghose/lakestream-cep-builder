@@ -8,7 +8,7 @@ description: Visual Complex Event Processing Pipeline Builder for Databricks. De
 command:
   - sh
   - -c
-  - "cd backend && python3 startup.py 2>&1"
+  - ". .venv/bin/activate && cd backend && python3 startup.py 2>&1"
 
 env:
   - name: ENVIRONMENT
