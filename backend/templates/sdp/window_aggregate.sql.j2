@@ -1,0 +1,8 @@
+-- Window aggregate: {{ node_id }}
+CREATE OR REFRESH STREAMING TABLE {{ node_id }}
+AS SELECT
+  window.start as window_start,
+  window.end as window_end,
+  {{ aggregation }}
+FROM {{ source_table }}
+GROUP BY window({{ watermark_column }}, "{{ window_duration }}", "{{ slide_duration }}");

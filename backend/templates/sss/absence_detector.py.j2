@@ -1,0 +1,26 @@
+# Absence Detector: {{ node_id }}
+# Expected event: {{ expected_event }}
+# Absence timeout: {{ absence_timeout_seconds }} seconds
+# Uses TransformWithState for absence detection
+
+from pyspark.sql.streaming import TransformWithState
+
+def absence_detector_state_func(key, batch_iter, state):
+    """Stateful function for absence/expectation violation detection."""
+    # TODO: Implement full absence logic - expected: {{ expected_event }}
+    # absence_timeout_seconds: {{ absence_timeout_seconds }}
+    for batch in batch_iter:
+        for row in batch:
+            yield row
+
+df_{{ node_id | replace("-", "_") }} = (
+    {{ upstream_var }}
+    .groupBy(F.col("{{ key_column }}"))
+    .applyInPandasWithState(
+        absence_detector_state_func,
+        outputSchema="...",  # Define output schema
+        stateSchema="...",  # Define state schema
+        outputMode="append",
+        timeoutConf="{{ absence_timeout_seconds }} seconds"
+    )
+)

@@ -1,0 +1,4 @@
+-- Filter: {{ node_id }}
+CREATE OR REFRESH STREAMING TABLE {{ node_id }}
+AS SELECT * FROM {{ source_table }}
+WHERE {{ condition }};

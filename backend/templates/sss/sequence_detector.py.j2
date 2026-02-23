@@ -1,0 +1,25 @@
+# Sequence Detector: {{ node_id }}
+# Pattern: {{ pattern }}
+# Uses TransformWithState for CEP sequence matching
+
+from pyspark.sql.streaming import TransformWithState
+
+def sequence_detector_state_func(key, batch_iter, state):
+    """Stateful function for sequence pattern matching."""
+    # TODO: Implement full sequence logic - pattern: {{ pattern }}
+    # timeout_seconds: {{ timeout_seconds }}
+    for batch in batch_iter:
+        for row in batch:
+            yield row
+
+df_{{ node_id | replace("-", "_") }} = (
+    {{ upstream_var }}
+    .groupBy(F.col("{{ key_column }}"))
+    .applyInPandasWithState(
+        sequence_detector_state_func,
+        outputSchema="...",  # Define output schema
+        stateSchema="...",  # Define state schema
+        outputMode="append",
+        timeoutConf="{{ timeout_seconds }} seconds"
+    )
+)

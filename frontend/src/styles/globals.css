@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --node-source: #3b82f6;
+  --node-pattern: #8b5cf6;
+  --node-cep-pattern: #8b5cf6;
+  --node-transform: #22c55e;
+  --node-sink: #f97316;
+  --background: #ffffff;
+  --foreground: #0f172a;
+}
+
+.dark {
+  --node-source: #60a5fa;
+  --node-pattern: #a78bfa;
+  --node-cep-pattern: #a78bfa;
+  --node-transform: #4ade80;
+  --node-sink: #fb923c;
+  --background: #0f172a;
+  --foreground: #f8fafc;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+}
+
+/* React Flow overrides */
+.react-flow__background {
+  background-color: var(--background) !important;
+}
+
+.react-flow__minimap {
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.react-flow__controls {
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+}
+
+@keyframes edgeFlow {
+  0% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: -20;
+  }
+}

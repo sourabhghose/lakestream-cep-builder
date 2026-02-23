@@ -1,0 +1,20 @@
+# Databricks App configuration for LakeStream CEP Builder
+# Defines how the app is started when deployed to Databricks
+# See: https://docs.databricks.com/en/dev-tools/databricks-apps/
+
+name: lakestream-cep-builder
+description: Visual Complex Event Processing Pipeline Builder for Databricks. Design streaming pipelines with 38 node types, generate Lakeflow SDP or Spark Structured Streaming code, and deploy to Lakeflow Jobs.
+
+# Backend: FastAPI (run from backend/ directory)
+# For full-stack: build frontend and serve static from backend
+command:
+  - sh
+  - -c
+  - "cd backend && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+# Permissions required by the app
+# - CAN_USE: Run the app
+# - CAN_MANAGE: Deploy, update, delete
+permissions:
+  - level: CAN_USE
+    group_name: users
