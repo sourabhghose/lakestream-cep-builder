@@ -1,0 +1,3 @@
+-- SQL warehouse sink: {{ node_id }} (target: {{ warehouse_id }})
+CREATE OR REFRESH STREAMING TABLE {{ catalog }}.{{ schema }}.{{ table_name }}
+AS SELECT * FROM {{ source_table }};

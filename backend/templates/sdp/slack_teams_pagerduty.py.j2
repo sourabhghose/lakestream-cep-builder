@@ -1,0 +1,14 @@
+# Slack/Teams/PagerDuty webhook sink: {{ node_id }} (foreachBatch)
+import requests
+
+@dp.foreach_batch_sink(name="{{ node_id }}")
+def {{ flow_func_name }}(df, batch_id):
+    """POST each row to webhook URL (Slack/Teams/PagerDuty format)."""
+    for row in df.collect():
+        payload = {"text": str(row.asDict())}
+        requests.post("{{ webhook_url }}", json=payload, headers={"Content-Type": "application/json"})
+    return
+
+@dp.append_flow(name="{{ node_id }}_flow", target="{{ node_id }}")
+def {{ flow_func_name }}_flow():
+    return spark.readStream.table("{{ source_table }}")

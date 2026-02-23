@@ -1,0 +1,6 @@
+-- Dead-letter queue: {{ node_id }}
+CREATE OR REFRESH STREAMING TABLE {{ node_id }}
+(
+  CONSTRAINT {{ constraint_name }} EXPECT ({{ expect_condition }}) ON VIOLATION DROP ROW
+)
+AS SELECT * FROM {{ source_table }};

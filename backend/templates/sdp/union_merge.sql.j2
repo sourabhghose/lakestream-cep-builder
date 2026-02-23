@@ -1,0 +1,5 @@
+-- Union-merge: {{ node_id }}
+CREATE OR REFRESH MATERIALIZED VIEW {{ node_id }}
+AS SELECT * FROM {{ stream_a }}
+UNION ALL
+SELECT * FROM {{ stream_b }};

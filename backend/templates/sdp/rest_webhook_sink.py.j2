@@ -1,0 +1,14 @@
+# Rest webhook sink: {{ node_id }} (foreachBatch + requests.post)
+import requests
+
+@dp.foreach_batch_sink(name="{{ node_id }}")
+def {{ flow_func_name }}(df, batch_id):
+    """POST each row to webhook URL as JSON."""
+    for row in df.collect():
+        payload = row.asDict()
+        requests.post("{{ webhook_url }}", json=payload, headers={{ headers }})
+    return
+
+@dp.append_flow(name="{{ node_id }}_flow", target="{{ node_id }}")
+def {{ flow_func_name }}_flow():
+    return spark.readStream.table("{{ source_table }}")

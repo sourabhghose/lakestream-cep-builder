@@ -1,0 +1,4 @@
+-- Flatten-explode: {{ node_id }}
+CREATE OR REFRESH MATERIALIZED VIEW {{ node_id }}
+AS SELECT *, EXPLODE({{ array_column }}) AS {{ alias }}
+FROM {{ source_table }};

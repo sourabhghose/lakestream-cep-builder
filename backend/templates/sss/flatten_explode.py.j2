@@ -1,0 +1,6 @@
+# Flatten Explode: {{ node_id }}
+
+df_{{ node_id | replace("-", "_") }} = (
+    {{ upstream_var }}
+    .select("*", F.explode(F.col("{{ array_column }}")).alias("{{ alias }}"))
+)

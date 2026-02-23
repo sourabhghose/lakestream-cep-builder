@@ -1,0 +1,74 @@
+# Velocity Detector: {{ node_id }}
+# Emit when rate exceeds {{ rate_threshold }} events per {{ rate_unit }}
+# Uses TransformWithState with ListState for sliding window event count
+
+from pyspark.sql.streaming import StatefulProcessor, StatefulProcessorHandle
+from pyspark.sql.types import StructType, StructField, LongType, DoubleType, StringType
+import pandas as pd
+
+class VelocityDetectorProcessor(StatefulProcessor):
+    def init(self, handle: StatefulProcessorHandle) -> None:
+        self.handle = handle
+        list_schema = StructType([StructField("event_time_ms", DoubleType(), True)])
+        self.event_timestamps = handle.getListState("event_timestamps", list_schema)
+
+    def handleInputRows(self, key, rows, timerValues):
+        current_time_ms = timerValues.getCurrentWatermarkMs()
+        if current_time_ms is None:
+            current_time_ms = timerValues.getCurrentProcessingTimeInMs()
+
+        window_ms = {{ window_ms }}
+        rate_threshold = {{ rate_threshold }}
+
+        # Collect new event timestamps
+        for pdf in rows:
+            if not pdf.empty and "{{ event_time_column }}" in pdf.columns:
+                for _, row in pdf.iterrows():
+                    ts = row["{{ event_time_column }}"]
+                    ts_ms = ts.timestamp() * 1000 if hasattr(ts, "timestamp") else float(ts)
+                    self.event_timestamps.append((ts_ms,))
+
+        # Evict events outside window
+        cutoff = current_time_ms - window_ms
+        all_events = list(self.event_timestamps.get())
+        kept = [(t,) for (t,) in all_events if t >= cutoff]
+        self.event_timestamps.clear()
+        for t in kept:
+            self.event_timestamps.append(t)
+
+        # Rate = count / (window in seconds)
+        window_sec = window_ms / 1000.0
+        rate = len(kept) / window_sec if window_sec > 0 else 0
+
+        if rate > rate_threshold:
+            yield pd.DataFrame({
+                "{{ key_column }}": [key],
+                "event_count": [len(kept)],
+                "rate_per_second": [rate],
+                "threshold": [rate_threshold],
+            })
+
+    def handleExpiredTimer(self, key, timerValues, expiredTimerInfo):
+        pass
+
+    def close(self) -> None:
+        pass
+
+output_schema = StructType([
+    StructField("{{ key_column }}", StringType(), True),
+    StructField("event_count", LongType(), True),
+    StructField("rate_per_second", DoubleType(), True),
+    StructField("threshold", DoubleType(), True),
+])
+
+df_{{ node_id | replace("-", "_") }} = (
+    {{ upstream_var }}
+    .withWatermark("{{ event_time_column }}", "{{ watermark_delay }}")
+    .groupBy(F.col("{{ key_column }}"))
+    .transformWithStateInPandas(
+        statefulProcessor=VelocityDetectorProcessor(),
+        outputStructType=output_schema,
+        outputMode="Append",
+        timeMode="EventTime",
+    )
+)

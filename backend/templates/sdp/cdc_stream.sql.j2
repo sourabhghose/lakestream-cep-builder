@@ -1,0 +1,21 @@
+-- CDC stream source: {{ node_id }} (Debezium + APPLY CHANGES)
+CREATE OR REFRESH STREAMING TABLE {{ node_id }}_raw
+AS SELECT * FROM stream(
+  TABLE(
+    kafka_read(
+      "{{ bootstrap_servers }}",
+      "{{ topic }}",
+      schema => "{{ schema }}",
+      options => map("cdc.format", "debezium")
+    )
+  )
+);
+
+CREATE OR REFRESH STREAMING TABLE {{ node_id }};
+
+APPLY CHANGES INTO {{ node_id }}
+FROM {{ node_id }}_raw
+KEYS ({{ keys }})
+SEQUENCE BY {{ sequence_by }}
+{% if apply_as_delete %}APPLY AS DELETE WHEN {{ apply_as_delete }}{% endif %}
+STORED AS SCD TYPE {{ scd_type }};

@@ -1,0 +1,9 @@
+# Deduplication: {{ node_id }}
+# Exactly-once by key within watermark window
+# Uses dropDuplicatesWithinWatermark
+
+df_{{ node_id | replace("-", "_") }} = (
+    {{ upstream_var }}
+    .withWatermark("{{ event_time_column }}", "{{ watermark_delay }}")
+    .dropDuplicatesWithinWatermark({{ key_columns }})
+)

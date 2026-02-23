@@ -1,0 +1,8 @@
+# Stream-Stream Join: {{ node_id }}
+
+_left = {{ left_var }}.withWatermark("{{ left_time_col }}", "{{ left_watermark }}")
+_right = {{ right_var }}.withWatermark("{{ right_time_col }}", "{{ right_watermark }}")
+
+df_{{ node_id | replace("-", "_") }} = _left.alias("left").join(
+    _right.alias("right"), F.expr("{{ join_condition }}"), "{{ join_type }}"
+)

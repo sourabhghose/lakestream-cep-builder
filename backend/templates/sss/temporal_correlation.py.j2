@@ -1,0 +1,97 @@
+# Temporal Correlation: {{ node_id }}
+# Correlate events from two streams within {{ window_duration }}
+# Uses stream-stream join with watermark (both streams must be provided as union or separate joins)
+
+from pyspark.sql.streaming import StatefulProcessor, StatefulProcessorHandle
+from pyspark.sql.types import StructType, StructField, DoubleType, StringType
+import pandas as pd
+
+# Note: For two distinct upstream streams, use stream-stream-join transform instead.
+# This template uses TransformWithState when both streams are merged upstream.
+# MapState: stream_a_events -> list of timestamps, stream_b_events -> list of timestamps
+
+class TemporalCorrelationProcessor(StatefulProcessor):
+    def init(self, handle: StatefulProcessorHandle) -> None:
+        self.handle = handle
+        list_schema = StructType([
+            StructField("event_time_ms", DoubleType(), True),
+            StructField("stream_id", StringType(), True),
+        ])
+        self.stream_a = handle.getListState("stream_a", list_schema)
+        self.stream_b = handle.getListState("stream_b", list_schema)
+
+    def handleInputRows(self, key, rows, timerValues):
+        window_ms = {{ window_ms }}
+        current_time_ms = timerValues.getCurrentWatermarkMs()
+        if current_time_ms is None:
+            current_time_ms = timerValues.getCurrentProcessingTimeInMs()
+        cutoff = current_time_ms - window_ms
+
+        stream_a_col = "{{ stream_a_column }}"
+        stream_b_col = "{{ stream_b_column }}"
+
+        for pdf in rows:
+            if pdf.empty:
+                continue
+            for _, row in pdf.iterrows():
+                ts = row["{{ event_time_column }}"]
+                ts_ms = ts.timestamp() * 1000 if hasattr(ts, "timestamp") else float(ts)
+                stream_id = str(row.get(stream_a_col, "")) or "a"
+                if stream_id == "b" or (stream_b_col and str(row.get(stream_b_col, "")) == "b"):
+                    self.stream_b.append((ts_ms, "b"))
+                else:
+                    self.stream_a.append((ts_ms, "a"))
+
+        # Evict old events
+        def evict(lst, cutoff):
+            return [(t, s) for t, s in lst if t >= cutoff]
+
+        a_events = evict(list(self.stream_a.get()), cutoff)
+        b_events = evict(list(self.stream_b.get()), cutoff)
+        self.stream_a.clear()
+        self.stream_b.clear()
+        for t, s in a_events:
+            self.stream_a.append((t, s))
+        for t, s in b_events:
+            self.stream_b.append((t, s))
+
+        # Find correlated pairs within window
+        results = []
+        for ta, _ in a_events:
+            for tb, _ in b_events:
+                if abs(ta - tb) <= window_ms:
+                    results.append({
+                        "{{ key_column }}": key,
+                        "stream_a_time_ms": ta,
+                        "stream_b_time_ms": tb,
+                        "time_diff_ms": abs(ta - tb),
+                    })
+                    break
+
+        if results:
+            yield pd.DataFrame(results)
+
+    def handleExpiredTimer(self, key, timerValues, expiredTimerInfo):
+        pass
+
+    def close(self) -> None:
+        pass
+
+output_schema = StructType([
+    StructField("{{ key_column }}", StringType(), True),
+    StructField("stream_a_time_ms", DoubleType(), True),
+    StructField("stream_b_time_ms", DoubleType(), True),
+    StructField("time_diff_ms", DoubleType(), True),
+])
+
+df_{{ node_id | replace("-", "_") }} = (
+    {{ upstream_var }}
+    .withWatermark("{{ event_time_column }}", "{{ watermark_delay }}")
+    .groupBy(F.col("{{ key_column }}"))
+    .transformWithStateInPandas(
+        statefulProcessor=TemporalCorrelationProcessor(),
+        outputStructType=output_schema,
+        outputMode="Append",
+        timeMode="EventTime",
+    )
+)

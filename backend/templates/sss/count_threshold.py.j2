@@ -1,0 +1,75 @@
+# Count Threshold: {{ node_id }}
+# Emit when count >= {{ threshold }} events within {{ window_duration }} per key
+# Uses TransformWithState with ListState for event timestamps
+
+from pyspark.sql.streaming import StatefulProcessor, StatefulProcessorHandle
+from pyspark.sql.types import StructType, StructField, LongType, DoubleType, StringType
+import pandas as pd
+
+class CountThresholdProcessor(StatefulProcessor):
+    def init(self, handle: StatefulProcessorHandle) -> None:
+        self.handle = handle
+        # ListState: list of (event_time_ms,) for events in window
+        list_schema = StructType([StructField("event_time_ms", DoubleType(), True)])
+        self.event_timestamps = handle.getListState("event_timestamps", list_schema)
+
+    def handleInputRows(self, key, rows, timerValues):
+        current_time_ms = timerValues.getCurrentWatermarkMs()
+        if current_time_ms is None:
+            current_time_ms = timerValues.getCurrentProcessingTimeInMs()
+
+        window_ms = {{ window_ms }}
+        threshold = {{ threshold }}
+
+        # Collect new event timestamps from input
+        new_timestamps = []
+        for pdf in rows:
+            if not pdf.empty and "{{ event_time_column }}" in pdf.columns:
+                for _, row in pdf.iterrows():
+                    ts = row["{{ event_time_column }}"]
+                    ts_ms = ts.timestamp() * 1000 if hasattr(ts, "timestamp") else float(ts)
+                    new_timestamps.append(ts_ms)
+
+        # Append to state
+        for ts in new_timestamps:
+            self.event_timestamps.append((ts,))
+
+        # Evict events outside window
+        cutoff = current_time_ms - window_ms
+        all_events = list(self.event_timestamps.get())
+        kept = [(t,) for (t,) in all_events if t >= cutoff]
+        self.event_timestamps.clear()
+        for t in kept:
+            self.event_timestamps.append(t)
+
+        # Emit if count >= threshold
+        if len(kept) >= threshold:
+            yield pd.DataFrame({
+                "{{ key_column }}": [key],
+                "count": [len(kept)],
+                "threshold": [threshold],
+            })
+
+    def handleExpiredTimer(self, key, timerValues, expiredTimerInfo):
+        pass
+
+    def close(self) -> None:
+        pass
+
+output_schema = StructType([
+    StructField("{{ key_column }}", StringType(), True),
+    StructField("count", LongType(), True),
+    StructField("threshold", LongType(), True),
+])
+
+df_{{ node_id | replace("-", "_") }} = (
+    {{ upstream_var }}
+    .withWatermark("{{ event_time_column }}", "{{ watermark_delay }}")
+    .groupBy(F.col("{{ key_column }}"))
+    .transformWithStateInPandas(
+        statefulProcessor=CountThresholdProcessor(),
+        outputStructType=output_schema,
+        outputMode="Append",
+        timeMode="EventTime",
+    )
+)

@@ -1,0 +1,5 @@
+-- Stream-static join: {{ node_id }}
+CREATE OR REFRESH MATERIALIZED VIEW {{ node_id }}
+AS SELECT {{ select_expression }}
+FROM {{ source_table }} a
+JOIN {{ static_table }} b ON a.{{ join_key }} = b.{{ static_key }};

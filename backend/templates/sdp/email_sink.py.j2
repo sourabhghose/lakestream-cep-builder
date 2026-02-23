@@ -1,0 +1,24 @@
+# Email sink: {{ node_id }} (foreachBatch + SMTP)
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+@dp.foreach_batch_sink(name="{{ node_id }}")
+def {{ flow_func_name }}(df, batch_id):
+    """Send each row as email via SMTP."""
+    for row in df.collect():
+        msg = MIMEMultipart()
+        msg["Subject"] = "{{ subject_prefix }} - Batch " + str(batch_id)
+        msg["From"] = "{{ from_email }}"
+        msg["To"] = "{{ to_email }}"
+        body = str(row.asDict())
+        msg.attach(MIMEText(body, "plain"))
+        with smtplib.SMTP("{{ smtp_host }}", {{ smtp_port }}) as server:
+            server.starttls()
+            server.login("{{ smtp_user }}", "{{ smtp_password }}")
+            server.send_message(msg)
+    return
+
+@dp.append_flow(name="{{ node_id }}_flow", target="{{ node_id }}")
+def {{ flow_func_name }}_flow():
+    return spark.readStream.table("{{ source_table }}")

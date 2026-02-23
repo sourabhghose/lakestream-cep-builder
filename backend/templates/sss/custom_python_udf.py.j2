@@ -1,0 +1,7 @@
+# Custom Python UDF: {{ node_id }}
+
+from pyspark.sql.types import {{ udf_return_type }}
+
+{{ udf_code }}
+
+df_{{ node_id | replace("-", "_") }} = {{ upstream_var }}.withColumn("{{ output_column }}", {{ udf_name }}({{ udf_input_cols }}))

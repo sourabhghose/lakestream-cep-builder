@@ -1,0 +1,5 @@
+-- Lookup-enrichment: {{ node_id }}
+CREATE OR REFRESH MATERIALIZED VIEW {{ node_id }}
+AS SELECT a.{{ prefix }}*, b.{{ lookup_columns }}
+FROM {{ source_table }} a
+JOIN {{ lookup_table }} b ON a.{{ join_key }} = b.{{ lookup_key }};

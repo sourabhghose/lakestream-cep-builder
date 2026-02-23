@@ -1,0 +1,16 @@
+# Session Detector: {{ node_id }}
+# Group events into sessions by inactivity gap of {{ gap_duration }}
+# Uses Spark native session_window - no TransformWithState needed
+
+from pyspark.sql.functions import session_window
+
+df_{{ node_id | replace("-", "_") }} = (
+    {{ upstream_var }}
+    .withWatermark("{{ event_time_column }}", "{{ watermark_delay }}")
+    .groupBy(
+        F.col("{{ key_column }}"),
+        session_window(F.col("{{ event_time_column }}"), "{{ gap_duration }}"),
+    )
+    .count()
+    .withColumnRenamed("count", "session_event_count")
+)

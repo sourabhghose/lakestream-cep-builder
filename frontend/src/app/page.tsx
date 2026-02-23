@@ -6,11 +6,13 @@ import PipelineCanvas from "@/components/canvas/PipelineCanvas";
 import NodePalette from "@/components/canvas/NodePalette";
 import ConfigPanel from "@/components/panels/ConfigPanel";
 import CodePreview from "@/components/editors/CodePreview";
+import TemplateGallery from "@/components/templates/TemplateGallery";
 import { usePipelineStore } from "@/hooks/usePipelineStore";
 
 export default function Home() {
   const [paletteCollapsed, setPaletteCollapsed] = useState(false);
   const [codePreviewCollapsed, setCodePreviewCollapsed] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
   const { pipelineName, selectedNodeId, isDirty } = usePipelineStore();
 
   return (
@@ -37,6 +39,13 @@ export default function Home() {
           )}
         </div>
         <div className="flex items-center gap-2">
+          <button
+            className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-slate-200"
+            onClick={() => setTemplatesOpen(true)}
+          >
+            <LucideIcons.LayoutTemplate className="h-4 w-4" />
+            Templates
+          </button>
           <button
             className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-slate-200"
             onClick={() => {}}
@@ -76,6 +85,15 @@ export default function Home() {
         collapsed={codePreviewCollapsed}
         onToggleCollapse={() => setCodePreviewCollapsed(!codePreviewCollapsed)}
       />
+
+      {/* Templates modal */}
+      {templatesOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="flex h-[80vh] max-h-[700px] w-full max-w-4xl">
+            <TemplateGallery onClose={() => setTemplatesOpen(false)} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

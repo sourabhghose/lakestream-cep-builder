@@ -1,0 +1,4 @@
+-- Rename-cast: {{ node_id }}
+CREATE OR REFRESH MATERIALIZED VIEW {{ node_id }}
+AS SELECT {{ expression }}
+FROM {{ source_table }};

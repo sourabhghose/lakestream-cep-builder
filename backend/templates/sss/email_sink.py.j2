@@ -1,0 +1,25 @@
+# Email Sink: {{ node_id }}
+
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+def send_email_batch(batch_df, batch_id):
+    msg = MIMEMultipart()
+    msg["Subject"] = "{{ subject }}"
+    msg["From"] = "{{ from_email }}"
+    msg["To"] = "{{ to_email }}"
+    body = batch_df.toPandas().to_string()
+    msg.attach(MIMEText(body, "plain"))
+    with smtplib.SMTP("{{ smtp_host }}", {{ smtp_port }}) as server:
+        server.starttls()
+        server.login("{{ smtp_user }}", "{{ smtp_password }}")
+        server.send_message(msg)
+
+(
+    {{ upstream_var }}
+    .writeStream
+    .foreachBatch(send_email_batch)
+    .option("checkpointLocation", "{{ checkpoint_location }}")
+    .start()
+)

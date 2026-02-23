@@ -1,0 +1,15 @@
+# Kafka topic sink: {{ node_id }} (DLT sink API)
+# Create Kafka sink target
+dp.create_sink(
+    name="{{ node_id }}",
+    format="kafka",
+    options={
+        "kafka.bootstrap.servers": "{{ bootstrap_servers }}",
+        "topic": "{{ topic }}"
+    }
+)
+
+# Append flow to write from upstream to Kafka
+@dp.append_flow(name="{{ node_id }}_flow", target="{{ node_id }}")
+def {{ node_id }}_flow():
+    return spark.readStream.table("{{ source_table }}").selectExpr("{{ select_expr }}")

@@ -1,0 +1,100 @@
+# Geofence Location: {{ node_id }}
+# Emit on enter/exit/dwell based on {{ center_lat }}, {{ center_lon }}, {{ radius_meters }}m
+# Uses TransformWithState with ValueState for last known position and zone status
+
+from pyspark.sql.streaming import StatefulProcessor, StatefulProcessorHandle
+from pyspark.sql.types import StructType, StructField, DoubleType, StringType, BooleanType
+import pandas as pd
+import math
+
+def haversine_meters(lat1, lon1, lat2, lon2):
+    R = 6371000  # Earth radius in meters
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlam = math.radians(lon2 - lon1)
+    a = math.sin(dphi/2)**2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlam/2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    return R * c
+
+class GeofenceLocationProcessor(StatefulProcessor):
+    def init(self, handle: StatefulProcessorHandle) -> None:
+        self.handle = handle
+        state_schema = StructType([
+            StructField("lat", DoubleType(), True),
+            StructField("lon", DoubleType(), True),
+            StructField("inside", BooleanType(), True),
+        ])
+        self.last_state = handle.getValueState("last_state", state_schema)
+
+    def handleInputRows(self, key, rows, timerValues):
+        center_lat = {{ center_lat }}
+        center_lon = {{ center_lon }}
+        radius = {{ radius_meters }}
+        mode = "{{ mode }}"  # enter, exit, dwell, enter_or_exit
+
+        was_inside = None
+        if self.last_state.exists():
+            s = self.last_state.get()
+            was_inside = s[2] if len(s) > 2 else False
+
+        results = []
+        for pdf in rows:
+            if pdf.empty or "{{ lat_column }}" not in pdf.columns or "{{ lon_column }}" not in pdf.columns:
+                continue
+            for _, row in pdf.iterrows():
+                lat = float(row["{{ lat_column }}"])
+                lon = float(row["{{ lon_column }}"])
+                dist = haversine_meters(center_lat, center_lon, lat, lon)
+                inside = dist <= radius
+
+                emit = False
+                if mode == "enter" and inside and was_inside is False:
+                    emit = True
+                elif mode == "exit" and not inside and was_inside is True:
+                    emit = True
+                elif mode == "enter_or_exit" and was_inside is not None and inside != was_inside:
+                    emit = True
+                elif mode == "dwell" and inside:
+                    emit = True
+
+                if emit:
+                    results.append({
+                        "{{ key_column }}": key,
+                        "event": "enter" if inside else "exit",
+                        "lat": lat,
+                        "lon": lon,
+                        "distance_m": dist,
+                        "inside": inside,
+                    })
+
+                was_inside = inside
+                self.last_state.update((lat, lon, inside))
+
+        if results:
+            yield pd.DataFrame(results)
+
+    def handleExpiredTimer(self, key, timerValues, expiredTimerInfo):
+        pass
+
+    def close(self) -> None:
+        pass
+
+output_schema = StructType([
+    StructField("{{ key_column }}", StringType(), True),
+    StructField("event", StringType(), True),
+    StructField("lat", DoubleType(), True),
+    StructField("lon", DoubleType(), True),
+    StructField("distance_m", DoubleType(), True),
+    StructField("inside", BooleanType(), True),
+])
+
+df_{{ node_id | replace("-", "_") }} = (
+    {{ upstream_var }}
+    .groupBy(F.col("{{ key_column }}"))
+    .transformWithStateInPandas(
+        statefulProcessor=GeofenceLocationProcessor(),
+        outputStructType=output_schema,
+        outputMode="Append",
+        timeMode="ProcessingTime",
+    )
+)

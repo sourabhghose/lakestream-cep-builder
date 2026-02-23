@@ -1,0 +1,6 @@
+# Lookup Enrichment: {{ node_id }}
+
+df_{{ node_id | replace("-", "_") }} = (
+    {{ upstream_var }}
+    .join(spark.table("{{ lookup_table }}"), on="{{ join_key }}", how="left")
+)

@@ -1,0 +1,7 @@
+-- Auto-loader source: {{ node_id }}
+CREATE OR REFRESH STREAMING TABLE {{ node_id }}
+AS SELECT * FROM read_files(
+  "{{ path }}",
+  format => "{{ format }}",
+  schema => "{{ schema }}"
+);

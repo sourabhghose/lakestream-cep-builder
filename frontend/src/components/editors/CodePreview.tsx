@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Editor from "@monaco-editor/react";
 import * as LucideIcons from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -19,9 +19,24 @@ export default function CodePreview({
   onToggleCollapse,
   className,
 }: CodePreviewProps) {
-  const { generatedSdpCode, generatedSssCode, setGeneratedCode } = usePipelineStore();
+  const {
+    generatedSdpCode,
+    generatedSssCode,
+    setGeneratedCode,
+    codeTarget,
+    isGenerating,
+  } = usePipelineStore();
   const [activeTab, setActiveTab] = useState<"sdp" | "sss">("sdp");
   const [isEditing, setIsEditing] = useState(false);
+
+  const hasSdp = !!generatedSdpCode;
+  const hasSss = !!generatedSssCode;
+  const isHybrid = hasSdp && hasSss;
+
+  useEffect(() => {
+    if (activeTab === "sdp" && !hasSdp && hasSss) setActiveTab("sss");
+    if (activeTab === "sss" && !hasSss && hasSdp) setActiveTab("sdp");
+  }, [hasSdp, hasSss, activeTab]);
 
   const code = activeTab === "sdp" ? generatedSdpCode : generatedSssCode;
   const displayCode = code || PLACEHOLDER;
@@ -44,28 +59,48 @@ export default function CodePreview({
     >
       <div className="flex h-12 shrink-0 items-center justify-between border-b border-slate-700 px-4">
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setActiveTab("sdp")}
-            className={cn(
-              "rounded px-3 py-1.5 text-sm font-medium",
-              activeTab === "sdp"
-                ? "bg-slate-700 text-slate-200"
-                : "text-slate-500 hover:text-slate-300"
-            )}
-          >
-            SDP (SQL/Python)
-          </button>
-          <button
-            onClick={() => setActiveTab("sss")}
-            className={cn(
-              "rounded px-3 py-1.5 text-sm font-medium",
-              activeTab === "sss"
-                ? "bg-slate-700 text-slate-200"
-                : "text-slate-500 hover:text-slate-300"
-            )}
-          >
-            Structured Streaming (PySpark)
-          </button>
+          {isGenerating && (
+            <span className="flex items-center gap-1.5 text-sm text-slate-400">
+              <LucideIcons.Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Generating...
+            </span>
+          )}
+          {codeTarget && !isGenerating && (
+            <span className="rounded bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-300">
+              {codeTarget.toUpperCase()}
+            </span>
+          )}
+          {(isHybrid || hasSdp) && (
+            <button
+              onClick={() => setActiveTab("sdp")}
+              className={cn(
+                "rounded px-3 py-1.5 text-sm font-medium",
+                activeTab === "sdp"
+                  ? "bg-slate-700 text-slate-200"
+                  : "text-slate-500 hover:text-slate-300"
+              )}
+            >
+              SDP (SQL/Python)
+            </button>
+          )}
+          {(isHybrid || hasSss) && (
+            <button
+              onClick={() => setActiveTab("sss")}
+              className={cn(
+                "rounded px-3 py-1.5 text-sm font-medium",
+                activeTab === "sss"
+                  ? "bg-slate-700 text-slate-200"
+                  : "text-slate-500 hover:text-slate-300"
+              )}
+            >
+              Structured Streaming (PySpark)
+            </button>
+          )}
+          {!hasSdp && !hasSss && !isGenerating && (
+            <span className="text-sm text-slate-500">
+              Add nodes to generate code
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button

@@ -46,30 +46,34 @@ function PipelineCanvasInner() {
     addNode: storeAddNode,
     selectNode,
     deselectNode,
+    triggerCodeGen,
   } = usePipelineStore();
 
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
       const nextNodes = applyNodeChanges(changes, nodes);
       storeOnNodesChange(nextNodes);
+      triggerCodeGen();
     },
-    [nodes, storeOnNodesChange]
+    [nodes, storeOnNodesChange, triggerCodeGen]
   );
 
   const handleEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
       const nextEdges = applyEdgeChanges(changes, edges);
       storeOnEdgesChange(nextEdges);
+      triggerCodeGen();
     },
-    [edges, storeOnEdgesChange]
+    [edges, storeOnEdgesChange, triggerCodeGen]
   );
 
   const handleConnect: OnConnect = useCallback(
     (connection: Connection) => {
       const nextEdges = addEdge(connection, edges);
       storeOnEdgesChange(nextEdges);
+      triggerCodeGen();
     },
-    [edges, storeOnEdgesChange]
+    [edges, storeOnEdgesChange, triggerCodeGen]
   );
 
   const handleDrop = useCallback(
@@ -93,13 +97,16 @@ function PipelineCanvasInner() {
         data: {
           type: nodeType,
           label: def.label,
+          config: {},
+          codeTarget: def.codeTarget,
           configSummary: "",
         },
       };
 
       storeAddNode(newNode);
+      triggerCodeGen();
     },
-    [screenToFlowPosition, storeAddNode]
+    [screenToFlowPosition, storeAddNode, triggerCodeGen]
   );
 
   const handleDragOver = useCallback((event: React.DragEvent) => {

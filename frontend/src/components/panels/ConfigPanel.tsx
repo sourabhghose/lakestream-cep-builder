@@ -1,9 +1,11 @@
 "use client";
 
+import { useRef, useEffect } from "react";
 import * as LucideIcons from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePipelineStore } from "@/hooks/usePipelineStore";
 import { NODE_REGISTRY } from "@/lib/nodeRegistry";
+import DynamicConfigForm from "@/components/panels/DynamicConfigForm";
 import type { NodeType } from "@/types/nodes";
 
 interface ConfigPanelProps {
@@ -12,9 +14,24 @@ interface ConfigPanelProps {
 }
 
 export default function ConfigPanel({ isOpen, className }: ConfigPanelProps) {
-  const { selectedNodeId, nodes, deselectNode } = usePipelineStore();
+  const {
+    selectedNodeId,
+    nodes,
+    deselectNode,
+    updateNode,
+    triggerCodeGen,
+  } = usePipelineStore();
+  const lastSavedConfigRef = useRef<Record<string, unknown>>({});
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId);
+
+  useEffect(() => {
+    if (selectedNode?.data?.config) {
+      lastSavedConfigRef.current = { ...selectedNode.data.config };
+    } else {
+      lastSavedConfigRef.current = {};
+    }
+  }, [selectedNodeId]);
   const nodeType = selectedNode?.data?.type as NodeType | undefined;
   const definition = nodeType ? NODE_REGISTRY[nodeType] : undefined;
 
@@ -94,23 +111,38 @@ export default function ConfigPanel({ isOpen, className }: ConfigPanelProps) {
         </button>
       </div>
       <div className="flex-1 overflow-y-auto p-4">
-        <p className="text-sm text-slate-400">
-          Configuration for {definition.label}
-        </p>
-        <p className="mt-2 text-xs text-slate-500">
-          Dynamic form will be rendered here based on node type.
-        </p>
+        <DynamicConfigForm
+          definition={definition}
+          config={(selectedNode.data?.config ?? {}) as Record<string, unknown>}
+          onChange={(newConfig) => {
+            if (selectedNodeId) {
+              updateNode(selectedNodeId, { config: newConfig });
+            }
+          }}
+        />
       </div>
       <div className="flex gap-2 border-t border-slate-700 px-4 py-3">
         <button
           className="flex-1 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          onClick={() => {}}
+          onClick={() => {
+            if (selectedNodeId && selectedNode) {
+              lastSavedConfigRef.current =
+                { ...(selectedNode.data?.config ?? {}) };
+              triggerCodeGen();
+            }
+          }}
         >
           Apply
         </button>
         <button
           className="rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700"
-          onClick={() => {}}
+          onClick={() => {
+            if (selectedNodeId) {
+              updateNode(selectedNodeId, {
+                config: lastSavedConfigRef.current,
+              });
+            }
+          }}
         >
           Reset
         </button>

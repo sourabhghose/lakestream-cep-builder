@@ -1,0 +1,9 @@
+# Unity Catalog Table Sink: {{ node_id }}
+
+(
+    {{ upstream_var }}
+    .writeStream
+    .format("delta")
+    .option("checkpointLocation", "{{ checkpoint_location }}")
+    .table("{{ catalog }}.{{ schema }}.{{ table_name }}")
+)

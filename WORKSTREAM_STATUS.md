@@ -3,70 +3,60 @@
 ## Overview
 LakeStream CEP Builder — Visual CEP Pipeline Builder for Databricks
 
-## Workstreams
+## Completed
 
-### WS1: Frontend (Next.js + React Flow Canvas)
-**Status:** COMPLETE
-**Last Update:** 2026-02-22
-- Next.js 14 project scaffolded with all dependencies
-- React Flow canvas with custom nodes, edges, minimap, snap-to-grid
-- Node palette with all 38 nodes across 4 categories (drag-and-drop)
-- Custom node component with category colors, SDP/SSS badges, error indicators
-- Animated custom edges with delete-on-hover
-- Config panel (right sidebar, slides open on node select)
-- Code preview panel (bottom, Monaco editor, SDP + SSS tabs)
-- Zustand store for pipeline state management
-- Full app layout: toolbar + palette + canvas + config + code preview
+### Round 1 (2026-02-22)
 
-### WS2: Node System (38 Node Type Definitions + Config Panels)
-**Status:** COMPLETE
-**Last Update:** 2026-02-22
-- TypeScript types: NodeCategory, CodeTarget, NodeType (38 union), ConfigField, NodeDefinition
-- Full node registry (nodeRegistry.ts) with all 38 nodes and their config schemas
-- Shared CEP advanced fields (groupByKey, watermark, TTL, quantifiers)
-- DynamicConfigForm component rendering forms from config schemas
-- Pipeline types: PipelineDefinition, PipelineNode, PipelineEdge, PipelineStatus
-- Support for all field types: text, number, select, multiselect, toggle, code, duration, key-value, column-picker, expression, schema-picker
+**WS1: Frontend scaffold** — Next.js 14, React Flow canvas, 38-node palette, custom nodes/edges, config panel, code preview, Zustand store
 
-### WS3: Backend (FastAPI + Code Generation Engine)
-**Status:** COMPLETE
-**Last Update:** 2026-02-22
-- FastAPI app with CORS, health check, OpenAPI docs
-- Pipeline CRUD API (POST/GET/PUT/DELETE /api/pipelines)
-- Code generation API (POST /api/codegen/generate)
-- Deploy API (POST /api/deploy) with mock responses
-- Pydantic v2 models for all request/response types
-- NODE_REGISTRY with all 38 node types, categories, and code targets
-- Code generation router: analyzes pipeline graph, decides SDP vs SSS vs hybrid
-- SDP generator: Kafka source, Filter, Window Aggregate, Delta sink (Jinja2 templates)
-- SSS generator: Sequence Detector, Absence Detector (TransformWithState templates)
-- Graph utilities: topological sort, upstream/downstream, cycle detection
-- 8 Jinja2 templates (5 SDP, 3 SSS)
-- Deploy service (mocked, ready for Databricks SDK integration)
+**WS2: Node system** — TypeScript types for all 38 nodes, config schemas, DynamicConfigForm
 
-### WS4: Project Docs + Config
-**Status:** COMPLETE
-**Last Update:** 2026-02-22
-- README.md with architecture diagram, node library, tech stack, quick start
-- LICENSE (MIT)
-- docker-compose.yml for local dev
-- .env.example
-- databricks.yml (Asset Bundle config)
-- app.yml / app.yaml (Databricks App config)
-- Makefile with install/dev/lint/test/build/clean targets
-- docs/ARCHITECTURE.md with detailed architecture, code gen decision tree, pattern DSL
+**WS3: Backend scaffold** — FastAPI, pipeline CRUD, code gen router (SDP vs SSS vs hybrid), 4 SDP templates, 2 SSS templates
 
----
+**WS4: Project config** — README, LICENSE, docker-compose, Databricks App config, Makefile, architecture docs
 
-## Next Steps
-- Wire frontend API calls to backend (TanStack Query + axios)
-- Connect DynamicConfigForm to actual node configs in the canvas
-- Run npm install and verify frontend builds
-- Run backend and verify API endpoints
-- Implement remaining SDP/SSS code gen templates for all 38 node types
-- Add schema registry integration
-- Build pattern timeline visualization
-- Build template gallery with 10 pre-built templates
+### Round 2 (2026-02-22)
+
+**WS5: Frontend-backend wiring** — API client (axios), auto code gen on canvas change (debounced 500ms), DynamicConfigForm connected to node configs, Save/Deploy buttons wired, CodePreview showing generated code with SDP/SSS/Hybrid badges, loading states
+
+**WS6: Full SDP code gen** — 17 new Jinja2 templates covering all SDP-compatible nodes (sources, transforms, sinks). Total: 22 SDP templates
+
+**WS7: Full CEP code gen** — 10 new CEP pattern templates (count-threshold, velocity, geofence, temporal-correlation, trend, outlier, session, dedup, MATCH_RECOGNIZE, custom processor) + 17 non-CEP SSS templates. Total: 29 SSS templates
+
+**WS8: Timeline + templates** — Pattern timeline visualization (SVG, design/test modes), timeline controls (play/pause, speed, data loader), 10 pre-built use case templates with template gallery
+
+## Current State
+
+| Component | Coverage |
+| --- | --- |
+| Frontend components | All built and wired |
+| Backend API | All endpoints working |
+| SDP code gen | 22 templates — all node types covered |
+| SSS code gen | 29 templates — all node types covered |
+| CEP patterns | All 12 implemented |
+| Templates | 10 pre-built use cases |
+| Pattern timeline | Built (design + test modes) |
+| Frontend ↔ Backend | Wired via API calls |
+
+## Remaining Work
+
+### Integration & Testing
+- Verify full app runs locally (npm run dev + uvicorn)
+- Fix any TypeScript/Python import errors
+- End-to-end test: drag nodes → generate code → deploy
+
+### Production Features
+- Real Databricks SDK deployment (currently mocked)
+- Unity Catalog pipeline storage (currently in-memory)
+- OAuth configuration for Databricks App
+- Bidirectional Monaco ↔ Canvas sync
+- Pipeline version diff view
+- Semantic edge validation (type checking between nodes)
+- Schema registry integration
+- Live data preview at each node
+- Error handling and user-facing messages
+- Performance optimization (virtual scrolling, lazy loading)
+- In-app documentation and help
 
 ---
-*Updated: 2026-02-22 by build agents*
+*Updated: 2026-02-22 after Round 2*

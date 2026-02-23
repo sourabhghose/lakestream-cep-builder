@@ -1,0 +1,17 @@
+# Match Recognize SQL: {{ node_id }}
+# Raw MATCH_RECOGNIZE pattern - user-provided SQL
+# Accepts raw PARTITION BY, ORDER BY, MEASURES, PATTERN, DEFINE, WITHIN clauses
+
+{{ upstream_var }}.createOrReplaceTempView("{{ input_view }}")
+
+df_{{ node_id | replace("-", "_") }} = spark.sql("""
+    SELECT * FROM {{ input_view }}
+    MATCH_RECOGNIZE (
+        {{ partition_by }}
+        {{ order_by }}
+        {{ measures }}
+        {{ pattern }}
+        {{ define }}
+        {{ within }}
+    )
+""")

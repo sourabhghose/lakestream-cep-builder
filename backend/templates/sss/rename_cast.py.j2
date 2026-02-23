@@ -1,0 +1,11 @@
+# Rename Cast: {{ node_id }}
+
+df_{{ node_id | replace("-", "_") }} = (
+    {{ upstream_var }}
+    {% for old_name, new_name in renames %}
+    .withColumnRenamed("{{ old_name }}", "{{ new_name }}")
+    {% endfor %}
+    {% for col_name, cast_type in casts %}
+    .withColumn("{{ col_name }}", F.col("{{ col_name }}").cast("{{ cast_type }}"))
+    {% endfor %}
+)

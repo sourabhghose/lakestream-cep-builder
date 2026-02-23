@@ -1,0 +1,8 @@
+# Stream-Static Join: {{ node_id }}
+
+_static = spark.table("{{ static_table }}")
+df_{{ node_id | replace("-", "_") }} = (
+    {{ upstream_var }}
+    .alias("stream")
+    .join(_static.alias("lookup"), F.expr("{{ join_condition }}"), "{{ join_type }}")
+)

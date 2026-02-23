@@ -1,0 +1,20 @@
+# Custom Stateful Processor: {{ node_id }}
+# User-written TransformWithState Python code
+# Template wraps user code in StatefulProcessor and applies transformWithStateInPandas
+
+from pyspark.sql.streaming import StatefulProcessor, StatefulProcessorHandle
+
+{{ user_code }}
+
+output_schema = {{ output_schema }}
+
+df_{{ node_id | replace("-", "_") }} = (
+    {{ upstream_var }}
+    .groupBy(F.col("{{ key_column }}"))
+    .transformWithStateInPandas(
+        statefulProcessor={{ processor_class_name }}(),
+        outputStructType=output_schema,
+        outputMode="Append",
+        timeMode="ProcessingTime",
+    )
+)

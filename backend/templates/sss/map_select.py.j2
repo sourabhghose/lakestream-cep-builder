@@ -1,0 +1,3 @@
+# Map Select: {{ node_id }}
+
+df_{{ node_id | replace("-", "_") }} = {{ upstream_var }}.select({{ select_exprs }})

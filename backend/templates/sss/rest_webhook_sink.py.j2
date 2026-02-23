@@ -1,0 +1,14 @@
+# REST Webhook Sink: {{ node_id }}
+
+def post_to_webhook(batch_df, batch_id):
+    import requests
+    for row in batch_df.collect():
+        requests.post("{{ webhook_url }}", json=row.asDict())
+
+(
+    {{ upstream_var }}
+    .writeStream
+    .foreachBatch(post_to_webhook)
+    .option("checkpointLocation", "{{ checkpoint_location }}")
+    .start()
+)

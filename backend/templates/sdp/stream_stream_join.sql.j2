@@ -1,0 +1,7 @@
+-- Stream-stream join: {{ node_id }}
+CREATE OR REFRESH STREAMING TABLE {{ node_id }}
+AS SELECT {{ select_expression }}
+FROM {{ stream_a }} a
+JOIN {{ stream_b }} b
+  ON a.{{ join_key_a }} = b.{{ join_key_b }}
+  AND b.{{ watermark_column_b }} >= a.{{ watermark_column_a }} - INTERVAL {{ watermark_delay }};

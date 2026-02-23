@@ -1,0 +1,88 @@
+# Outlier Anomaly: {{ node_id }}
+# Emit when value exceeds rolling mean + {{ threshold }} * std_dev
+# Uses TransformWithState with ValueState for rolling mean and std dev
+
+from pyspark.sql.streaming import StatefulProcessor, StatefulProcessorHandle
+from pyspark.sql.types import StructType, StructField, DoubleType, LongType, StringType
+import pandas as pd
+import math
+
+class OutlierAnomalyProcessor(StatefulProcessor):
+    def init(self, handle: StatefulProcessorHandle) -> None:
+        self.handle = handle
+        state_schema = StructType([
+            StructField("n", LongType(), True),
+            StructField("mean", DoubleType(), True),
+            StructField("m2", DoubleType(), True),  # for Welford's online variance
+        ])
+        self.stats = handle.getValueState("stats", state_schema)
+
+    def handleInputRows(self, key, rows, timerValues):
+        threshold = {{ threshold }}
+        value_col = "{{ value_column }}"
+        min_samples = {{ min_samples }}
+
+        n, mean, m2 = 0, 0.0, 0.0
+        if self.stats.exists():
+            s = self.stats.get()
+            n, mean, m2 = int(s[0]), float(s[1]), float(s[2])
+
+        results = []
+        for pdf in rows:
+            if not pdf.empty and value_col in pdf.columns:
+                for _, row in pdf.iterrows():
+                    try:
+                        x = float(row[value_col])
+                    except (TypeError, ValueError):
+                        continue
+
+                    # Welford's online algorithm
+                    n += 1
+                    delta = x - mean
+                    mean += delta / n
+                    delta2 = x - mean
+                    m2 += delta * delta2
+
+                    std = math.sqrt(m2 / n) if n > 1 else 0.0
+                    z = (x - mean) / std if std > 0 else 0
+
+                    if n >= min_samples and abs(z) > threshold:
+                        results.append({
+                            "{{ key_column }}": key,
+                            "value": x,
+                            "mean": mean,
+                            "std_dev": std,
+                            "z_score": z,
+                            "threshold": threshold,
+                        })
+
+                    self.stats.update((n, mean, m2))
+
+        if results:
+            yield pd.DataFrame(results)
+
+    def handleExpiredTimer(self, key, timerValues, expiredTimerInfo):
+        pass
+
+    def close(self) -> None:
+        pass
+
+output_schema = StructType([
+    StructField("{{ key_column }}", StringType(), True),
+    StructField("value", DoubleType(), True),
+    StructField("mean", DoubleType(), True),
+    StructField("std_dev", DoubleType(), True),
+    StructField("z_score", DoubleType(), True),
+    StructField("threshold", DoubleType(), True),
+])
+
+df_{{ node_id | replace("-", "_") }} = (
+    {{ upstream_var }}
+    .groupBy(F.col("{{ key_column }}"))
+    .transformWithStateInPandas(
+        statefulProcessor=OutlierAnomalyProcessor(),
+        outputStructType=output_schema,
+        outputMode="Append",
+        timeMode="ProcessingTime",
+    )
+)
