@@ -429,10 +429,10 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Main content */}
-      <div className="flex flex-1 min-h-0">
+      {/* Main content — pb-12 reserves space for the fixed code dock */}
+      <div className={cn("flex flex-1 min-h-0", codePreviewCollapsed ? "pb-12" : "pb-[228px]")}>
         {/* Left sidebar: Node Palette */}
-        <nav role="navigation" aria-label="Node palette">
+        <nav role="navigation" aria-label="Node palette" className="h-full overflow-hidden">
         <ErrorBoundary
           fallback={(_, reset) => (
             <ErrorFallback message="Node palette failed to load" onRetry={reset} />

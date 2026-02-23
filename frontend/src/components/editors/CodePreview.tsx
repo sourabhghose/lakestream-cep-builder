@@ -190,7 +190,7 @@ export default function CodePreview({
   return (
     <div
       className={cn(
-        "flex shrink-0 flex-col border-t border-slate-700 bg-slate-900/95",
+        "fixed bottom-0 left-0 right-0 z-40 flex flex-col border-t border-slate-700 bg-slate-900/95",
         className
       )}
     >

@@ -174,7 +174,7 @@ export default function NodePalette({
   }
 
   return (
-    <div className="flex w-[250px] flex-col border-r border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900/95">
+    <div className="flex h-full w-[250px] flex-col overflow-hidden border-r border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900/95">
       <div className="flex h-12 items-center justify-between border-b border-slate-700 px-4">
         <span className="font-medium text-slate-200">Node Palette</span>
         <div className="flex items-center gap-1">
