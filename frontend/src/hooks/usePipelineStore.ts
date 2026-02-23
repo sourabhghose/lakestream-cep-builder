@@ -72,6 +72,8 @@ interface PipelineState {
   removeNode: (id: string) => void;
   removeNodes: (ids: string[]) => void;
   updateNode: (id: string, data: Partial<Node["data"]>) => void;
+  /** Apply search highlights to nodes (matchedIds get searchHighlight: true). Does not set isDirty. */
+  applySearchHighlights: (matchedIds: Set<string>) => void;
   onNodesChange: (nodes: Node[]) => void;
   onEdgesChange: (edges: Edge[]) => void;
   onConnect: (connection: Connection) => void;
@@ -375,6 +377,14 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
       });
       return { nodes: updatedNodes, isDirty: true };
     }),
+
+  applySearchHighlights: (matchedIds) =>
+    set((state) => ({
+      nodes: state.nodes.map((n) => ({
+        ...n,
+        data: { ...n.data, searchHighlight: matchedIds.has(n.id) },
+      })),
+    })),
 
   onNodesChange: (nodes) => set({ nodes, isDirty: true }),
 

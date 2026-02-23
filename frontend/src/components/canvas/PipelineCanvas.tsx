@@ -23,6 +23,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import CustomNode from "@/components/canvas/CustomNode";
 import CustomEdge from "@/components/canvas/CustomEdge";
+import PipelineSearch from "@/components/canvas/PipelineSearch";
 import { usePipelineStore } from "@/hooks/usePipelineStore";
 import { NODE_REGISTRY } from "@/lib/nodeRegistry";
 import { validateConnection } from "@/lib/edgeValidator";
@@ -144,7 +145,8 @@ function PipelineCanvasInner() {
   );
 
   return (
-    <div className="h-full w-full">
+    <div className="relative h-full w-full">
+      <PipelineSearch />
       <ReactFlow
         nodes={nodes}
         edges={edges}

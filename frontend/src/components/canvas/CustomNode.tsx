@@ -57,6 +57,7 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
   const category = def.category ?? "transform";
   const borderColor = CATEGORY_BORDER_COLORS[category] ?? "border-node-transform";
   const hasError = data.hasError === true;
+  const searchHighlight = data.searchHighlight === true;
   const inputs = def.inputs ?? 1;
   const outputs = def.outputs ?? 1;
 
@@ -78,7 +79,8 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
         "min-w-[180px] rounded-lg border-2 bg-slate-900/95 px-4 py-3 shadow-lg backdrop-blur",
         borderColor,
         selected && "ring-2 ring-blue-400 ring-offset-2 ring-offset-slate-950",
-        hasError && "border-red-500"
+        hasError && "border-red-500",
+        searchHighlight && "ring-2 ring-blue-500 animate-pulse"
       )}
     >
       {Array.from({ length: Math.max(1, inputs) }).map((_, i) => (
@@ -202,7 +204,8 @@ function propsAreEqual(
     pd?.type === nd?.type &&
     pd?.label === nd?.label &&
     pd?.hasError === nd?.hasError &&
-    pd?.configSummary === nd?.configSummary
+    pd?.configSummary === nd?.configSummary &&
+    pd?.searchHighlight === nd?.searchHighlight
   );
 }
 

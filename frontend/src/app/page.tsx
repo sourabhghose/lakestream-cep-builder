@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   Menu,
   ChevronDown,
@@ -9,6 +9,8 @@ import {
   Save,
   Copy,
   Trash2,
+  Download,
+  Upload,
   Network,
   LayoutTemplate,
   Loader2,
@@ -27,11 +29,13 @@ import DeployHistoryPanel from "@/components/panels/DeployHistoryPanel";
 import CodePreview from "@/components/editors/CodePreview";
 import TemplateGallery from "@/components/templates/TemplateGallery";
 import SaveDialog from "@/components/dialogs/SaveDialog";
+import SaveTemplateDialog from "@/components/dialogs/SaveTemplateDialog";
 import DeployDialog from "@/components/dialogs/DeployDialog";
 import Toast from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
 import { usePipelineStore } from "@/hooks/usePipelineStore";
 import { useToastStore } from "@/hooks/useToastStore";
+import { exportPipeline, importPipeline } from "@/lib/pipelineIO";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { computeLayout } from "@/lib/autoLayout";
 import * as api from "@/lib/api";
@@ -59,6 +63,7 @@ export default function Home() {
   const [pipelineListOpen, setPipelineListOpen] = useState(false);
   const [deployHistoryOpen, setDeployHistoryOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [saveTemplateDialogOpen, setSaveTemplateDialogOpen] = useState(false);
   const [deployDialogOpen, setDeployDialogOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const {
@@ -73,9 +78,11 @@ export default function Home() {
     lastSavedAt,
     pipelineVersion,
     resetPipeline,
+    loadPipeline,
     loadPipelineFromServer,
     onNodesChange,
   } = usePipelineStore();
+  const importFileInputRef = useRef<HTMLInputElement>(null);
   const addToast = useToastStore((s) => s.addToast);
 
   function handleSaveClick() {
@@ -97,6 +104,37 @@ export default function Home() {
       addToast("Failed to delete pipeline", "error");
     }
     setMenuOpen(false);
+  }
+
+  function handleExportPipeline() {
+    exportPipeline();
+    setMenuOpen(false);
+    addToast("Pipeline exported", "success");
+  }
+
+  function handleImportPipelineClick() {
+    importFileInputRef.current?.click();
+    setMenuOpen(false);
+  }
+
+  async function handleImportPipelineFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const data = await importPipeline(file);
+      loadPipeline(data.nodes, data.edges, data.name, data.description);
+      usePipelineStore.setState({
+        pipelineId: null,
+        lastSavedAt: null,
+        ...(data.metadata?.codeTarget != null && {
+          codeTarget: data.metadata.codeTarget as "sdp" | "sss" | "hybrid" | null,
+        }),
+      });
+      addToast(`Pipeline "${data.name}" imported`, "success");
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Failed to import pipeline", "error");
+    }
   }
 
   function handleDeployClick() {
@@ -183,6 +221,30 @@ export default function Home() {
                 >
                   <Copy className="h-4 w-4" />
                   Save As
+                </DropdownMenu.Item>
+                <DropdownMenu.Item
+                  className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-slate-200 outline-none hover:bg-slate-800"
+                  onSelect={() => {
+                    setSaveTemplateDialogOpen(true);
+                    setMenuOpen(false);
+                  }}
+                >
+                  <LayoutTemplate className="h-4 w-4" />
+                  Save as Template
+                </DropdownMenu.Item>
+                <DropdownMenu.Item
+                  className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-slate-200 outline-none hover:bg-slate-800"
+                  onSelect={handleExportPipeline}
+                >
+                  <Download className="h-4 w-4" />
+                  Export Pipeline
+                </DropdownMenu.Item>
+                <DropdownMenu.Item
+                  className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-slate-200 outline-none hover:bg-slate-800"
+                  onSelect={handleImportPipelineClick}
+                >
+                  <Upload className="h-4 w-4" />
+                  Import Pipeline
                 </DropdownMenu.Item>
                 <DropdownMenu.Separator className="my-1 h-px bg-slate-700" />
                 <DropdownMenu.Item
@@ -312,6 +374,12 @@ export default function Home() {
         onClose={() => setSaveDialogOpen(false)}
       />
 
+      {/* Save as Template Dialog */}
+      <SaveTemplateDialog
+        isOpen={saveTemplateDialogOpen}
+        onClose={() => setSaveTemplateDialogOpen(false)}
+      />
+
       {/* Deploy Dialog */}
       <DeployDialog
         isOpen={deployDialogOpen}
@@ -322,6 +390,15 @@ export default function Home() {
       <CodePreview
         collapsed={codePreviewCollapsed}
         onToggleCollapse={() => setCodePreviewCollapsed(!codePreviewCollapsed)}
+      />
+
+      {/* Hidden file input for pipeline import */}
+      <input
+        ref={importFileInputRef}
+        type="file"
+        accept=".json,.lakestream.json"
+        className="hidden"
+        onChange={handleImportPipelineFile}
       />
 
       {/* Toast notifications */}

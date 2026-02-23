@@ -273,4 +273,42 @@ export async function listColumns(
   return res.data ?? [];
 }
 
+// Templates
+export interface TemplateResponse {
+  id: string;
+  name: string;
+  description: string;
+  industry: string;
+  canvas_json: { nodes: unknown[]; edges: unknown[] };
+  is_builtin: boolean;
+  created_by: string | null;
+  created_at: string | null;
+}
+
+export interface TemplateCreateData {
+  name: string;
+  description?: string;
+  industry?: string;
+  canvas_json: { nodes: unknown[]; edges: unknown[] };
+}
+
+export async function listTemplates(): Promise<TemplateResponse[]> {
+  const res = await api.get("/api/templates");
+  return res.data ?? [];
+}
+
+export async function createTemplate(data: TemplateCreateData): Promise<TemplateResponse> {
+  const res = await api.post("/api/templates", {
+    name: data.name,
+    description: data.description ?? "",
+    industry: data.industry ?? "",
+    canvas_json: data.canvas_json,
+  });
+  return res.data;
+}
+
+export async function deleteTemplate(id: string): Promise<void> {
+  await api.delete(`/api/templates/${encodeURIComponent(id)}`);
+}
+
 export default api;
