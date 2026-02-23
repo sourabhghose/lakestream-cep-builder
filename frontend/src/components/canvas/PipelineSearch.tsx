@@ -75,8 +75,13 @@ export default function PipelineSearch() {
     goToMatch(selectedIndex + 1);
   }, [selectedIndex, goToMatch]);
 
+  const prevMatchKeyRef = useRef("");
+
   useEffect(() => {
     const matchedIds = new Set(matches.map((n) => n.id));
+    const key = Array.from(matchedIds).sort().join(",");
+    if (key === prevMatchKeyRef.current) return;
+    prevMatchKeyRef.current = key;
     applySearchHighlights(matchedIds);
   }, [matches, applySearchHighlights]);
 

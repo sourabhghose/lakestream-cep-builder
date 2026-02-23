@@ -863,12 +863,16 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
     })),
 
   applySearchHighlights: (matchedIds) =>
-    set((state) => ({
-      nodes: state.nodes.map((n) => ({
-        ...n,
-        data: { ...n.data, searchHighlight: matchedIds.has(n.id) },
-      })),
-    })),
+    set((state) => {
+      let changed = false;
+      const newNodes = state.nodes.map((n) => {
+        const shouldHighlight = matchedIds.has(n.id);
+        if (Boolean(n.data?.searchHighlight) === shouldHighlight) return n;
+        changed = true;
+        return { ...n, data: { ...n.data, searchHighlight: shouldHighlight } };
+      });
+      return changed ? { nodes: newNodes } : {};
+    }),
 
   onNodesChange: (nodes) =>
     set((state) => {
