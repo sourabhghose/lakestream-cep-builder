@@ -24,6 +24,7 @@ import {
   Group,
   GitBranch,
   Workflow,
+  Play,
 } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import PipelineCanvas from "@/components/canvas/PipelineCanvas";
@@ -35,6 +36,7 @@ import DeployHistoryPanel from "@/components/panels/DeployHistoryPanel";
 import VersionDiffPanel from "@/components/panels/VersionDiffPanel";
 import ValidationPanel from "@/components/panels/ValidationPanel";
 import FlowPreviewPanel from "@/components/preview/FlowPreviewPanel";
+import PatternTestPanel from "@/components/test/PatternTestPanel";
 import CodePreview from "@/components/editors/CodePreview";
 import TemplateGallery from "@/components/templates/TemplateGallery";
 import SaveDialog from "@/components/dialogs/SaveDialog";
@@ -42,6 +44,9 @@ import SaveTemplateDialog from "@/components/dialogs/SaveTemplateDialog";
 import DeployDialog from "@/components/dialogs/DeployDialog";
 import JobStatusNotification from "@/components/notifications/JobStatusNotification";
 import Toast from "@/components/ui/Toast";
+import { SkipLink } from "@/components/ui/SkipLink";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import { ErrorFallback } from "@/components/ui/ErrorFallback";
 import { useJobStatusStore } from "@/hooks/useJobStatusStore";
 import { cn } from "@/lib/utils";
 import { usePipelineStore } from "@/hooks/usePipelineStore";
@@ -77,6 +82,7 @@ export default function Home() {
   const [versionDiffOpen, setVersionDiffOpen] = useState(false);
   const [validationPanelOpen, setValidationPanelOpen] = useState(false);
   const [flowPreviewOpen, setFlowPreviewOpen] = useState(false);
+  const [patternTestOpen, setPatternTestOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [saveTemplateDialogOpen, setSaveTemplateDialogOpen] = useState(false);
   const [deployDialogOpen, setDeployDialogOpen] = useState(false);
@@ -191,6 +197,7 @@ export default function Home() {
 
   return (
     <div className="flex h-screen flex-col bg-gray-100 dark:bg-slate-950">
+      <SkipLink href="#main-canvas">Skip to canvas</SkipLink>
       {/* Top bar */}
       <header className="flex h-12 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 dark:border-slate-700 dark:bg-slate-900/95">
         <div className="flex items-center gap-4">
@@ -310,12 +317,13 @@ export default function Home() {
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" role="toolbar" aria-label="Pipeline actions">
           <button
             className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-slate-200 disabled:opacity-60"
             onClick={handleGroupClick}
             disabled={selectedCount < 2}
             title="Group selected nodes"
+            aria-label="Group selected nodes"
           >
             <Group className="h-4 w-4" />
             Group
@@ -325,6 +333,7 @@ export default function Home() {
             onClick={handleAutoLayout}
             disabled={nodes.length === 0}
             title="Auto-arrange pipeline nodes"
+            aria-label="Auto-arrange pipeline nodes"
           >
             <Network className="h-4 w-4" />
             Auto Layout
@@ -332,6 +341,7 @@ export default function Home() {
           <button
             className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-slate-200"
             onClick={() => setTemplatesOpen(true)}
+            aria-label="Open templates gallery"
           >
             <LayoutTemplate className="h-4 w-4" />
             Templates
@@ -340,6 +350,7 @@ export default function Home() {
             className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-slate-200 disabled:opacity-60"
             onClick={handleSaveClick}
             disabled={isSaving}
+            aria-label={isSaving ? "Saving pipeline" : "Save pipeline"}
           >
             {isSaving ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -355,6 +366,8 @@ export default function Home() {
             )}
             onClick={() => setDeployHistoryOpen((o) => !o)}
             title="Deploy History"
+            aria-label="Deploy history"
+            aria-pressed={deployHistoryOpen}
           >
             <History className="h-5 w-5" />
           </button>
@@ -365,6 +378,8 @@ export default function Home() {
             )}
             onClick={() => setFlowPreviewOpen((o) => !o)}
             title="Flow Preview"
+            aria-label="Flow preview"
+            aria-pressed={flowPreviewOpen}
           >
             <Workflow className="h-5 w-5" />
           </button>
@@ -372,6 +387,7 @@ export default function Home() {
             className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-slate-200"
             onClick={() => setValidationPanelOpen(true)}
             title="Validate pipeline"
+            aria-label="Validate pipeline"
           >
             <ShieldCheck className="h-4 w-4" />
             Validate
@@ -379,6 +395,7 @@ export default function Home() {
           <button
             className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
             onClick={handleDeployClick}
+            aria-label="Deploy pipeline"
           >
             <Rocket className="h-4 w-4" />
             Deploy
@@ -398,6 +415,8 @@ export default function Home() {
               helpOpen && "bg-gray-200 text-gray-900 dark:bg-slate-800 dark:text-slate-200"
             )}
             title="Help"
+            aria-label="Help"
+            aria-pressed={helpOpen}
           >
             <HelpCircle className="h-5 w-5" />
           </button>
@@ -407,14 +426,23 @@ export default function Home() {
       {/* Main content */}
       <div className="flex flex-1 min-h-0">
         {/* Left sidebar: Node Palette */}
-        <NodePalette
-          collapsed={paletteCollapsed}
-          onToggleCollapse={() => setPaletteCollapsed(!paletteCollapsed)}
-        />
+        <nav role="navigation" aria-label="Node palette">
+        <ErrorBoundary
+          fallback={(_, reset) => (
+            <ErrorFallback message="Node palette failed to load" onRetry={reset} />
+          )}
+        >
+          <NodePalette
+            collapsed={paletteCollapsed}
+            onToggleCollapse={() => setPaletteCollapsed(!paletteCollapsed)}
+          />
+        </ErrorBoundary>
+        </nav>
 
         {/* Center: Canvas */}
-        <main className="relative flex-1 min-w-0">
-          <PipelineCanvas />
+        <main id="main-canvas" className="relative flex-1 min-w-0" tabIndex={-1}>
+          <ErrorBoundary>
+            <PipelineCanvas />
           {isEmpty && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
               <div className="rounded-xl border border-dashed border-gray-300 bg-white/80 px-8 py-6 text-center backdrop-blur dark:border-slate-600 dark:bg-slate-900/80">
@@ -428,10 +456,17 @@ export default function Home() {
               </div>
             </div>
           )}
+          </ErrorBoundary>
         </main>
 
         {/* Right sidebar: Config Panel */}
-        <ConfigPanel isOpen={!!selectedNodeId} />
+        <ErrorBoundary
+          fallback={(_, reset) => (
+            <ErrorFallback message="Config panel failed to load" onRetry={reset} />
+          )}
+        >
+          <ConfigPanel isOpen={!!selectedNodeId} />
+        </ErrorBoundary>
         {/* Help Panel */}
         <HelpPanel isOpen={helpOpen} onClose={() => setHelpOpen(false)} />
         {/* Pipeline List Panel */}
@@ -460,6 +495,11 @@ export default function Home() {
           isOpen={flowPreviewOpen}
           onClose={() => setFlowPreviewOpen(false)}
         />
+        {/* Pattern Test Panel */}
+        <PatternTestPanel
+          isOpen={patternTestOpen}
+          onClose={() => setPatternTestOpen(false)}
+        />
       </div>
 
       {/* Save Dialog */}
@@ -481,10 +521,16 @@ export default function Home() {
       />
 
       {/* Bottom panel: Code Preview */}
-      <CodePreview
-        collapsed={codePreviewCollapsed}
-        onToggleCollapse={() => setCodePreviewCollapsed(!codePreviewCollapsed)}
-      />
+      <ErrorBoundary
+        fallback={(_, reset) => (
+          <ErrorFallback message="Code preview failed to load" onRetry={reset} />
+        )}
+      >
+        <CodePreview
+          collapsed={codePreviewCollapsed}
+          onToggleCollapse={() => setCodePreviewCollapsed(!codePreviewCollapsed)}
+        />
+      </ErrorBoundary>
 
       {/* Hidden file input for pipeline import */}
       <input

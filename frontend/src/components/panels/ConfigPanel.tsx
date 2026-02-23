@@ -79,6 +79,7 @@ export default function ConfigPanel({ isOpen, className }: ConfigPanelProps) {
             onClick={deselectNode}
             className="rounded p-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
             title="Close"
+            aria-label="Close configuration panel"
           >
             <X className="h-4 w-4" />
           </button>
@@ -133,6 +134,7 @@ export default function ConfigPanel({ isOpen, className }: ConfigPanelProps) {
         <button
           type="button"
           className="flex w-full items-center justify-center gap-2 rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700"
+          aria-label="Preview data for selected node"
           onClick={() => {
             if (selectedNodeId) {
               setPreviewLoading(true);
@@ -165,6 +167,7 @@ export default function ConfigPanel({ isOpen, className }: ConfigPanelProps) {
       <div className="flex gap-2 border-t border-slate-700 px-4 py-3">
         <button
           className="flex-1 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          aria-label="Apply configuration"
           onClick={() => {
             if (selectedNodeId && selectedNode) {
               lastSavedConfigRef.current =
@@ -177,6 +180,7 @@ export default function ConfigPanel({ isOpen, className }: ConfigPanelProps) {
         </button>
         <button
           className="rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700"
+          aria-label="Reset configuration to last saved"
           onClick={() => {
             if (selectedNodeId) {
               updateNode(selectedNodeId, {

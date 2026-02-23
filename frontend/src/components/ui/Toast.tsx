@@ -51,6 +51,7 @@ function ToastItemComponent({ toast }: { toast: ToastItem }) {
   return (
     <div
       role="alert"
+      aria-live={toast.variant === "error" ? "assertive" : "polite"}
       className={cn(
         "flex items-center gap-3 rounded-lg border px-4 py-3 shadow-lg backdrop-blur",
         style.bg,
@@ -87,7 +88,8 @@ export default function Toast({ embedded }: ToastProps) {
           ? "flex max-w-sm flex-col gap-2"
           : "fixed bottom-20 right-4 z-[100] flex max-w-sm flex-col gap-2"
       }
-      aria-live="polite"
+      role="region"
+      aria-label="Notifications"
     >
       {toasts.map((toast) => (
         <ToastItemComponent key={toast.id} toast={toast} />

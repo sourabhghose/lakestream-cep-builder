@@ -47,7 +47,7 @@ export default function SaveDialog({ isOpen, onClose }: SaveDialogProps) {
       addToast("Pipeline saved successfully", "success");
       onClose();
     } catch {
-      addToast("Failed to save pipeline", "error");
+      // Toast already shown by usePipelineStore.savePipeline
     } finally {
       setSaving(false);
     }

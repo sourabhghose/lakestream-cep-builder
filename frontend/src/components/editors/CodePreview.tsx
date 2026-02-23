@@ -217,6 +217,8 @@ export default function CodePreview({
                   ? "bg-slate-700 text-slate-200"
                   : "text-slate-500 hover:text-slate-300"
               )}
+              aria-label="SDP (SQL/Python) code tab"
+              aria-pressed={activeTab === "sdp"}
             >
               SDP (SQL/Python)
             </button>
@@ -230,6 +232,8 @@ export default function CodePreview({
                   ? "bg-slate-700 text-slate-200"
                   : "text-slate-500 hover:text-slate-300"
               )}
+              aria-label="Structured Streaming (PySpark) code tab"
+              aria-pressed={activeTab === "sss"}
             >
               Structured Streaming (PySpark)
             </button>
@@ -267,6 +271,7 @@ export default function CodePreview({
         <div className="flex items-center gap-2">
           <button
             onClick={() => setDiffMode(!diffMode)}
+            aria-label={diffMode ? "Exit diff view" : "Compare with last deployed"}
             className={cn(
               "flex items-center gap-1.5 rounded px-2 py-1.5 text-sm",
               diffMode
@@ -281,6 +286,7 @@ export default function CodePreview({
           <button
             onClick={() => setIsEditing(!isEditing)}
             disabled={diffMode}
+            aria-label={diffMode ? "Edit disabled in diff mode" : isEditing ? "Read-only mode" : "Edit mode"}
             className={cn(
               "flex items-center gap-1.5 rounded px-2 py-1.5 text-sm",
               diffMode && "opacity-50 cursor-not-allowed",
@@ -297,6 +303,7 @@ export default function CodePreview({
             onClick={onToggleCollapse}
             className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
             title={collapsed ? "Expand" : "Collapse"}
+            aria-label={collapsed ? "Expand code preview" : "Collapse code preview"}
           >
             <ChevronDown
               className={cn("h-4 w-4 transition-transform", collapsed && "rotate-180")}
@@ -305,7 +312,7 @@ export default function CodePreview({
         </div>
       </div>
       {!collapsed && (
-        <div className="h-[300px] min-h-[300px] flex-1 overflow-hidden">
+        <div className="h-[300px] min-h-[300px] flex-1 overflow-hidden" aria-label="Generated code editor">
           {diffMode ? (
             diffLoading ? (
               <div className="flex h-full items-center justify-center text-slate-400">

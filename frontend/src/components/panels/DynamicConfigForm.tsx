@@ -46,16 +46,24 @@ const SCHEMA_FIELD_KEYS = ["catalog", "schema", "table", "table_name"];
 
 function SchemaSelectInput({
   fieldKey,
+  fieldLabel,
   value,
   onChange,
   config,
   className,
+  id,
+  required,
+  invalid,
 }: {
   fieldKey: string;
+  fieldLabel: string;
   value: string;
   onChange: (v: string) => void;
   config: Record<string, unknown>;
   className?: string;
+  id?: string;
+  required?: boolean;
+  invalid?: boolean;
 }) {
   const [options, setOptions] = useState<{ value: string; label: string }[]>([]);
   const [loading, setLoading] = useState(false);
@@ -111,9 +119,13 @@ function SchemaSelectInput({
 
   return (
     <select
+      id={id}
       value={value ?? ""}
       onChange={handleChange}
       disabled={loading}
+      aria-label={fieldLabel}
+      aria-required={required}
+      aria-invalid={invalid}
       className={cn(
         "w-full rounded-md border bg-slate-800/50 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500",
         "border-slate-600",
@@ -137,6 +149,7 @@ function ConfigFieldInput({
   config,
   availableColumns = [],
   invalid,
+  id,
 }: {
   field: ConfigField;
   value: unknown;
@@ -144,6 +157,7 @@ function ConfigFieldInput({
   config: Record<string, unknown>;
   availableColumns?: string[];
   invalid?: boolean;
+  id?: string;
 }) {
   const baseInputClass =
     "w-full rounded-md border bg-slate-800/50 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
@@ -196,13 +210,24 @@ function ConfigFieldInput({
     return (
       <SchemaSelectInput
         fieldKey={field.key}
+        fieldLabel={field.label}
         value={(value as string) ?? ""}
         onChange={(v) => onChange(v)}
         config={config}
         className={errorClass}
+        id={id}
+        required={field.required}
+        invalid={invalid}
       />
     );
   }
+
+  const inputProps = {
+    id,
+    "aria-label": field.label,
+    "aria-required": field.required,
+    "aria-invalid": invalid,
+  };
 
   switch (field.type) {
     case "text":
@@ -213,6 +238,7 @@ function ConfigFieldInput({
           onChange={handleChange}
           placeholder={field.placeholder}
           className={cn(baseInputClass, errorClass)}
+          {...inputProps}
         />
       );
 
@@ -226,6 +252,7 @@ function ConfigFieldInput({
           min={field.validation?.min}
           max={field.validation?.max}
           className={cn(baseInputClass, errorClass)}
+          {...inputProps}
         />
       );
 
@@ -235,6 +262,7 @@ function ConfigFieldInput({
           value={(value as string) ?? field.defaultValue ?? ""}
           onChange={handleChange}
           className={cn(baseInputClass, errorClass)}
+          {...inputProps}
         >
           <option value="">Select...</option>
           {(field.options ?? []).map((opt) => (
@@ -254,17 +282,25 @@ function ConfigFieldInput({
           onChange={handleMultiselectChange}
           placeholder={field.placeholder}
           className={cn(baseInputClass, errorClass)}
+          id={id}
+          label={field.label}
+          required={field.required}
+          invalid={invalid}
         />
       );
     }
 
     case "toggle":
       return (
-        <label className="flex cursor-pointer items-center gap-2">
+        <label htmlFor={id} className="flex cursor-pointer items-center gap-2">
           <input
             type="checkbox"
+            id={id}
             checked={Boolean(value ?? field.defaultValue ?? false)}
             onChange={handleToggle}
+            aria-label={field.label}
+            aria-required={field.required}
+            aria-invalid={invalid}
             className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500"
           />
           <span className="text-sm text-slate-300">
@@ -276,7 +312,7 @@ function ConfigFieldInput({
     case "code": {
       const lang = field.codeLanguage ?? "python";
       return (
-        <div className="min-h-[120px] overflow-hidden rounded-md border border-slate-600">
+        <div className="min-h-[120px] overflow-hidden rounded-md border border-slate-600" aria-label={field.label}>
           <Editor
             height="120px"
             defaultLanguage={lang}
@@ -302,6 +338,7 @@ function ConfigFieldInput({
           onChange={handleChange}
           placeholder={field.placeholder}
           className={cn(baseInputClass, errorClass, "font-mono text-xs")}
+          {...inputProps}
         />
       );
 
@@ -310,7 +347,7 @@ function ConfigFieldInput({
       const numVal = d?.value;
       const unitVal = d?.unit ?? "minutes";
       return (
-        <div className="flex gap-2">
+        <div className="flex gap-2" role="group" aria-label={field.label}>
           <input
             type="number"
             value={numVal ?? ""}
@@ -323,6 +360,9 @@ function ConfigFieldInput({
             }}
             min={0}
             className={cn(baseInputClass, errorClass, "flex-1")}
+            aria-label={`${field.label} value`}
+            aria-required={field.required}
+            aria-invalid={invalid}
           />
           <select
             value={unitVal}
@@ -330,6 +370,7 @@ function ConfigFieldInput({
               handleDurationChange(numVal, e.target.value)
             }
             className={cn(baseInputClass, errorClass, "w-28")}
+            aria-label={`${field.label} unit`}
           >
             {DURATION_UNITS.map((u) => (
               <option key={u.value} value={u.value}>
@@ -350,6 +391,9 @@ function ConfigFieldInput({
           pairs={pairs}
           onChange={handleKeyValueChange}
           className={errorClass}
+          ariaLabel={field.label}
+          required={field.required}
+          invalid={invalid}
         />
       );
     }
@@ -364,6 +408,10 @@ function ConfigFieldInput({
           onChange={(v) => onChange(v)}
           placeholder={field.placeholder ?? "Select columns (upstream schema will populate)"}
           className={cn(baseInputClass, errorClass)}
+          id={id}
+          label={field.label}
+          required={field.required}
+          invalid={invalid}
         />
       );
     }
@@ -371,7 +419,7 @@ function ConfigFieldInput({
     case "schema-picker": {
       const schemaLang = field.codeLanguage ?? "json";
       return (
-        <div className="min-h-[80px] overflow-hidden rounded-md border border-slate-600">
+        <div className="min-h-[80px] overflow-hidden rounded-md border border-slate-600" aria-label={field.label}>
           <Editor
             height="80px"
             defaultLanguage={schemaLang}
@@ -402,6 +450,7 @@ function ConfigFieldInput({
           onChange={handleChange}
           placeholder={field.placeholder}
           className={cn(baseInputClass, errorClass)}
+          {...inputProps}
         />
       );
   }
@@ -413,12 +462,20 @@ function MultiselectInput({
   onChange,
   placeholder,
   className,
+  id,
+  label,
+  required,
+  invalid,
 }: {
   options: { value: string; label: string }[];
   selected: string[];
   onChange: (v: string[]) => void;
   placeholder?: string;
   className?: string;
+  id?: string;
+  label?: string;
+  required?: boolean;
+  invalid?: boolean;
 }) {
   const toggle = (val: string) => {
     if (selected.includes(val)) {
@@ -428,7 +485,11 @@ function MultiselectInput({
     }
   };
   return (
-    <div className="flex flex-wrap gap-2 rounded-md border border-slate-600 bg-slate-800/50 p-2">
+    <div
+      className="flex flex-wrap gap-2 rounded-md border border-slate-600 bg-slate-800/50 p-2"
+      role="group"
+      aria-label={label}
+    >
       {options.length === 0 ? (
         <span className="text-sm text-slate-500">{placeholder ?? "No options"}</span>
       ) : (
@@ -437,6 +498,8 @@ function MultiselectInput({
             key={opt.value}
             type="button"
             onClick={() => toggle(opt.value)}
+            aria-pressed={selected.includes(opt.value)}
+            aria-label={`${opt.label}, ${selected.includes(opt.value) ? "selected" : "not selected"}`}
             className={cn(
               "rounded-full px-3 py-1 text-xs font-medium transition-colors",
               selected.includes(opt.value)
@@ -456,10 +519,16 @@ function KeyValueInput({
   pairs,
   onChange,
   className,
+  ariaLabel,
+  required,
+  invalid,
 }: {
   pairs: { key: string; value: string }[];
   onChange: (p: { key: string; value: string }[]) => void;
   className?: string;
+  ariaLabel?: string;
+  required?: boolean;
+  invalid?: boolean;
 }) {
   const update = (idx: number, key: "key" | "value", val: string) => {
     const next = [...pairs];
@@ -472,7 +541,11 @@ function KeyValueInput({
     onChange(pairs.filter((_, i) => i !== idx));
 
   return (
-    <div className="space-y-2">
+    <div
+      className="space-y-2"
+      role="group"
+      aria-label={ariaLabel}
+    >
       {pairs.map((p, i) => (
         <div key={i} className="flex gap-2">
           <input
@@ -480,6 +553,7 @@ function KeyValueInput({
             value={p.key}
             onChange={(e) => update(i, "key", e.target.value)}
             placeholder="Key"
+            aria-label={`${ariaLabel ?? "Key-value"} pair ${i + 1} key`}
             className={cn(
               "flex-1 rounded-md border bg-slate-800/50 px-3 py-2 text-sm text-slate-100",
               className
@@ -490,6 +564,7 @@ function KeyValueInput({
             value={p.value}
             onChange={(e) => update(i, "value", e.target.value)}
             placeholder="Value"
+            aria-label={`${ariaLabel ?? "Key-value"} pair ${i + 1} value`}
             className={cn(
               "flex-1 rounded-md border bg-slate-800/50 px-3 py-2 text-sm text-slate-100",
               className
@@ -499,6 +574,7 @@ function KeyValueInput({
             type="button"
             onClick={() => remove(i)}
             className="rounded-md border border-slate-600 px-2 text-red-400 hover:bg-red-500/10"
+            aria-label={`Remove pair ${i + 1}`}
           >
             −
           </button>
@@ -508,6 +584,7 @@ function KeyValueInput({
         type="button"
         onClick={add}
         className="rounded-md border border-dashed border-slate-500 px-3 py-1.5 text-sm text-slate-400 hover:border-slate-400 hover:text-slate-300"
+        aria-label="Add key-value pair"
       >
         + Add
       </button>
@@ -608,9 +685,10 @@ export function DynamicConfigForm({
                 .map((f) => {
                   const val = config[f.key] ?? f.defaultValue;
                   const hasError = f.required && isValid === false && errors.some((e) => e.startsWith(f.label));
+                  const fieldId = `config-${f.key}-${group}`;
                   return (
                     <div key={f.key}>
-                      <label className="mb-1.5 block text-sm font-medium text-slate-300">
+                      <label htmlFor={fieldId} className="mb-1.5 block text-sm font-medium text-slate-300">
                         {f.label}
                         {f.required && (
                           <span className="ml-1 text-red-400">*</span>
@@ -623,6 +701,7 @@ export function DynamicConfigForm({
                         config={config}
                         availableColumns={availableColumns}
                         invalid={hasError}
+                        id={fieldId}
                       />
                       {f.helpText && (
                         <p className="mt-1 text-xs text-slate-500">
@@ -662,11 +741,12 @@ export function DynamicConfigForm({
     <div className={cn("space-y-6", className)}>
       {hasSchemaFields && (
         <div>
-          <button
-            type="button"
-            onClick={() => setSchemaBrowserOpen(true)}
-            className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-800/50 px-3 py-2 text-sm font-medium text-slate-300 hover:border-slate-500 hover:bg-slate-800 hover:text-slate-200"
-          >
+        <button
+          type="button"
+          onClick={() => setSchemaBrowserOpen(true)}
+          className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-800/50 px-3 py-2 text-sm font-medium text-slate-300 hover:border-slate-500 hover:bg-slate-800 hover:text-slate-200"
+          aria-label="Browse schema to select catalog, schema, and table"
+        >
             <Search className="h-4 w-4" />
             Browse schema
           </button>
@@ -680,6 +760,8 @@ export function DynamicConfigForm({
             type="button"
             onClick={() => setAdvancedOpen((o) => !o)}
             className="flex w-full items-center justify-between rounded-md border border-slate-600 bg-slate-800/30 px-3 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800/50"
+            aria-expanded={advancedOpen}
+            aria-label="Advanced configuration options"
           >
             Advanced
             <span className="text-slate-500">{advancedOpen ? "▼" : "▶"}</span>

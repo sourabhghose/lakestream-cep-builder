@@ -1,8 +1,54 @@
-import axios from "axios";
+import axios, { type AxiosError } from "axios";
 
 // Production (Databricks App): same origin, baseURL "". Dev: set NEXT_PUBLIC_API_URL=http://localhost:8000
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 const api = axios.create({ baseURL: API_BASE });
+
+/** Augmented error with user-friendly message for UI display */
+export interface ApiErrorWithMessage extends Error {
+  userMessage?: string;
+}
+
+// Response interceptor: enhance errors with userMessage, do not suppress
+api.interceptors.response.use(
+  (res) => res,
+  (err: AxiosError) => {
+    let userMessage: string;
+    if (err.response) {
+      const status = err.response.status;
+      const data = err.response.data as Record<string, unknown> | string | null;
+      if (status === 401) userMessage = "Authentication required";
+      else if (status === 403) userMessage = "Permission denied";
+      else if (status === 404) userMessage = "Resource not found";
+      else if (status >= 500) userMessage = "Server error. Please try again later.";
+      else if (data) {
+        if (typeof data === "string") userMessage = data;
+        else if (typeof data.message === "string") userMessage = data.message;
+        else if (data.detail) {
+          const detail = data.detail;
+          userMessage =
+            typeof detail === "string"
+              ? detail
+              : Array.isArray(detail)
+                ? detail.map((d: any) => d?.msg ?? String(d)).join("; ")
+                : "Request failed";
+        } else userMessage = "Request failed";
+      } else userMessage = "Request failed";
+    } else {
+      const code = err.code;
+      userMessage =
+        code === "ECONNABORTED" ||
+        code === "ERR_NETWORK" ||
+        code === "ECONNREFUSED" ||
+        code === "ENOTFOUND" ||
+        code === "ETIMEDOUT"
+          ? "Cannot connect to backend. Is the server running?"
+          : err.message || "Request failed";
+    }
+    (err as ApiErrorWithMessage).userMessage = userMessage;
+    return Promise.reject(err);
+  }
+);
 
 /** Map React Flow nodes to API format */
 function nodesToApi(nodes: { id: string; type?: string; position?: { x: number; y: number }; data?: { type?: string; config?: Record<string, unknown>; label?: string } }[]) {
@@ -401,6 +447,41 @@ export async function getJobStatus(jobId: string): Promise<JobStatusResponse> {
 export async function getActiveJobs(): Promise<ActiveJobResponse[]> {
   const res = await api.get("/api/jobs/active");
   return res.data ?? [];
+}
+
+// Pattern test
+export interface PatternTestMatch {
+  pattern_node_id: string;
+  pattern_name: string;
+  matched_events: number[];
+  match_time: string;
+  details: string;
+}
+
+export interface PatternTestEventFlow {
+  event_index: number;
+  reached_nodes: string[];
+}
+
+export interface PatternTestResponse {
+  matches: PatternTestMatch[];
+  event_flow: PatternTestEventFlow[];
+  total_events: number;
+  total_matches: number;
+}
+
+export async function testPattern(
+  pipeline: { nodes: any[]; edges: any[] },
+  events: Record<string, unknown>[]
+): Promise<PatternTestResponse> {
+  const res = await api.post("/api/pattern/test", {
+    pipeline: {
+      nodes: nodesToApi(pipeline.nodes),
+      edges: edgesToApi(pipeline.edges),
+    },
+    events,
+  });
+  return res.data;
 }
 
 export default api;

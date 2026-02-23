@@ -96,15 +96,30 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
     return b;
   }, [def.codeTarget]);
 
+  const categoryLabelMap: Record<string, string> = {
+    source: "source",
+    sink: "sink",
+    pattern: "pattern",
+    "cep-pattern": "pattern",
+    transform: "transform",
+  };
+  const categoryLabel = categoryLabelMap[category] ?? "transform";
+  const ariaLabel = `${data.label ?? def.label ?? "Unknown"} ${categoryLabel} node${hasError ? ", has error" : ""}`;
+
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-label={ariaLabel}
+      aria-pressed={selected}
       className={cn(
         "min-w-[180px] rounded-lg border-2 bg-white px-4 py-3 shadow-lg backdrop-blur dark:bg-gray-800 dark:text-gray-100",
         "[will-change:transform]",
         borderColor,
-        selected && "ring-2 ring-blue-400 ring-offset-2 ring-offset-slate-950",
+        selected && "ring-2 ring-blue-400 ring-offset-2 ring-offset-slate-950 outline-none",
         hasError && "border-red-500",
-        searchHighlight && "ring-2 ring-blue-500 animate-pulse"
+        searchHighlight && "ring-2 ring-blue-500 animate-pulse",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
       )}
     >
       {Array.from({ length: Math.max(1, inputs) }).map((_, i) => (
@@ -142,6 +157,7 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
               onClick={handlePreviewClick}
               className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
               title="Preview data"
+              aria-label="Preview node data"
             >
               <Eye className="h-3.5 w-3.5" />
             </button>
@@ -177,6 +193,7 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
           onClick={handleInlineExpandClick}
           className="flex items-center gap-1 rounded px-2 py-1 text-slate-400 hover:bg-slate-700/60 hover:text-slate-200"
           title={previewExpanded ? "Collapse preview" : "Expand preview"}
+          aria-label={previewExpanded ? "Collapse inline preview" : "Expand inline preview"}
         >
           {previewExpanded ? (
             <ChevronUp className="h-3.5 w-3.5" />
@@ -230,6 +247,7 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
                   type="button"
                   onClick={() => setShowPreview(false)}
                   className="rounded p-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                  aria-label="Close data preview"
                 >
                   <X className="h-4 w-4" />
                 </button>

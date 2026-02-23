@@ -6,6 +6,7 @@ import type { CodeAnnotation } from "@/lib/api";
 import { markInvalidEdges } from "@/lib/edgeValidator";
 import { NODE_REGISTRY } from "@/lib/nodeRegistry";
 import { hasNodeConfigError } from "@/lib/configValidator";
+import { formatApiError } from "@/lib/errorUtils";
 import { useToastStore } from "@/hooks/useToastStore";
 import type { NodeType } from "@/types/nodes";
 
@@ -677,7 +678,8 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
     }),
 
   loadPipelineFromServer: async (id) => {
-    const pipeline = await api.getPipeline(id);
+    try {
+      const pipeline = await api.getPipeline(id);
     const nodes: Node[] = pipeline.nodes.map((n) => ({
       id: n.id,
       type: "custom" as const,
@@ -718,6 +720,10 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
       undoStack: [],
       redoStack: [],
     });
+    } catch (err) {
+      useToastStore.getState().addToast(formatApiError(err), "error");
+      throw err;
+    }
   },
 
   syncFromCode: (inputNodes, inputEdges) => {
@@ -1000,9 +1006,9 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
         warnings: result.warnings ?? [],
         isGenerating: false,
       });
-    } catch {
+    } catch (err) {
       set({ isGenerating: false, warnings: ["Code generation failed"] });
-      useToastStore.getState().addToast("Code generation failed", "error");
+      useToastStore.getState().addToast(formatApiError(err), "error");
     }
   },
 
@@ -1028,8 +1034,10 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
         isDirty: false,
         isSaving: false,
       });
-    } catch {
+    } catch (err) {
       set({ isSaving: false });
+      useToastStore.getState().addToast(formatApiError(err), "error");
+      throw err;
     }
   },
 
@@ -1039,9 +1047,10 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
       const result = await api.deployPipeline(request);
       set({ isDeploying: false });
       return result;
-    } catch {
+    } catch (err) {
       set({ isDeploying: false });
-      throw new Error("Deployment failed");
+      useToastStore.getState().addToast(formatApiError(err), "error");
+      throw err;
     }
   },
 }));
