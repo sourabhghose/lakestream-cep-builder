@@ -55,6 +55,15 @@ async def list_pipelines() -> list[PipelineSummary]:
     return _store().list_all()
 
 
+@router.get("/{pipeline_id}/versions")
+async def get_pipeline_versions(pipeline_id: str) -> list[dict]:
+    """Get list of saved pipeline version snapshots. For local dev, reads from ~/.lakestream/pipeline_history/{id}/."""
+    store = _store()
+    if not hasattr(store, "get_versions"):
+        return []
+    return store.get_versions(pipeline_id)
+
+
 @router.get("/{pipeline_id}", response_model=PipelineDefinition)
 async def get_pipeline(pipeline_id: str) -> PipelineDefinition:
     """Get a single pipeline by ID."""

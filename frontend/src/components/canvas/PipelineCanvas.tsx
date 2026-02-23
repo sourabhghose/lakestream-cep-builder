@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import {
   ReactFlow,
   Background,
@@ -27,6 +27,7 @@ import CustomEdge from "@/components/canvas/CustomEdge";
 import PipelineSearch from "@/components/canvas/PipelineSearch";
 import { usePipelineStore } from "@/hooks/usePipelineStore";
 import { NODE_REGISTRY } from "@/lib/nodeRegistry";
+import { throttle } from "@/lib/performanceUtils";
 import { validateConnection } from "@/lib/edgeValidator";
 import { useToastStore } from "@/hooks/useToastStore";
 
@@ -60,6 +61,10 @@ function PanToNodeEffect() {
   return null;
 }
 
+function isPositionOnlyChange(changes: NodeChange[]): boolean {
+  return changes.length > 0 && changes.every((c) => (c as { type?: string }).type === "position");
+}
+
 function PipelineCanvasInner() {
   const { screenToFlowPosition } = useReactFlow();
   const {
@@ -73,14 +78,31 @@ function PipelineCanvasInner() {
     triggerCodeGen,
   } = usePipelineStore();
 
+  const nodesRef = useRef(nodes);
+  nodesRef.current = nodes;
+
+  const throttledPositionUpdate = useRef(
+    throttle((nextNodes: Node[]) => {
+      storeOnNodesChange(nextNodes);
+    }, 50)
+  ).current;
+
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
-      const nextNodes = applyNodeChanges(changes, nodes);
-      storeOnNodesChange(nextNodes);
-      triggerCodeGen();
+      const nextNodes = applyNodeChanges(changes, nodesRef.current);
+      if (isPositionOnlyChange(changes)) {
+        throttledPositionUpdate(nextNodes);
+      } else {
+        storeOnNodesChange(nextNodes);
+        triggerCodeGen();
+      }
     },
-    [nodes, storeOnNodesChange, triggerCodeGen]
+    [storeOnNodesChange, triggerCodeGen, throttledPositionUpdate]
   );
+
+  const handleNodeDragStop = useCallback(() => {
+    triggerCodeGen();
+  }, [triggerCodeGen]);
 
   const handleEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
@@ -179,6 +201,7 @@ function PipelineCanvasInner() {
         onDragOver={handleDragOver}
         onPaneClick={handlePaneClick}
         onNodeClick={handleNodeClick}
+        onNodeDragStop={handleNodeDragStop}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         snapToGrid

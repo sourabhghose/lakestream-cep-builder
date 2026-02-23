@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { Node, Edge, Connection } from "@xyflow/react";
 import * as api from "@/lib/api";
+import { debounce } from "@/lib/performanceUtils";
 import type { CodeAnnotation } from "@/lib/api";
 import { markInvalidEdges } from "@/lib/edgeValidator";
 import { NODE_REGISTRY } from "@/lib/nodeRegistry";
@@ -91,6 +92,8 @@ interface PipelineState {
   removeNode: (id: string) => void;
   removeNodes: (ids: string[]) => void;
   updateNode: (id: string, data: Partial<Node["data"]>) => void;
+  batchUpdateNodes: (updates: Array<{ nodeId: string; data: Record<string, unknown> }>) => void;
+  setNodes: (nodes: Node[]) => void;
   /** Toggle inline preview expanded state on a node. Does not set isDirty. */
   toggleNodePreview: (nodeId: string) => void;
   /** Store preview data on a node. Does not set isDirty. */
@@ -809,6 +812,27 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
       return { nodes: updatedNodes, isDirty: true };
     }),
 
+  batchUpdateNodes: (updates) =>
+    set((state) => {
+      if (updates.length === 0) return state;
+      const updateMap = new Map(updates.map((u) => [u.nodeId, u.data]));
+      const updatedNodes = state.nodes.map((n) => {
+        const data = updateMap.get(n.id);
+        if (!data) return n;
+        const merged = { ...n.data, ...data };
+        const hasError = hasNodeConfigError({ ...n, data: merged });
+        return { ...n, data: { ...merged, hasError } };
+      });
+      return { nodes: updatedNodes, isDirty: true };
+    }),
+
+  setNodes: (nodes) =>
+    set((state) => ({
+      nodes,
+      edges: markInvalidEdges(nodes, state.edges),
+      isDirty: true,
+    })),
+
   toggleNodePreview: (nodeId) =>
     set((state) => ({
       nodes: state.nodes.map((n) => {
@@ -908,9 +932,9 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
 
   setDirty: (dirty) => set({ isDirty: dirty }),
 
-  triggerCodeGen: () => {
+  triggerCodeGen: debounce(() => {
     get().generateCode();
-  },
+  }, 300),
 
   validatePipeline: () => {
     const { getExpandedNodesAndEdges } = get();

@@ -70,14 +70,23 @@ function ToastItemComponent({ toast }: { toast: ToastItem }) {
   );
 }
 
-export default function Toast() {
+interface ToastProps {
+  /** When true, render without fixed positioning (for use inside a parent container) */
+  embedded?: boolean;
+}
+
+export default function Toast({ embedded }: ToastProps) {
   const toasts = useToastStore((s) => s.toasts);
 
   if (toasts.length === 0) return null;
 
   return (
     <div
-      className="fixed bottom-20 right-4 z-[100] flex max-w-sm flex-col gap-2"
+      className={
+        embedded
+          ? "flex max-w-sm flex-col gap-2"
+          : "fixed bottom-20 right-4 z-[100] flex max-w-sm flex-col gap-2"
+      }
       aria-live="polite"
     >
       {toasts.map((toast) => (

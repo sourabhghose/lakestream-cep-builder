@@ -149,6 +149,19 @@ class LocalFileDeployStore:
         records = self.list_deploys(pipeline_id)
         return records[0] if records else None
 
+    def list_recent_deploys(self, limit: int = 50) -> list[DeployRecord]:
+        """List most recent deploys across all pipelines, sorted by deployed_at DESC."""
+        all_records: list[DeployRecord] = []
+        for path in self._base.glob("*.json"):
+            try:
+                with open(path) as f:
+                    for d in json.load(f):
+                        all_records.append(self._dict_to_record(d))
+            except (json.JSONDecodeError, KeyError):
+                continue
+        all_records.sort(key=lambda r: r.deployed_at, reverse=True)
+        return all_records[:limit]
+
 
 def record_deploy(
     pipeline_id: str,
@@ -213,6 +226,46 @@ def record_deploy(
             deployed_by=deployed_by,
             deployment_type=deployment_type,
         )
+
+
+def list_recent_deploys(limit: int = 50) -> list[DeployRecord]:
+    """List most recent deploys across all pipelines. Uses LocalFileDeployStore when PGHOST is not set."""
+    if not is_postgres_available():
+        return _get_local_store().list_recent_deploys(limit)
+    pool = get_pool()
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, pipeline_id, pipeline_version, code_target,
+                       databricks_job_id, databricks_pipeline_id, job_url,
+                       deploy_status, deployed_code, cluster_config,
+                       deployed_by, deployed_at, error_message
+                FROM deploy_history
+                ORDER BY deployed_at DESC
+                LIMIT %s
+                """,
+                (limit,),
+            )
+            rows = cur.fetchall()
+    return [
+        DeployRecord(
+            id=str(row[0]),
+            pipeline_id=str(row[1]),
+            pipeline_version=row[2],
+            code_target=row[3],
+            databricks_job_id=row[4],
+            databricks_pipeline_id=row[5],
+            job_url=row[6],
+            deploy_status=row[7],
+            deployed_code=row[8],
+            cluster_config=row[9] if isinstance(row[9], dict) else (json.loads(row[9]) if row[9] else None),
+            deployed_by=row[10],
+            deployed_at=row[11],
+            error_message=row[12],
+        )
+        for row in rows
+    ]
 
 
 def list_deploys(pipeline_id: str) -> list[DeployRecord]:

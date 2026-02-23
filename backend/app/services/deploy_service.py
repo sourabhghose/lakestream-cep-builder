@@ -441,17 +441,133 @@ class DeployService:
 
         For jobs: returns run state. For pipelines: returns pipeline state.
         """
-        if not self._config.is_configured:
+        result = self.get_job_status_detail(job_id, deployment_type)
+        return result.get("status", "UNKNOWN")
+
+    def _normalize_status(
+        self, raw: str, result_state: str | None = None
+    ) -> Literal["PENDING", "RUNNING", "SUCCEEDED", "FAILED", "CANCELLED"]:
+        """Map Databricks states to our standard status enum."""
+        raw_upper = (raw or "").upper()
+        if raw_upper in ("PENDING", "BLOCKED"):
             return "PENDING"
+        if raw_upper in ("RUNNING", "TERMINATING"):
+            return "RUNNING"
+        if raw_upper == "TERMINATED":
+            rs = (result_state or "").upper()
+            if rs in ("SUCCESS",):
+                return "SUCCEEDED"
+            if rs in ("FAILED", "TIMEDOUT", "INTERNAL_ERROR"):
+                return "FAILED"
+            if rs in ("CANCELED", "CANCELLED"):
+                return "CANCELLED"
+            return "SUCCEEDED"  # default for terminated
+        if raw_upper in ("SKIPPED",):
+            return "CANCELLED"
+        if raw_upper in ("INTERNAL_ERROR",):
+            return "FAILED"
+        return "PENDING"
+
+    def get_job_status_detail(
+        self,
+        job_id: str,
+        deployment_type: str = "job",
+        job_url: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Get full status of a job or pipeline run.
+
+        Returns: { job_id, status, run_url?, start_time?, duration_ms? }
+        For mock mode: cycles PENDING -> RUNNING -> SUCCEEDED.
+        """
+        if not self._config.is_configured:
+            return self._get_mock_job_status(job_id, job_url)
+
         try:
             w = self._get_client()
+            base_url = str(w.config.host).rstrip("/") if w.config.host else ""
+
             if deployment_type == "pipeline":
                 p = w.pipelines.get(pipeline_id=job_id)
-                return getattr(p, "state", "UNKNOWN") or "UNKNOWN"
-            # Job
+                raw = getattr(p, "state", "UNKNOWN") or "UNKNOWN"
+                status = self._normalize_status(raw)
+                run_url = job_url or f"{base_url}/#joblist/pipelines/{job_id}"
+                return {
+                    "job_id": job_id,
+                    "status": status,
+                    "run_url": run_url,
+                }
+
+            # Job: get latest run
             runs = list(w.jobs.list_runs(job_id=int(job_id), limit=1))
             if not runs:
-                return "PENDING"
-            return runs[0].state.life_cycle_state or "PENDING"
+                return {
+                    "job_id": job_id,
+                    "status": "PENDING",
+                    "run_url": job_url or f"{base_url}/#job/{job_id}",
+                }
+
+            run = runs[0]
+            raw = run.state.life_cycle_state or "PENDING"
+            result_state = getattr(run.state, "result_state", None)
+            result_state_str = str(result_state).upper() if result_state else None
+            status = self._normalize_status(raw, result_state_str)
+
+            start_time: str | None = None
+            duration_ms: int | None = None
+            st = getattr(run, "start_time", None)
+            et = getattr(run, "end_time", None)
+            if st is not None:
+                start_time = str(st)
+            if st is not None and et is not None:
+                try:
+                    start_ms = int(st) if isinstance(st, (int, float)) else 0
+                    end_ms = int(et) if isinstance(et, (int, float)) else 0
+                    if end_ms > start_ms:
+                        duration_ms = end_ms - start_ms
+                except (TypeError, ValueError):
+                    pass
+
+            run_url = job_url
+            if not run_url and getattr(run, "run_id", None):
+                run_url = f"{base_url}/#job/{job_id}/run/{run.run_id}"
+            if not run_url:
+                run_url = f"{base_url}/#job/{job_id}"
+
+            return {
+                "job_id": job_id,
+                "status": status,
+                "run_url": run_url,
+                "start_time": start_time,
+                "duration_ms": duration_ms,
+            }
         except Exception:
-            return "UNKNOWN"
+            return {
+                "job_id": job_id,
+                "status": "UNKNOWN",
+                "run_url": job_url,
+            }
+
+    def _get_mock_job_status(self, job_id: str, job_url: str | None) -> dict[str, Any]:
+        """Mock status cycling PENDING -> RUNNING -> SUCCEEDED for local dev."""
+        now = time.time()
+        if not hasattr(self, "_mock_job_timestamps"):
+            self._mock_job_timestamps: dict[str, float] = {}
+        if job_id not in self._mock_job_timestamps:
+            self._mock_job_timestamps[job_id] = now
+
+        elapsed = int(now - self._mock_job_timestamps[job_id])
+        if elapsed < 3:
+            status = "PENDING"
+        elif elapsed < 8:
+            status = "RUNNING"
+        else:
+            status = "SUCCEEDED"
+
+        return {
+            "job_id": job_id,
+            "status": status,
+            "run_url": job_url or f"https://databricks.example.com/#job/{job_id}",
+            "start_time": None,
+            "duration_ms": None,
+        }

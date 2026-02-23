@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { PanelLeftOpen, PanelLeftClose, ChevronDown } from "lucide-react";
+import { useState, useMemo, useCallback } from "react";
+import { PanelLeftOpen, PanelLeftClose, ChevronDown, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { cn } from "@/lib/utils";
 import { NODE_CATEGORIES, NODE_REGISTRY } from "@/lib/nodeRegistry";
@@ -74,6 +74,21 @@ export default function NodePalette({
     })).filter((cat) => cat.nodes.length > 0);
   }, [searchQuery]);
 
+  const allExpanded = useMemo(() => {
+    return filteredCategories.every((cat) => expandedCategories[cat.id] ?? true);
+  }, [filteredCategories, expandedCategories]);
+
+  const toggleExpandAll = useCallback(() => {
+    const next = allExpanded ? false : true;
+    setExpandedCategories((prev) => {
+      const nextState = { ...prev };
+      filteredCategories.forEach((cat) => {
+        nextState[cat.id] = next;
+      });
+      return nextState;
+    });
+  }, [allExpanded, filteredCategories]);
+
   const toggleShowMore = (categoryId: string) => {
     setExpandedCategoryNodes((prev) => ({ ...prev, [categoryId]: !prev[categoryId] }));
   };
@@ -96,13 +111,26 @@ export default function NodePalette({
     <div className="flex w-[250px] flex-col border-r border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900/95">
       <div className="flex h-12 items-center justify-between border-b border-slate-700 px-4">
         <span className="font-medium text-slate-200">Node Palette</span>
-        <button
-          onClick={onToggleCollapse}
-          className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
-          title="Collapse palette"
-        >
-          <PanelLeftClose className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={toggleExpandAll}
+            className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+            title={allExpanded ? "Collapse all" : "Expand all"}
+          >
+            {allExpanded ? (
+              <ChevronsDownUp className="h-4 w-4" />
+            ) : (
+              <ChevronsUpDown className="h-4 w-4" />
+            )}
+          </button>
+          <button
+            onClick={onToggleCollapse}
+            className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+            title="Collapse palette"
+          >
+            <PanelLeftClose className="h-4 w-4" />
+          </button>
+        </div>
       </div>
       <div className="border-b border-slate-700 px-2 pb-2">
         <input

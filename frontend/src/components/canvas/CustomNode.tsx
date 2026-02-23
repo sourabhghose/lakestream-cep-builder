@@ -100,6 +100,7 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
     <div
       className={cn(
         "min-w-[180px] rounded-lg border-2 bg-white px-4 py-3 shadow-lg backdrop-blur dark:bg-gray-800 dark:text-gray-100",
+        "[will-change:transform]",
         borderColor,
         selected && "ring-2 ring-blue-400 ring-offset-2 ring-offset-slate-950",
         hasError && "border-red-500",
@@ -261,17 +262,18 @@ function propsAreEqual(
   next: NodeProps
 ): boolean {
   if (prev.id !== next.id || prev.selected !== next.selected) return false;
+  // Skip re-render when only position changed (smoother canvas panning/drag)
   const pd = prev.data;
   const nd = next.data;
-  return (
+  const dataEqual =
     pd?.type === nd?.type &&
     pd?.label === nd?.label &&
     pd?.hasError === nd?.hasError &&
     pd?.configSummary === nd?.configSummary &&
     pd?.searchHighlight === nd?.searchHighlight &&
     pd?.previewExpanded === nd?.previewExpanded &&
-    pd?.previewData === nd?.previewData
-  );
+    pd?.previewData === nd?.previewData;
+  return dataEqual;
 }
 
 export default memo(CustomNodeInner, propsAreEqual);

@@ -343,4 +343,64 @@ export async function deleteTemplate(id: string): Promise<void> {
   await api.delete(`/api/templates/${encodeURIComponent(id)}`);
 }
 
+// Flow preview
+export interface FlowPreviewResponse {
+  node_previews: Record<string, { columns: string[]; rows: (string | number | boolean | null)[][] }>;
+}
+
+export async function getFlowPreview(pipeline: {
+  nodes: any[];
+  edges: any[];
+}): Promise<FlowPreviewResponse> {
+  const res = await api.post("/api/preview/flow", {
+    nodes: nodesToApi(pipeline.nodes),
+    edges: edgesToApi(pipeline.edges),
+  });
+  return res.data;
+}
+
+// Pipeline versions
+export interface PipelineVersionSnapshot {
+  version: number;
+  saved_at: string;
+  canvas_json: { nodes: unknown[]; edges: unknown[] };
+  name: string;
+}
+
+export async function getPipelineVersions(
+  pipelineId: string
+): Promise<PipelineVersionSnapshot[]> {
+  const res = await api.get(`/api/pipelines/${encodeURIComponent(pipelineId)}/versions`);
+  return res.data ?? [];
+}
+
+// Job status
+export interface JobStatusResponse {
+  job_id: string;
+  status: "PENDING" | "RUNNING" | "SUCCEEDED" | "FAILED" | "CANCELLED";
+  run_url?: string;
+  start_time?: string;
+  duration_ms?: number;
+}
+
+export interface ActiveJobResponse {
+  job_id: string;
+  pipeline_id: string;
+  pipeline_name: string;
+  status: "PENDING" | "RUNNING" | "SUCCEEDED" | "FAILED" | "CANCELLED";
+  job_url?: string;
+  start_time?: string;
+  duration_ms?: number;
+}
+
+export async function getJobStatus(jobId: string): Promise<JobStatusResponse> {
+  const res = await api.get(`/api/jobs/${encodeURIComponent(jobId)}/status`);
+  return res.data;
+}
+
+export async function getActiveJobs(): Promise<ActiveJobResponse[]> {
+  const res = await api.get("/api/jobs/active");
+  return res.data ?? [];
+}
+
 export default api;

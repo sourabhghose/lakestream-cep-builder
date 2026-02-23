@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { usePipelineStore } from "@/hooks/usePipelineStore";
 import { useToastStore } from "@/hooks/useToastStore";
+import { useJobStatusStore } from "@/hooks/useJobStatusStore";
 import * as api from "@/lib/api";
 
 interface DeployDialogProps {
@@ -47,6 +48,7 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
     deployPipeline,
   } = usePipelineStore();
   const addToast = useToastStore((s) => s.addToast);
+  const addJob = useJobStatusStore((s) => s.addJob);
 
   const [jobName, setJobName] = useState("");
   const [codeTargetChoice, setCodeTargetChoice] = useState<"sdp" | "sss">("sdp");
@@ -175,6 +177,7 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
         jobUrl: result.job_url,
         jobId: result.job_id,
       });
+      addJob(result.job_id, pipelineName || "Pipeline", result.job_url);
       addToast("Pipeline deployed successfully", "success");
     } catch {
       addToast("Deployment failed", "error");

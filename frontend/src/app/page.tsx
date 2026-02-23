@@ -22,6 +22,8 @@ import {
   Sun,
   Moon,
   Group,
+  GitBranch,
+  Workflow,
 } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import PipelineCanvas from "@/components/canvas/PipelineCanvas";
@@ -30,13 +32,17 @@ import ConfigPanel from "@/components/panels/ConfigPanel";
 import HelpPanel from "@/components/panels/HelpPanel";
 import PipelineListPanel from "@/components/panels/PipelineListPanel";
 import DeployHistoryPanel from "@/components/panels/DeployHistoryPanel";
+import VersionDiffPanel from "@/components/panels/VersionDiffPanel";
 import ValidationPanel from "@/components/panels/ValidationPanel";
+import FlowPreviewPanel from "@/components/preview/FlowPreviewPanel";
 import CodePreview from "@/components/editors/CodePreview";
 import TemplateGallery from "@/components/templates/TemplateGallery";
 import SaveDialog from "@/components/dialogs/SaveDialog";
 import SaveTemplateDialog from "@/components/dialogs/SaveTemplateDialog";
 import DeployDialog from "@/components/dialogs/DeployDialog";
+import JobStatusNotification from "@/components/notifications/JobStatusNotification";
 import Toast from "@/components/ui/Toast";
+import { useJobStatusStore } from "@/hooks/useJobStatusStore";
 import { cn } from "@/lib/utils";
 import { usePipelineStore } from "@/hooks/usePipelineStore";
 import { useToastStore } from "@/hooks/useToastStore";
@@ -68,7 +74,9 @@ export default function Home() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [pipelineListOpen, setPipelineListOpen] = useState(false);
   const [deployHistoryOpen, setDeployHistoryOpen] = useState(false);
+  const [versionDiffOpen, setVersionDiffOpen] = useState(false);
   const [validationPanelOpen, setValidationPanelOpen] = useState(false);
+  const [flowPreviewOpen, setFlowPreviewOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [saveTemplateDialogOpen, setSaveTemplateDialogOpen] = useState(false);
   const [deployDialogOpen, setDeployDialogOpen] = useState(false);
@@ -92,6 +100,8 @@ export default function Home() {
   } = usePipelineStore();
   const importFileInputRef = useRef<HTMLInputElement>(null);
   const addToast = useToastStore((s) => s.addToast);
+  const toasts = useToastStore((s) => s.toasts);
+  const activeJobs = useJobStatusStore((s) => s.activeJobs);
   const { theme, toggleTheme, initTheme } = useThemeStore();
 
   useEffect(() => {
@@ -249,6 +259,16 @@ export default function Home() {
                 <DropdownMenu.Item
                   className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-slate-200 outline-none hover:bg-slate-800"
                   onSelect={() => {
+                    setVersionDiffOpen(true);
+                    setMenuOpen(false);
+                  }}
+                >
+                  <GitBranch className="h-4 w-4" />
+                  Version History
+                </DropdownMenu.Item>
+                <DropdownMenu.Item
+                  className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-slate-200 outline-none hover:bg-slate-800"
+                  onSelect={() => {
                     setSaveTemplateDialogOpen(true);
                     setMenuOpen(false);
                   }}
@@ -339,6 +359,16 @@ export default function Home() {
             <History className="h-5 w-5" />
           </button>
           <button
+            className={cn(
+              "rounded-md p-2 text-slate-400 hover:bg-slate-800 hover:text-slate-200",
+              flowPreviewOpen && "bg-slate-800 text-slate-200"
+            )}
+            onClick={() => setFlowPreviewOpen((o) => !o)}
+            title="Flow Preview"
+          >
+            <Workflow className="h-5 w-5" />
+          </button>
+          <button
             className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-slate-200"
             onClick={() => setValidationPanelOpen(true)}
             title="Validate pipeline"
@@ -415,10 +445,20 @@ export default function Home() {
           onClose={() => setDeployHistoryOpen(false)}
           pipelineId={pipelineId}
         />
+        {/* Version Diff Panel */}
+        <VersionDiffPanel
+          isOpen={versionDiffOpen}
+          onClose={() => setVersionDiffOpen(false)}
+        />
         {/* Validation Panel */}
         <ValidationPanel
           isOpen={validationPanelOpen}
           onClose={() => setValidationPanelOpen(false)}
+        />
+        {/* Flow Preview Panel */}
+        <FlowPreviewPanel
+          isOpen={flowPreviewOpen}
+          onClose={() => setFlowPreviewOpen(false)}
         />
       </div>
 
@@ -455,8 +495,20 @@ export default function Home() {
         onChange={handleImportPipelineFile}
       />
 
-      {/* Toast notifications */}
-      <Toast />
+      {/* Notifications area: job status + toasts (bottom-right) */}
+      {(Object.keys(activeJobs).length > 0 || toasts.length > 0) && (
+        <div className="fixed bottom-20 right-4 z-[100] flex max-w-sm flex-col gap-2">
+          {Object.values(activeJobs).map((job) => (
+            <JobStatusNotification
+              key={job.jobId}
+              jobId={job.jobId}
+              pipelineName={job.pipelineName}
+              jobUrl={job.jobUrl}
+            />
+          ))}
+          <Toast embedded />
+        </div>
+      )}
 
       {/* Templates modal */}
       {templatesOpen && (

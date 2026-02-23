@@ -73,6 +73,11 @@ def _to_summary(pipeline: PipelineDefinition) -> PipelineSummary:
     )
 
 
+def _history_base() -> Path:
+    """Base directory for pipeline version history (local dev only)."""
+    return Path.home() / ".lakestream" / "pipeline_history"
+
+
 class LocalFileStore(PipelineStore):
     """Saves pipeline JSON files to a local directory (e.g., ~/.lakestream/pipelines/)."""
 
@@ -84,6 +89,9 @@ class LocalFileStore(PipelineStore):
 
     def _path(self, pipeline_id: str) -> Path:
         return self._base / f"{pipeline_id}.json"
+
+    def _history_dir(self, pipeline_id: str) -> Path:
+        return _history_base() / pipeline_id
 
     def save(self, pipeline: PipelineDefinition) -> str:
         pipeline_id = _ensure_pipeline_id(pipeline)
@@ -123,6 +131,21 @@ class LocalFileStore(PipelineStore):
         existing = self.get(pipeline_id)
         if not existing:
             raise FileNotFoundError(f"Pipeline {pipeline_id} not found")
+        # Save previous version to history before updating
+        history_dir = self._history_dir(pipeline_id)
+        history_dir.mkdir(parents=True, exist_ok=True)
+        history_file = history_dir / f"{existing.version}.json"
+        with open(history_file, "w") as f:
+            json.dump(
+                {
+                    "version": existing.version,
+                    "saved_at": existing.updated_at.isoformat(),
+                    "canvas_json": existing.model_dump(mode="json"),
+                    "name": existing.name,
+                },
+                f,
+                indent=2,
+            )
         pipeline = pipeline.model_copy(
             update={
                 "id": pipeline_id,
@@ -135,6 +158,30 @@ class LocalFileStore(PipelineStore):
         with open(path, "w") as f:
             json.dump(pipeline.model_dump(mode="json"), f, indent=2)
         return pipeline
+
+    def get_versions(self, pipeline_id: str) -> list[dict]:
+        """Return list of saved version snapshots for local dev. Each item: version, saved_at, canvas_json, name."""
+        history_dir = self._history_dir(pipeline_id)
+        if not history_dir.exists():
+            return []
+        versions = []
+        for f in history_dir.glob("*.json"):
+            try:
+                v = int(f.stem)
+            except ValueError:
+                continue
+            with open(f) as fp:
+                data = json.load(fp)
+            versions.append(
+                {
+                    "version": data.get("version", v),
+                    "saved_at": data.get("saved_at", ""),
+                    "canvas_json": data.get("canvas_json", {}),
+                    "name": data.get("name", ""),
+                }
+            )
+        versions.sort(key=lambda x: x["version"])
+        return versions
 
 
 class DatabricksVolumeStore(PipelineStore):
@@ -229,6 +276,10 @@ class DatabricksVolumeStore(PipelineStore):
             overwrite=True,
         )
         return pipeline
+
+    def get_versions(self, pipeline_id: str) -> list[dict]:
+        """Return list of saved version snapshots. For Databricks volume, returns empty."""
+        return []
 
 
 class LakebaseStore(PipelineStore):
@@ -356,6 +407,10 @@ class LakebaseStore(PipelineStore):
                     ),
                 )
         return pipeline
+
+    def get_versions(self, pipeline_id: str) -> list[dict]:
+        """Return list of saved version snapshots. For Lakebase, returns empty (rely on deploy_history)."""
+        return []
 
 
 def get_pipeline_store() -> PipelineStore:
