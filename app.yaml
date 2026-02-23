@@ -5,12 +5,14 @@
 name: lakestream-cep-builder
 description: Visual Complex Event Processing Pipeline Builder for Databricks. Design streaming pipelines with 38 node types, generate Lakeflow SDP or Spark Structured Streaming code, and deploy to Lakeflow Jobs.
 
-# Backend: FastAPI (run from backend/ directory)
-# For full-stack: build frontend and serve static from backend
 command:
   - sh
   - -c
   - "cd backend && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+env:
+  - name: ENVIRONMENT
+    value: production
 
 # Permissions required by the app
 # - CAN_USE: Run the app

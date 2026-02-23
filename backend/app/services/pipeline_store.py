@@ -1,7 +1,8 @@
 """
 Pipeline persistence layer.
 
-Supports LocalFileStore (local dev) and DatabricksVolumeStore (Unity Catalog volumes).
+Supports LocalFileStore (local dev), DatabricksVolumeStore (Unity Catalog volumes),
+and LakebaseStore (Lakebase PostgreSQL when PGHOST is set).
 """
 
 import io
@@ -230,8 +231,134 @@ class DatabricksVolumeStore(PipelineStore):
         return pipeline
 
 
+class LakebaseStore(PipelineStore):
+    """Saves pipelines to Lakebase PostgreSQL (Databricks serverless PostgreSQL)."""
+
+    def __init__(self):
+        from app.db import get_pool
+
+        self._pool = get_pool()
+
+    def save(self, pipeline: PipelineDefinition) -> str:
+        pipeline_id = _ensure_pipeline_id(pipeline)
+        pipeline = _ensure_timestamps(pipeline, is_update=False)
+        pipeline = pipeline.model_copy(update={"id": pipeline_id})
+        canvas_json = json.dumps(pipeline.model_dump(mode="json"))
+        with self._pool.connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO pipelines (
+                        id, name, description, canvas_json, version, status,
+                        created_at, updated_at
+                    ) VALUES (
+                        %s, %s, %s, %s::jsonb, %s, %s, %s, %s
+                    )
+                    """,
+                    (
+                        pipeline_id,
+                        pipeline.name,
+                        pipeline.description or "",
+                        canvas_json,
+                        pipeline.version,
+                        pipeline.status,
+                        pipeline.created_at,
+                        pipeline.updated_at,
+                    ),
+                )
+        return pipeline_id
+
+    def get(self, pipeline_id: str) -> PipelineDefinition | None:
+        with self._pool.connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT canvas_json, version, status, created_at, updated_at "
+                    "FROM pipelines WHERE id = %s",
+                    (pipeline_id,),
+                )
+                row = cur.fetchone()
+        if not row:
+            return None
+        canvas_json, version, status, created_at, updated_at = row
+        data = canvas_json if isinstance(canvas_json, dict) else json.loads(canvas_json)
+        data["id"] = pipeline_id
+        data["version"] = version
+        data["status"] = status
+        data["created_at"] = (
+            created_at.isoformat() if hasattr(created_at, "isoformat") else created_at
+        )
+        data["updated_at"] = (
+            updated_at.isoformat() if hasattr(updated_at, "isoformat") else updated_at
+        )
+        return PipelineDefinition.model_validate(data)
+
+    def list_all(self) -> list[PipelineSummary]:
+        with self._pool.connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id, name, description, updated_at,
+                           jsonb_array_length(COALESCE(canvas_json->'nodes', '[]'::jsonb)) AS node_count,
+                           jsonb_array_length(COALESCE(canvas_json->'edges', '[]'::jsonb)) AS edge_count
+                    FROM pipelines
+                    ORDER BY updated_at DESC
+                    """
+                )
+                rows = cur.fetchall()
+        return [
+            PipelineSummary(
+                id=str(row[0]),
+                name=row[1],
+                description=row[2] or "",
+                updated_at=row[3],
+                node_count=row[4] or 0,
+                edge_count=row[5] or 0,
+            )
+            for row in rows
+        ]
+
+    def delete(self, pipeline_id: str) -> bool:
+        with self._pool.connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM pipelines WHERE id = %s", (pipeline_id,))
+                return cur.rowcount > 0
+
+    def update(self, pipeline_id: str, pipeline: PipelineDefinition) -> PipelineDefinition:
+        existing = self.get(pipeline_id)
+        if not existing:
+            raise FileNotFoundError(f"Pipeline {pipeline_id} not found")
+        pipeline = pipeline.model_copy(
+            update={
+                "id": pipeline_id,
+                "created_at": existing.created_at,
+                "updated_at": datetime.now(tz=timezone.utc),
+                "version": existing.version + 1,
+            }
+        )
+        canvas_json = json.dumps(pipeline.model_dump(mode="json"))
+        with self._pool.connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE pipelines SET
+                        name = %s, description = %s, canvas_json = %s::jsonb,
+                        version = %s, updated_at = %s
+                    WHERE id = %s
+                    """,
+                    (
+                        pipeline.name,
+                        pipeline.description or "",
+                        canvas_json,
+                        pipeline.version,
+                        pipeline.updated_at,
+                        pipeline_id,
+                    ),
+                )
+        return pipeline
+
+
 def get_pipeline_store() -> PipelineStore:
-    """Return DatabricksVolumeStore if DATABRICKS_HOST is set, otherwise LocalFileStore."""
-    if os.environ.get("DATABRICKS_HOST"):
-        return DatabricksVolumeStore()
+    """Return LakebaseStore if PGHOST is set, otherwise LocalFileStore."""
+    if os.environ.get("PGHOST"):
+        return LakebaseStore()
     return LocalFileStore()

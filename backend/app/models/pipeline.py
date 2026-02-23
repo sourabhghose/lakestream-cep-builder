@@ -149,3 +149,23 @@ class DeployResponse(BaseModel):
         default="job",
         description="Type: 'job', 'pipeline', or 'mock'",
     )
+
+
+class DeployHistoryEntry(BaseModel):
+    """A single deploy history entry for API response."""
+
+    id: str = Field(..., description="Deploy record ID")
+    pipeline_id: str = Field(..., description="Pipeline ID")
+    pipeline_version: int = Field(..., description="Pipeline version at deploy time")
+    code_target: str = Field(..., description="sdp or sss")
+    databricks_job_id: str | None = Field(default=None, description="Databricks job ID (SSS)")
+    databricks_pipeline_id: str | None = Field(
+        default=None, description="Databricks pipeline ID (SDP)"
+    )
+    job_url: str | None = Field(default=None, description="URL to job or pipeline")
+    deploy_status: str = Field(..., description="created, updated, failed")
+    deployed_code: str | None = Field(default=None, description="Deployed code snapshot")
+    cluster_config: dict[str, Any] | None = Field(default=None, description="Cluster config")
+    deployed_by: str | None = Field(default=None, description="User who deployed")
+    deployed_at: datetime = Field(..., description="Deploy timestamp")
+    error_message: str | None = Field(default=None, description="Error if failed")

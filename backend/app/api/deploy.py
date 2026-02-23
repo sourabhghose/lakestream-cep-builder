@@ -2,13 +2,15 @@
 Deployment API router.
 
 Deploys pipelines to Databricks as DLT pipelines (SDP) or Jobs (SSS).
-Includes validate_connection, list_catalogs, and list_schemas for UC browsing.
+Includes validate_connection, list_catalogs, list_schemas for UC browsing.
+Deploy history is recorded when using Lakebase (PGHOST set).
 """
 
 from fastapi import APIRouter, HTTPException
 
 from app.codegen.router import generate
-from app.models.pipeline import DeployRequest, DeployResponse
+from app.models.pipeline import DeployHistoryEntry, DeployRequest, DeployResponse
+from app.services.deploy_history import DeployRecord, list_deploys, record_deploy
 from app.services.deploy_service import DatabricksDeployError, DeployService
 from app.services.pipeline_store import get_pipeline_store
 
@@ -67,6 +69,17 @@ async def deploy_pipeline(request: DeployRequest) -> DeployResponse:
             catalog=request.catalog,
             schema=request.target_schema,
         )
+        record_deploy(
+            pipeline_id=request.pipeline_id,
+            version=pipeline.version,
+            code_target=code_target,
+            job_id=result["job_id"],
+            job_url=result["job_url"],
+            status=result["status"],
+            code=code,
+            cluster_config=request.cluster_config,
+            deployment_type=result.get("deployment_type", "job"),
+        )
         return DeployResponse(
             job_id=result["job_id"],
             job_url=result["job_url"],
@@ -77,6 +90,34 @@ async def deploy_pipeline(request: DeployRequest) -> DeployResponse:
         raise HTTPException(status_code=502, detail=str(e)) from e
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@router.get("/history/{pipeline_id}", response_model=list[DeployHistoryEntry])
+async def get_deploy_history(pipeline_id: str) -> list[DeployHistoryEntry]:
+    """
+    List deploy history for a pipeline.
+
+    Returns empty list when not using Lakebase (PGHOST not set).
+    """
+    records = list_deploys(pipeline_id)
+    return [
+        DeployHistoryEntry(
+            id=r.id,
+            pipeline_id=r.pipeline_id,
+            pipeline_version=r.pipeline_version,
+            code_target=r.code_target,
+            databricks_job_id=r.databricks_job_id,
+            databricks_pipeline_id=r.databricks_pipeline_id,
+            job_url=r.job_url,
+            deploy_status=r.deploy_status,
+            deployed_code=r.deployed_code,
+            cluster_config=r.cluster_config,
+            deployed_by=r.deployed_by,
+            deployed_at=r.deployed_at,
+            error_message=r.error_message,
+        )
+        for r in records
+    ]
 
 
 @router.get("/validate", response_model=dict)
