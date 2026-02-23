@@ -65,16 +65,29 @@ Deployed as a **Databricks App** — a single FastAPI process serves the React f
 | **Dual Code Generation** | Lakeflow Declarative Pipelines (SDP) + Spark Structured Streaming |
 | **12 CEP Patterns** | Sequence, absence, count, velocity, geofence, correlation, trend, outlier, session, dedup, MATCH_RECOGNIZE, custom |
 | **TransformWithState** | Spark 4.0 stateful processing for advanced CEP patterns |
-| **Monaco Editor** | Bidirectional sync — edit code to update canvas, or vice versa |
+| **Pattern Test Mode** | Upload sample events, simulate CEP matching, see results + event flow |
+| **Monaco Editor** | Bidirectional sync, diff view vs last deploy, line-level code annotations |
 | **Schema Discovery** | Browse Unity Catalog catalogs/schemas/tables with cascading dropdowns |
-| **Data Preview** | Synthetic sample data at each node for pipeline validation |
+| **Data Preview** | Per-node synthetic preview + flow-through source-to-sink simulation |
+| **Inline Node Preview** | Expandable data tables directly on canvas nodes |
 | **Pattern Timeline** | SVG visualization of event sequences in design and test modes |
-| **10 Templates** | Pre-built pipelines: fraud detection, IoT monitoring, e-commerce funnel, etc. |
-| **One-Click Deploy** | Create Databricks notebooks + DLT pipelines or Jobs via SDK |
-| **Pipeline Management** | Save, load, version, delete pipelines with deploy history audit trail |
+| **10+ Templates** | Pre-built pipelines + save your own as reusable templates |
+| **Deploy Dialog** | Full config: compute, schedule, checkpoint, connection validation |
+| **Job Notifications** | Real-time polling of deployed job status with badges |
+| **Deploy History** | Audit trail with status, code view, and Databricks links |
+| **Pipeline Management** | Save, load, version, delete, export/import as JSON |
+| **Version Diff** | Side-by-side comparison of pipeline versions |
+| **Validation Panel** | 12+ pre-deploy checks with clickable fix navigation |
+| **Node Grouping** | Collapse multiple nodes into subgraphs |
+| **Pipeline Search** | Ctrl+F with node highlighting and auto-pan |
+| **Copy/Paste** | Ctrl+C/V/D/A with clipboard and ID remapping |
+| **Dark Mode** | Toggle with system preference detection |
 | **Lakebase Storage** | All state persisted in Databricks' serverless PostgreSQL |
+| **OAuth Identity** | User identity from Databricks App service principal |
 | **Undo/Redo** | 50-entry history stack with keyboard shortcuts |
-| **Auto Layout** | Topological sort layout algorithm for clean pipeline visualization |
+| **Auto Layout** | Topological sort layout algorithm |
+| **Accessibility** | ARIA labels, keyboard navigation, skip links, focus rings |
+| **Error Boundaries** | Graceful error handling with retry logic |
 | **Help System** | Node tooltips, keyboard shortcuts, quick start guide |
 
 ---
@@ -249,16 +262,25 @@ lakestream-cep-builder/
 |----------|--------|-------------|
 | `/api/pipelines` | GET, POST | List/create pipelines |
 | `/api/pipelines/{id}` | GET, PUT, DELETE | Get/update/delete pipeline |
-| `/api/codegen/generate` | POST | Generate SDP/SSS code from pipeline |
+| `/api/pipelines/{id}/versions` | GET | List pipeline version snapshots |
+| `/api/codegen/generate` | POST | Generate SDP/SSS code with annotations |
 | `/api/codeparse/parse` | POST | Parse SDP SQL back to canvas nodes |
 | `/api/deploy` | POST | Deploy pipeline to Databricks |
 | `/api/deploy/validate` | GET | Check Databricks connection status |
 | `/api/deploy/catalogs` | GET | List Unity Catalog catalogs |
 | `/api/deploy/history/{id}` | GET | Get deploy history for pipeline |
+| `/api/deploy/history/{id}/details` | GET | Full deploy history with code |
 | `/api/schema/catalogs` | GET | Browse catalogs |
 | `/api/schema/.../tables` | GET | Browse tables in a schema |
 | `/api/schema/.../columns` | GET | Get column definitions |
 | `/api/preview/sample` | POST | Get synthetic data preview for a node |
+| `/api/preview/flow` | POST | Flow-through preview (source to sink) |
+| `/api/pattern/test` | POST | Test CEP patterns against sample events |
+| `/api/templates` | GET, POST | List/create pipeline templates |
+| `/api/templates/{id}` | DELETE | Delete user template |
+| `/api/preferences` | GET, PUT | Get/update user preferences |
+| `/api/jobs/{id}/status` | GET | Get deployed job status |
+| `/api/jobs/active` | GET | List active/running jobs |
 | `/health` | GET | Health check |
 
 ---

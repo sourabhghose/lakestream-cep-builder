@@ -3,7 +3,7 @@
 ## Overview
 LakeStream CEP Builder — Visual CEP Pipeline Builder for Databricks
 
-## Completed
+## Completed (45 workstreams across 12 rounds)
 
 ### Round 1 (2026-02-22)
 **WS1: Frontend scaffold** — Next.js 14, React Flow canvas, 38-node palette, custom nodes/edges, config panel, code preview, Zustand store
@@ -49,38 +49,65 @@ LakeStream CEP Builder — Visual CEP Pipeline Builder for Databricks
 **WS26: Template management** — Save pipeline as reusable template with name/description/industry, backend CRUD backed by Lakebase or local files, 10 built-in stubs
 **WS27: Pipeline search** — Canvas-wide search (Ctrl+F) matching labels, types, config values. Navigate matches with arrows, auto-pan to node, pulsing blue ring highlight
 
-## Current State
+### Round 9 (2026-02-23)
+**WS29: Validation panel** — Pre-deploy validation with 12+ checks: missing sources/sinks, disconnected nodes, cycles, required config, orphan nodes, CEP sink suggestions. Clickable issues pan to nodes
+**WS30: Dark mode** — Toggle with localStorage persistence, system preference detection, CSS variables, dark: Tailwind variants, inline script to prevent flash
+**WS31: Copy/paste** — Ctrl+C/V/D/A for copy, paste (with offset + new IDs), duplicate, select all. Clipboard stores nodes + internal edges. Added to help panel
 
-| Component | Coverage |
+### Round 10 (2026-02-23)
+**WS33: Node grouping** — Multi-select + group into collapsible subgraphs. Collapsed groups show as single node with type icons. External edges rerouted, internal edges hidden. Code gen/save/export use expanded pipeline
+**WS34: Monaco diff view** — GitCompare toggle to compare current code against last deployed version using Monaco DiffEditor
+**WS35: Inline preview** — Expandable data table on canvas nodes showing 3 rows × 4 columns of sample data with smooth CSS transition
+**WS36: Code annotations** — Generators prepend [node:id] markers, router parses into annotation arrays. Monaco gutter decorations with blue dots, hover tooltips, click-to-select-node
+
+### Round 11 (2026-02-23)
+**WS38: Flow preview** — Sample data flows source to sink with per-node transformations (filter, map, join, aggregate, CEP). Topological order with simulated operations. Flow preview panel in toolbar
+**WS39: Version diff** — Local version history snapshots on save. Side-by-side diff showing added/removed/modified nodes and edge changes. Color-coded badges, clickable
+**WS40: Performance** — Debounced code gen (300ms), throttled node position changes (50ms), drag-stop trigger, batch node updates, palette collapse-all, will-change hints, dev performance monitor
+**WS41: Job notifications** — Real-time polling of deployed job status (5s interval). Status badges (PENDING/RUNNING/SUCCEEDED/FAILED). Notification area with elapsed time and Databricks links. Mock cycling for dev
+
+### Round 12 (2026-02-23)
+**WS43: Pattern test/replay** — Upload or generate sample events, simulate CEP pattern matching (sequence, count, absence, velocity, correlation, dedup). Match results with event flow visualization
+**WS44: Accessibility** — ARIA labels on all buttons/fields, role attributes (toolbar, navigation, listbox), keyboard nav in palette (arrow keys + Enter), skip links, focus rings, aria-live on toasts
+**WS45: Error handling** — React error boundaries around canvas/panels/editor. Graceful async error handling with formatApiError. Axios interceptor for user-friendly messages. Retry with exponential backoff
+
+## Final State
+
+| Component | Status |
 | --- | --- |
-| Frontend components | 20+ components across canvas, panels, dialogs, editors |
-| Backend API | 17 endpoints: health, pipelines CRUD, codegen, codeparse, deploy (validate/catalogs/schemas/history), schema discovery, preview, preferences, templates |
-| SDP code gen | 22 Jinja2 templates — all 38 node types |
-| SSS code gen | 29 Jinja2 templates — all 38 node types |
-| CEP patterns | All 12 implemented (TransformWithState) |
-| Templates | 10 pre-built + user-created via API |
-| Pattern timeline | Built (design + test modes) |
-| Frontend ↔ Backend | Full API integration |
-| Deploy service | Real Databricks SDK + mock fallback |
-| Deploy dialog | Full compute/schedule/checkpoint config |
-| Deploy history | Audit trail with code view |
-| Pipeline storage | Lakebase PostgreSQL + local file fallback |
-| Edge validation | Semantic validation with toasts |
-| Error handling | Toasts, loading states, empty states |
-| Monaco sync | Bidirectional (canvas↔code) |
-| Help system | Tooltips, shortcuts, help panel |
-| Performance | MiniMap, memoization, search, auto-layout |
-| Tests | 49 backend tests (all passing) |
-| Undo/Redo | 50-entry history stack |
-| Schema discovery | UC catalog/schema/table browsing |
-| Pipeline management | Full CRUD with save dialog and list panel |
-| CI/CD | GitHub Actions (CI + Deploy + Dependabot) |
-| Data preview | Synthetic preview per node type |
-| OAuth | User identity from Databricks App OAuth |
-| User preferences | Per-user settings API |
-| Export/Import | JSON file export/import |
-| Template management | Save as template + CRUD |
-| Pipeline search | Canvas-wide search with highlighting |
+| **Frontend** | 30+ components, dark mode, accessibility, error boundaries |
+| **Backend API** | 20+ endpoints across 8 routers |
+| **SDP Code Gen** | 22 Jinja2 SQL templates — all 38 node types |
+| **SSS Code Gen** | 29 Jinja2 Python templates — all 38 node types |
+| **CEP Patterns** | All 12 implemented (TransformWithState) |
+| **Code Annotations** | Line-level node-to-code mapping in Monaco |
+| **Monaco Editor** | Bidirectional sync, diff view, gutter annotations |
+| **Templates** | 10 built-in + user-created via API |
+| **Pattern Test** | Event replay with simulated CEP matching |
+| **Deploy** | Full dialog with compute/schedule/checkpoint config |
+| **Deploy History** | Audit trail with code view and job URLs |
+| **Job Notifications** | Real-time status polling with badges |
+| **Pipeline Storage** | Lakebase PostgreSQL + local file fallback |
+| **Schema Discovery** | UC catalog/schema/table/column browsing |
+| **Data Preview** | Per-node synthetic + flow-through |
+| **Inline Preview** | Expandable data tables on nodes |
+| **Edge Validation** | Semantic validation with toasts |
+| **Pipeline Validation** | 12+ pre-deploy checks with fix suggestions |
+| **Node Grouping** | Multi-node collapsible subgraphs |
+| **Copy/Paste** | Ctrl+C/V/D/A with clipboard |
+| **Pipeline Search** | Ctrl+F with node highlighting + auto-pan |
+| **Export/Import** | .lakestream.json file download/upload |
+| **Version Diff** | Side-by-side version comparison |
+| **Dark Mode** | Toggle with localStorage persistence |
+| **Undo/Redo** | 50-entry history stack |
+| **Auto Layout** | Topological sort layout algorithm |
+| **OAuth** | Databricks App user identity |
+| **User Preferences** | Per-user settings API |
+| **Performance** | Debounced code gen, throttled updates, memoization |
+| **Accessibility** | ARIA labels, keyboard nav, skip links, focus rings |
+| **Error Handling** | Error boundaries, interceptors, retry logic |
+| **Tests** | 49 backend tests (all passing) |
+| **CI/CD** | GitHub Actions (CI + Deploy + Dependabot) |
 
 ## Architecture
 
@@ -88,46 +115,50 @@ LakeStream CEP Builder — Visual CEP Pipeline Builder for Databricks
 ┌─────────────────────────────── Databricks App ───────────────────────────────┐
 │  ┌──────────────────────┐    ┌──────────────────────────────────────────────┐│
 │  │   React Frontend     │    │       FastAPI Backend                        ││
-│  │                      │    │                                              ││
-│  │  React Flow Canvas   │───▶│  /api/pipelines     (CRUD)                  ││
-│  │  38-Node Palette     │    │  /api/codegen       (SDP + SSS generation)  ││
-│  │  Monaco Editor       │    │  /api/codeparse     (SQL → canvas)          ││
-│  │  Deploy Dialog       │    │  /api/deploy        (SDK + history)         ││
-│  │  Schema Browser      │    │  /api/schema        (UC discovery)          ││
-│  │  Pipeline Search     │    │  /api/preview       (sample data)           ││
-│  │  Deploy History      │    │  /api/preferences   (user settings)         ││
-│  │  Template Gallery    │    │  /api/templates     (template CRUD)         ││
-│  │  Export/Import       │    │  /health            (health check)          ││
+│  │   30+ components     │    │                                              ││
+│  │                      │    │  /api/pipelines     CRUD + versions          ││
+│  │  React Flow Canvas   │───▶│  /api/codegen       SDP + SSS generation     ││
+│  │  38-Node Palette     │    │  /api/codeparse     SQL → canvas             ││
+│  │  Monaco Editor+Diff  │    │  /api/deploy        SDK + history            ││
+│  │  Deploy Dialog       │    │  /api/schema        UC discovery             ││
+│  │  Pattern Test        │    │  /api/preview       per-node + flow-through  ││
+│  │  Schema Browser      │    │  /api/pattern       CEP test/replay          ││
+│  │  Pipeline Search     │    │  /api/preferences   user settings            ││
+│  │  Deploy History      │    │  /api/templates     template CRUD            ││
+│  │  Flow Preview        │    │  /api/jobs          job status polling       ││
+│  │  Version Diff        │    │  /health            health check             ││
+│  │  Job Notifications   │    │                                              ││
+│  │  Dark Mode + A11y    │    │  51 Jinja2 code gen templates                ││
 │  └──────────────────────┘    └──────────┬───────────────────────────────────┘│
 │        Static at /                      │                                    │
 │        API at /api/*                    │                                    │
 └─────────────────────────────────────────┼────────────────────────────────────┘
                                           │
-            ┌─────────────────────────────┼────────────────────────┐
-            │                             │                        │
+            ┌─────────────────────────────┼────────────────────────────────┐
+            │                             │                                │
     ┌───────▼────────┐         ┌──────────▼──────────┐    ┌───────▼───────┐
     │   Lakebase     │         │   Lakeflow Jobs     │    │ Unity Catalog │
     │   PostgreSQL   │         │   DLT Pipelines     │    │    Schemas    │
-    │                │         │   SSS Jobs           │    │    Tables     │
-    │  pipelines     │         │   Notebooks         │    │               │
-    │  deploy_hist   │         └─────────────────────┘    └───────────────┘
-    │  user_prefs    │
-    │  templates     │
-    └────────────────┘
+    │   4 tables     │         │   SSS Jobs           │    │    Tables     │
+    └────────────────┘         └─────────────────────┘    └───────────────┘
 ```
 
 ## Git History
 
-| Commit | Description |
-| --- | --- |
-| Round 1 | Initial scaffold |
-| Round 2 | Full code gen, frontend wiring, timeline, templates |
-| Round 3 | Real deploy, persistent storage, edge validation, UX |
-| Round 4 | Bidirectional sync, help, performance, tests |
-| Round 5 | Schema registry, pipeline mgmt, CI/CD, data preview |
-| Round 6 | Lakebase PostgreSQL + Databricks App architecture |
-| Round 7 | OAuth, deploy dialog, deploy history, user preferences |
-| Round 8 | Export/import, template management, pipeline search |
+| Round | Commit | Features |
+| --- | --- | --- |
+| 1 | Initial scaffold | Frontend + backend + node system |
+| 2 | Full code gen | 51 templates, timeline, pre-built templates |
+| 3 | Deploy + storage | Real SDK deploy, persistent storage, UX |
+| 4 | Monaco + help | Bidirectional sync, undo/redo, tests |
+| 5 | Schema + CI | UC discovery, pipeline mgmt, CI/CD |
+| 6 | Lakebase | PostgreSQL store, Databricks App structure |
+| 7 | OAuth + deploy UI | Identity, deploy dialog, history, preferences |
+| 8 | Export + templates | Import/export, template CRUD, search |
+| 9 | Validation + DX | Validation panel, dark mode, copy/paste |
+| 10 | Annotations | Node grouping, diff view, inline preview |
+| 11 | Flow + perf | Flow preview, version diff, job notifications |
+| 12 | Test + a11y | Pattern test, accessibility, error boundaries |
 
 ---
-*Updated: 2026-02-23 after Round 8*
+*Updated: 2026-02-23 after Round 12 (final)*
