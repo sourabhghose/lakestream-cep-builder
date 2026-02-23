@@ -201,14 +201,13 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
 
   addNode: (node) =>
     set((state) => {
-      const hasError = hasNodeConfigError(node);
-      const nodeWithError = {
+      const nodeClean = {
         ...node,
-        data: { ...node.data, hasError },
+        data: { ...node.data, hasError: false },
       };
       return {
         ...withHistoryPush(state),
-        nodes: [...state.nodes, nodeWithError],
+        nodes: [...state.nodes, nodeClean],
         isDirty: true,
       };
     }),
