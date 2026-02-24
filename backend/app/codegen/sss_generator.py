@@ -66,6 +66,20 @@ def _normalize_config(config: dict) -> dict:
         'streambcolumn': 'stream_b_column', 'keycolumns': 'key_columns',
         'expectedevent': 'expected_event', 'absencetimeoutseconds': 'absence_timeout_seconds',
         'timeoutseconds': 'timeout_seconds',
+        'dataprofile': 'data_profile',
+        'eventspersecond': 'events_per_second',
+        'numpartitions': 'num_partitions',
+        'tabletype': 'table_type',
+        'clusteringcolumns': 'clustering_columns',
+        'partitioncolumns': 'partition_columns',
+        'mergekeys': 'merge_keys',
+        'maxevents': 'max_events',
+        'customschema': 'custom_schema',
+        'endpointname': 'endpoint_name',
+        'inputcolumns': 'input_columns',
+        'maxbatchsize': 'max_batch_size',
+        'timeoutms': 'timeout_ms',
+        'fallbackvalue': 'fallback_value',
     }
     for key, value in config.items():
         snake_key = _camel_to_snake(key)
@@ -342,6 +356,15 @@ df_{safe_id} = (
 )
 """
 
+    if node.type == "stream-simulator":
+        template = _env.get_template("stream_simulator.py.j2")
+        return template.render(
+            node_id=node.id,
+            data_profile=config.get("data_profile", "iot-sensors"),
+            events_per_second=config.get("events_per_second", 10),
+            num_partitions=config.get("num_partitions"),
+        )
+
     if node.type == "filter":
         upstream = _get_upstream_var(node, pipeline)
         return f"""# Filter for {node.id}
@@ -486,6 +509,33 @@ query_{safe_id} = (
             output_column=config.get("output_column", "result"),
         )
 
+    if node.type == "ml-model-endpoint":
+        template = _env.get_template("ml_model_endpoint.py.j2")
+        upstream = _get_upstream_var(node, pipeline)
+        input_cols = config.get("input_columns", ["value"])
+        if isinstance(input_cols, str):
+            input_cols = [c.strip() for c in input_cols.split(",")]
+        input_columns_py = ", ".join(f'"{c}"' for c in input_cols)
+        input_columns_expr = ", ".join(f'F.col("{c}")' for c in input_cols)
+        output_type_map = {
+            "STRING": "StringType()", "DOUBLE": "DoubleType()",
+            "BOOLEAN": "BooleanType()", "LONG": "LongType()",
+            "STRUCT": "StringType()",
+        }
+        output_type = output_type_map.get(config.get("output_type", "DOUBLE"), "DoubleType()")
+        return template.render(
+            node_id=node.id,
+            upstream_var=upstream,
+            endpoint_name=config.get("endpoint_name", "my-model"),
+            input_columns_py=input_columns_py,
+            input_columns_expr=input_columns_expr,
+            output_column=config.get("output_column", "prediction"),
+            output_type=output_type,
+            max_batch_size=config.get("max_batch_size", 100),
+            timeout_ms=config.get("timeout_ms", 30000),
+            fallback_value=config.get("fallback_value", "None"),
+        )
+
     # Sinks
     if node.type == "kafka-topic-sink":
         template = _env.get_template("kafka_topic_sink.py.j2")
@@ -555,6 +605,28 @@ query_{safe_id} = (
             catalog=config.get("catalog", "main"),
             schema=config.get("schema", "default"),
             table_name=config.get("table_name", "output_table"),
+            checkpoint_location=config.get("checkpoint_location", f"/tmp/checkpoints/{node.id}"),
+        )
+
+    if node.type == "lakehouse-sink":
+        template = _env.get_template("lakehouse_sink.py.j2")
+        upstream = _get_upstream_var(node, pipeline)
+        merge_keys_raw = config.get("merge_keys", [])
+        if isinstance(merge_keys_raw, str):
+            merge_keys_raw = [k.strip() for k in merge_keys_raw.split(",")]
+        merge_keys_py = ", ".join(f'"{k}"' for k in merge_keys_raw)
+        partition_cols = config.get("partition_columns")
+        if isinstance(partition_cols, list):
+            partition_cols = ", ".join(f'"{c}"' for c in partition_cols)
+        return template.render(
+            node_id=node.id,
+            upstream_var=upstream,
+            catalog=config.get("catalog", "main"),
+            schema=config.get("schema", "default"),
+            table_name=config.get("table_name", "lakehouse_table"),
+            write_mode=config.get("write_mode", config.get("output_mode", "append")),
+            merge_keys=merge_keys_py,
+            partition_columns=partition_cols,
             checkpoint_location=config.get("checkpoint_location", f"/tmp/checkpoints/{node.id}"),
         )
 

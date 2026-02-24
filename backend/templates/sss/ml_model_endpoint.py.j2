@@ -1,0 +1,76 @@
+# ML Model Endpoint: {{ node_id }}
+# Endpoint: {{ endpoint_name }}
+
+import json
+import requests
+from pyspark.sql import functions as F
+from pyspark.sql.types import {{ output_type }}
+
+_ENDPOINT_URL_{{ node_id | pyvar }} = (
+    f"{spark.conf.get('spark.databricks.workspaceUrl', '')}"
+    f"/serving-endpoints/{{ endpoint_name }}/invocations"
+)
+
+def _score_batch_{{ node_id | pyvar }}(rows):
+    """Score a batch of rows against the serving endpoint."""
+    import os
+    token = (
+        os.environ.get("DATABRICKS_TOKEN")
+        or spark.conf.get("spark.databricks.token", "")
+    )
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+    payload = {"dataframe_records": [r.asDict() for r in rows]}
+    try:
+        resp = requests.post(
+            _ENDPOINT_URL_{{ node_id | pyvar }},
+            headers=headers,
+            json=payload,
+            timeout={{ timeout_ms / 1000 }},
+        )
+        resp.raise_for_status()
+        return [p.get("{{ output_column }}", {{ fallback_value }}) for p in resp.json().get("predictions", [])]
+    except Exception:
+        return [{{ fallback_value }}] * len(rows)
+
+
+@F.pandas_udf({{ output_type }})
+def _score_udf_{{ node_id | pyvar }}(*cols):
+    """Pandas UDF wrapper for model scoring."""
+    import pandas as pd
+    df_input = pd.concat(cols, axis=1)
+    df_input.columns = [{{ input_columns_py }}]
+
+    results = []
+    batch_size = {{ max_batch_size }}
+    for start in range(0, len(df_input), batch_size):
+        batch = df_input.iloc[start : start + batch_size]
+        records = batch.to_dict(orient="records")
+        import os
+        token = os.environ.get("DATABRICKS_TOKEN", "")
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        }
+        payload = {"dataframe_records": records}
+        try:
+            resp = requests.post(
+                _ENDPOINT_URL_{{ node_id | pyvar }},
+                headers=headers,
+                json=payload,
+                timeout={{ timeout_ms / 1000 }},
+            )
+            resp.raise_for_status()
+            preds = resp.json().get("predictions", [])
+            results.extend(preds)
+        except Exception:
+            results.extend([{{ fallback_value }}] * len(batch))
+    return pd.Series(results)
+
+
+df_{{ node_id | pyvar }} = {{ upstream_var }}.withColumn(
+    "{{ output_column }}",
+    _score_udf_{{ node_id | pyvar }}({{ input_columns_expr }})
+)

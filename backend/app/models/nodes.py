@@ -43,6 +43,7 @@ NODE_REGISTRY: dict[str, NodeMetadata] = {
     "event-hub-kinesis": {"category": NodeCategory.SOURCE, "code_target": CodeTarget.SDP_OR_SSS},
     "mqtt": {"category": NodeCategory.SOURCE, "code_target": CodeTarget.SDP_OR_SSS},
     "custom-python-source": {"category": NodeCategory.SOURCE, "code_target": CodeTarget.SSS},
+    "stream-simulator": {"category": NodeCategory.SOURCE, "code_target": CodeTarget.SDP_OR_SSS},
     # CEP Patterns (12)
     "sequence-detector": {"category": NodeCategory.CEP_PATTERN, "code_target": CodeTarget.SSS},
     "absence-detector": {"category": NodeCategory.CEP_PATTERN, "code_target": CodeTarget.SSS},
@@ -67,7 +68,8 @@ NODE_REGISTRY: dict[str, NodeMetadata] = {
     "union-merge": {"category": NodeCategory.TRANSFORM, "code_target": CodeTarget.SDP_OR_SSS},
     "rename-cast": {"category": NodeCategory.TRANSFORM, "code_target": CodeTarget.SDP_OR_SSS},
     "custom-python-udf": {"category": NodeCategory.TRANSFORM, "code_target": CodeTarget.SSS},
-    # Sinks (8)
+    "ml-model-endpoint": {"category": NodeCategory.TRANSFORM, "code_target": CodeTarget.SSS},
+    # Sinks (9)
     "delta-table-sink": {"category": NodeCategory.SINK, "code_target": CodeTarget.SDP_OR_SSS},
     "kafka-topic-sink": {"category": NodeCategory.SINK, "code_target": CodeTarget.SDP_OR_SSS},
     "rest-webhook-sink": {"category": NodeCategory.SINK, "code_target": CodeTarget.SDP_OR_SSS},
@@ -76,4 +78,5 @@ NODE_REGISTRY: dict[str, NodeMetadata] = {
     "sql-warehouse-sink": {"category": NodeCategory.SINK, "code_target": CodeTarget.SDP_OR_SSS},
     "unity-catalog-table-sink": {"category": NodeCategory.SINK, "code_target": CodeTarget.SDP_OR_SSS},
     "dead-letter-queue": {"category": NodeCategory.SINK, "code_target": CodeTarget.SDP_OR_SSS},
+    "lakehouse-sink": {"category": NodeCategory.SINK, "code_target": CodeTarget.SDP_OR_SSS},
 }

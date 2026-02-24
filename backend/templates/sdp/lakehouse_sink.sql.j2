@@ -1,0 +1,46 @@
+{% if table_type == 'materialized-view' %}
+-- Lakehouse Materialized View: {{ node_id }}
+CREATE OR REFRESH MATERIALIZED VIEW {{ catalog }}.{{ schema }}.{{ table_name }}
+{% if clustering_columns %}
+CLUSTER BY ({{ clustering_columns }})
+{% endif %}
+{% if expectations %}
+(
+{% for exp in expectations %}
+  CONSTRAINT {{ exp.name }} EXPECT ({{ exp.constraint }}){% if exp.action == 'drop' %} ON VIOLATION DROP ROW{% elif exp.action == 'fail' %} ON VIOLATION FAIL UPDATE{% endif %}{{ ',' if not loop.last else '' }}
+{% endfor %}
+)
+{% endif %}
+AS SELECT * FROM {{ source_table }};
+{% elif table_type == 'live-table' %}
+-- Lakehouse Live Table: {{ node_id }}
+CREATE OR REFRESH LIVE TABLE {{ catalog }}.{{ schema }}.{{ table_name }}
+{% if clustering_columns %}
+CLUSTER BY ({{ clustering_columns }})
+{% endif %}
+{% if expectations %}
+(
+{% for exp in expectations %}
+  CONSTRAINT {{ exp.name }} EXPECT ({{ exp.constraint }}){% if exp.action == 'drop' %} ON VIOLATION DROP ROW{% elif exp.action == 'fail' %} ON VIOLATION FAIL UPDATE{% endif %}{{ ',' if not loop.last else '' }}
+{% endfor %}
+)
+{% endif %}
+AS SELECT * FROM {{ source_table }};
+{% else %}
+-- Lakehouse Streaming Table: {{ node_id }}
+CREATE OR REFRESH STREAMING TABLE {{ catalog }}.{{ schema }}.{{ table_name }}
+{% if clustering_columns %}
+CLUSTER BY ({{ clustering_columns }})
+{% endif %}
+{% if partition_columns %}
+PARTITIONED BY ({{ partition_columns }})
+{% endif %}
+{% if expectations %}
+(
+{% for exp in expectations %}
+  CONSTRAINT {{ exp.name }} EXPECT ({{ exp.constraint }}){% if exp.action == 'drop' %} ON VIOLATION DROP ROW{% elif exp.action == 'fail' %} ON VIOLATION FAIL UPDATE{% endif %}{{ ',' if not loop.last else '' }}
+{% endfor %}
+)
+{% endif %}
+AS SELECT * FROM STREAM {{ source_table }};
+{% endif %}

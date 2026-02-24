@@ -76,6 +76,20 @@ def _normalize_config(config: dict) -> dict:
         'expectcondition': 'expect_condition',
         'warehouseid': 'warehouse_id',
         'dlqtable': 'dlq_table',
+        'dataprofile': 'data_profile',
+        'eventspersecond': 'events_per_second',
+        'numpartitions': 'num_partitions',
+        'tabletype': 'table_type',
+        'clusteringcolumns': 'clustering_columns',
+        'partitioncolumns': 'partition_columns',
+        'mergekeys': 'merge_keys',
+        'maxevents': 'max_events',
+        'customschema': 'custom_schema',
+        'endpointname': 'endpoint_name',
+        'inputcolumns': 'input_columns',
+        'maxbatchsize': 'max_batch_size',
+        'timeoutms': 'timeout_ms',
+        'fallbackvalue': 'fallback_value',
     }
     for key, value in config.items():
         snake_key = _camel_to_snake(key)
@@ -148,6 +162,15 @@ def _render_node_snippet(node: PipelineNode, edges: list) -> str:
             path=config.get("path", "/path/to/data"),
             format=config.get("format", "json"),
             schema=config.get("schema", "value STRING"),
+        )
+
+    if node.type == "stream-simulator":
+        template = _env.get_template("stream_simulator.sql.j2")
+        return template.render(
+            node_id=node.id,
+            data_profile=config.get("data_profile", "iot-sensors"),
+            events_per_second=config.get("events_per_second", 10),
+            num_partitions=config.get("num_partitions"),
         )
 
     if node.type == "cdc-stream":
@@ -329,6 +352,28 @@ def _render_node_snippet(node: PipelineNode, edges: list) -> str:
             smtp_port=config.get("smtp_port", "587"),
             smtp_user=config.get("smtp_user", ""),
             smtp_password=config.get("smtp_password", ""),
+        )
+
+    if node.type == "lakehouse-sink":
+        template = _env.get_template("lakehouse_sink.sql.j2")
+        expectations_raw = config.get("expectations")
+        expectations = []
+        if expectations_raw:
+            import json
+            try:
+                expectations = json.loads(expectations_raw) if isinstance(expectations_raw, str) else expectations_raw
+            except (json.JSONDecodeError, TypeError):
+                expectations = []
+        return template.render(
+            node_id=node.id,
+            source_table=config.get("source_table") or _source_table(),
+            catalog=config.get("catalog", "main"),
+            schema=config.get("schema", "default"),
+            table_name=config.get("table_name", "lakehouse_table"),
+            table_type=config.get("table_type", "streaming-table"),
+            partition_columns=config.get("partition_columns"),
+            clustering_columns=config.get("clustering_columns"),
+            expectations=expectations,
         )
 
     if node.type == "dead-letter-queue":
