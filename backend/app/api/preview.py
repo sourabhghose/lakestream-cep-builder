@@ -100,6 +100,34 @@ def _generate_source_sample(node_type: str, config: dict) -> tuple[list[str], li
             ])
         return columns, rows
 
+    if node_type == "stream-simulator":
+        profile = config.get("dataProfile", config.get("data_profile", "iot-sensors"))
+        if profile == "iot-sensors":
+            columns = ["sensor_id", "device_id", "temperature", "humidity", "event_time"]
+            rows = []
+            for i in range(5):
+                sid = random.randint(1, 100)
+                rows.append([sid, f"sensor-{sid}", round(20 + random.random() * 20, 1), round(30 + random.random() * 70, 1), _random_timestamp()])
+            return columns, rows
+        if profile == "clickstream":
+            columns = ["user_id", "session_id", "event_type", "page_url", "event_time"]
+            rows = []
+            for i in range(5):
+                rows.append([f"user-{random.randint(1, 1000)}", f"session-{random.randint(1, 500)}", random.choice(["page_view", "click", "scroll", "add_to_cart", "purchase"]), f"/page/{random.randint(1, 50)}", _random_timestamp()])
+            return columns, rows
+        if profile == "financial-transactions":
+            columns = ["transaction_id", "account_id", "amount", "currency", "txn_type", "event_time"]
+            rows = []
+            for i in range(5):
+                rows.append([f"txn-{random.randint(10000, 99999)}", f"acct-{random.randint(1, 200)}", round(random.random() * 5000, 2), random.choice(["USD", "EUR", "GBP", "JPY"]), random.choice(["debit", "credit", "transfer"]), _random_timestamp()])
+            return columns, rows
+        if profile == "ecommerce-orders":
+            columns = ["order_id", "customer_id", "product_id", "quantity", "unit_price", "status", "event_time"]
+            rows = []
+            for i in range(5):
+                rows.append([f"order-{random.randint(10000, 99999)}", f"cust-{random.randint(1, 500)}", f"prod-{random.randint(1, 100)}", random.randint(1, 10), round(random.random() * 200, 2), random.choice(["pending", "shipped", "delivered"]), _random_timestamp()])
+            return columns, rows
+
     # Default for other sources
     columns = ["id", "value", "timestamp"]
     rows = [[f"row-{i + 1}", random.randint(1, 100), _random_timestamp()] for i in range(5)]
@@ -107,33 +135,57 @@ def _generate_source_sample(node_type: str, config: dict) -> tuple[list[str], li
 
 
 def _apply_filter_best_effort(columns: list[str], rows: list[list[Any]], condition: str) -> list[list[Any]]:
-    """Best-effort filter: try simple numeric checks when condition matches."""
+    """Best-effort filter supporting =, !=, >, <, >=, <= on numeric/string columns."""
     if not condition or not rows:
         return rows[:5]
+
+    import re
+
+    def _parse_simple_condition(cond: str) -> tuple[str, str, str] | None:
+        """Parse 'col OP value' into (column, operator, value)."""
+        m = re.match(
+            r"^\s*(\w+)\s*(>=|<=|!=|>|<|=)\s*['\"]?([^'\"]+?)['\"]?\s*$",
+            cond.strip(),
+        )
+        return (m.group(1), m.group(2), m.group(3)) if m else None
+
+    def _eval_condition(row_dict: dict, col: str, op: str, rhs: str) -> bool:
+        if col not in row_dict:
+            return True
+        val = row_dict[col]
+        try:
+            rhs_num = float(rhs)
+            val_num = float(val) if not isinstance(val, (int, float)) else val
+            if op == "=":
+                return val_num == rhs_num
+            if op == "!=":
+                return val_num != rhs_num
+            if op == ">":
+                return val_num > rhs_num
+            if op == "<":
+                return val_num < rhs_num
+            if op == ">=":
+                return val_num >= rhs_num
+            if op == "<=":
+                return val_num <= rhs_num
+        except (ValueError, TypeError):
+            s_val = str(val)
+            if op == "=":
+                return s_val == rhs
+            if op == "!=":
+                return s_val != rhs
+        return True
+
+    parsed = _parse_simple_condition(condition)
+    if not parsed:
+        return rows[:5]
+
+    col, op, rhs = parsed
     filtered = []
     for row in rows:
         row_dict = dict(zip(columns, row))
         try:
-            keep = True
-            if ">" in condition:
-                for col in columns:
-                    if col in condition and col in row_dict:
-                        val = row_dict[col]
-                        if isinstance(val, (int, float)):
-                            rest = condition.split(">", 1)[1]
-                            threshold = float("".join(c for c in rest if c.isdigit() or c == "." or c == "-"))
-                            keep = val > threshold
-                        break
-            elif "<" in condition:
-                for col in columns:
-                    if col in condition and col in row_dict:
-                        val = row_dict[col]
-                        if isinstance(val, (int, float)):
-                            rest = condition.split("<", 1)[1]
-                            threshold = float("".join(c for c in rest if c.isdigit() or c == "." or c == "-"))
-                            keep = val < threshold
-                        break
-            if keep:
+            if _eval_condition(row_dict, col, op, rhs):
                 filtered.append(row)
         except Exception:
             filtered.append(row)
@@ -194,8 +246,8 @@ def _generate_delta_sink_schema_sample(upstream_columns: list[str], upstream_row
 
 def _get_node_category(node_type: str) -> str:
     """Map node type to category."""
-    source_types = {"kafka-topic", "delta-table-source", "auto-loader", "rest-webhook-source", "cdc-stream", "event-hub-kinesis", "mqtt", "custom-python-source"}
-    sink_types = {"delta-table-sink", "kafka-topic-sink", "rest-webhook-sink", "slack-teams-pagerduty", "email-sink", "sql-warehouse-sink", "unity-catalog-table-sink", "dead-letter-queue"}
+    source_types = {"kafka-topic", "delta-table-source", "auto-loader", "rest-webhook-source", "cdc-stream", "event-hub-kinesis", "mqtt", "custom-python-source", "stream-simulator"}
+    sink_types = {"delta-table-sink", "kafka-topic-sink", "rest-webhook-sink", "slack-teams-pagerduty", "email-sink", "sql-warehouse-sink", "unity-catalog-table-sink", "dead-letter-queue", "lakehouse-sink"}
     pattern_types = {"sequence-detector", "absence-detector", "count-threshold", "velocity-detector", "geofence-location", "temporal-correlation", "trend-detector", "outlier-anomaly", "session-detector", "deduplication", "match-recognize-sql", "custom-stateful-processor"}
     if node_type in source_types:
         return "source"
@@ -225,6 +277,16 @@ def _get_upstream_sample(pipeline: dict, node_id: str, visited: set[str]) -> tup
 
         if category == "transform" and node_type == "filter":
             cond = config.get("condition", "")
+            # Generate more upstream rows to increase chance of filter matches
+            upstream_node = _get_node_by_id(pipeline, upstream_ids[0])
+            if upstream_node:
+                up_type = upstream_node.get("type", "")
+                up_config = upstream_node.get("config", {})
+                extra_cols, extra_rows = _generate_source_sample(up_type, up_config)
+                for _ in range(4):
+                    _, more = _generate_source_sample(up_type, up_config)
+                    extra_rows.extend(more)
+                rows = extra_rows
             rows = _apply_filter_best_effort(cols, rows, cond)
             return cols, rows
 

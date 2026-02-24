@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useMemo, useState, useCallback } from "react";
+import { memo, useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,8 @@ import { getNodePreview } from "@/lib/api";
 import type { PreviewSampleResponse } from "@/lib/api";
 import DataPreview from "@/components/preview/DataPreview";
 import InlinePreview from "@/components/canvas/InlinePreview";
+
+const PREVIEW_REFRESH_MS = 2000;
 
 const CATEGORY_BORDER_COLORS: Record<string, string> = {
   source: "border-node-source",
@@ -47,6 +49,52 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
 
   const previewExpanded = data.previewExpanded === true;
   const inlinePreviewData = data.previewData as { columns: string[]; rows: (string | number | boolean | null)[][] } | undefined;
+  const [dataFlash, setDataFlash] = useState(false);
+  const autoExpandedRef = useRef(false);
+  const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const nodesRef = useRef(nodes);
+  const edgesRef = useRef(edges);
+  nodesRef.current = nodes;
+  edgesRef.current = edges;
+
+  const fetchPreview = useCallback(() => {
+    getNodePreview({ nodes: nodesRef.current, edges: edgesRef.current }, nodeId)
+      .then((res) => {
+        setNodePreviewData(nodeId, { columns: res.columns, rows: res.rows });
+        setDataFlash(true);
+        setTimeout(() => setDataFlash(false), 400);
+      })
+      .catch(() => {});
+  }, [nodeId, setNodePreviewData]);
+
+  // Auto-expand preview when a node is first placed on the canvas
+  useEffect(() => {
+    if (!autoExpandedRef.current && !previewExpanded) {
+      autoExpandedRef.current = true;
+      toggleNodePreview(nodeId);
+      setInlinePreviewLoading(true);
+      getNodePreview({ nodes, edges }, nodeId)
+        .then((res) =>
+          setNodePreviewData(nodeId, { columns: res.columns, rows: res.rows })
+        )
+        .catch(() => setNodePreviewData(nodeId, { columns: [], rows: [] }))
+        .finally(() => setInlinePreviewLoading(false));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auto-refresh preview data every 2s while expanded
+  useEffect(() => {
+    if (previewExpanded) {
+      refreshTimerRef.current = setInterval(fetchPreview, PREVIEW_REFRESH_MS);
+    }
+    return () => {
+      if (refreshTimerRef.current) {
+        clearInterval(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
+    };
+  }, [previewExpanded, fetchPreview]);
 
   const handleInlineExpandClick = useCallback(
     (e: React.MouseEvent) => {
@@ -216,10 +264,12 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
               <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
             </div>
           ) : inlinePreviewData && (inlinePreviewData.columns.length > 0 || inlinePreviewData.rows.length > 0) ? (
-            <InlinePreview
-              columns={inlinePreviewData.columns}
-              rows={inlinePreviewData.rows}
-            />
+            <div className={cn("transition-opacity duration-300", dataFlash && "opacity-70")}>
+              <InlinePreview
+                columns={inlinePreviewData.columns}
+                rows={inlinePreviewData.rows}
+              />
+            </div>
           ) : previewExpanded && !inlinePreviewLoading ? (
             <p className="py-2 text-center text-[10px] text-slate-500">
               No preview data
