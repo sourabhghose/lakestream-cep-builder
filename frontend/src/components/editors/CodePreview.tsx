@@ -190,20 +190,20 @@ export default function CodePreview({
   return (
     <div
       className={cn(
-        "fixed bottom-0 left-0 right-0 z-40 flex flex-col border-t border-slate-700 bg-slate-900/95",
+        "fixed bottom-0 left-0 right-0 z-40 flex flex-col border-t border-[#30363d] bg-[#161b22]",
         className
       )}
     >
-      <div className="flex h-12 shrink-0 items-center justify-between border-b border-slate-700 px-4">
+      <div className="flex h-12 shrink-0 items-center justify-between border-b border-[#30363d] px-4">
         <div className="flex items-center gap-2">
           {isGenerating && (
-            <span className="flex items-center gap-1.5 text-sm text-slate-400">
+            <span className="flex items-center gap-1.5 text-sm text-[#8b949e]">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
               Generating...
             </span>
           )}
           {codeTarget && !isGenerating && (
-            <span className="rounded bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-300">
+            <span className="rounded bg-[#30363d] px-2 py-0.5 text-xs font-medium text-[#c9d1d9]">
               {codeTarget.toUpperCase()}
             </span>
           )}
@@ -213,8 +213,8 @@ export default function CodePreview({
               className={cn(
                 "rounded px-3 py-1.5 text-sm font-medium",
                 activeTab === "sdp"
-                  ? "bg-slate-700 text-slate-200"
-                  : "text-slate-500 hover:text-slate-300"
+                  ? "bg-[#30363d] text-[#e8eaed]"
+                  : "text-[#6e7681] hover:text-[#c9d1d9]"
               )}
               aria-label="SDP (SQL/Python) code tab"
               aria-pressed={activeTab === "sdp"}
@@ -228,8 +228,8 @@ export default function CodePreview({
               className={cn(
                 "rounded px-3 py-1.5 text-sm font-medium",
                 activeTab === "sss"
-                  ? "bg-slate-700 text-slate-200"
-                  : "text-slate-500 hover:text-slate-300"
+                  ? "bg-[#30363d] text-[#e8eaed]"
+                  : "text-[#6e7681] hover:text-[#c9d1d9]"
               )}
               aria-label="Structured Streaming (PySpark) code tab"
               aria-pressed={activeTab === "sss"}
@@ -238,7 +238,7 @@ export default function CodePreview({
             </button>
           )}
           {!hasSdp && !hasSss && !isGenerating && (
-            <span className="text-sm text-slate-500">
+            <span className="text-sm text-[#6e7681]">
               Add nodes to generate code
             </span>
           )}
@@ -255,7 +255,7 @@ export default function CodePreview({
             </span>
           )}
           {syncStatus === "parsing" && (
-            <span className="flex items-center gap-1.5 text-xs text-slate-400">
+            <span className="flex items-center gap-1.5 text-xs text-[#8b949e]">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
               Parsing…
             </span>
@@ -274,8 +274,8 @@ export default function CodePreview({
             className={cn(
               "flex items-center gap-1.5 rounded px-2 py-1.5 text-sm",
               diffMode
-                ? "bg-blue-600/20 text-blue-400"
-                : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                ? "bg-[#1f6feb33] text-[#58a6ff]"
+                : "text-[#8b949e] hover:bg-[#30363d] hover:text-[#e8eaed]"
             )}
             title={diffMode ? "Exit diff view" : "Compare with last deployed"}
           >
@@ -290,8 +290,8 @@ export default function CodePreview({
               "flex items-center gap-1.5 rounded px-2 py-1.5 text-sm",
               diffMode && "opacity-50 cursor-not-allowed",
               isEditing
-                ? "bg-blue-600/20 text-blue-400"
-                : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                ? "bg-[#1f6feb33] text-[#58a6ff]"
+                : "text-[#8b949e] hover:bg-[#30363d] hover:text-[#e8eaed]"
             )}
             title={diffMode ? "Edit disabled in diff mode" : isEditing ? "Read-only mode" : "Edit mode"}
           >
@@ -300,7 +300,7 @@ export default function CodePreview({
           </button>
           <button
             onClick={onToggleCollapse}
-            className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+            className="rounded p-1 text-[#8b949e] hover:bg-[#30363d] hover:text-[#e8eaed]"
             title={collapsed ? "Expand" : "Collapse"}
             aria-label={collapsed ? "Expand code preview" : "Collapse code preview"}
           >
@@ -314,12 +314,12 @@ export default function CodePreview({
         <div className="h-[180px] overflow-hidden" aria-label="Generated code editor">
           {diffMode ? (
             diffLoading ? (
-              <div className="flex h-full items-center justify-center text-slate-400">
+              <div className="flex h-full items-center justify-center text-[#8b949e]">
                 <Loader2 className="h-6 w-6 animate-spin" />
                 <span className="ml-2">Loading deploy history…</span>
               </div>
             ) : !pipelineId || !hasLastDeployed ? (
-              <div className="flex h-full items-center justify-center text-slate-400">
+              <div className="flex h-full items-center justify-center text-[#8b949e]">
                 No previous deployment to compare against
               </div>
             ) : (

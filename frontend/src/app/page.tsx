@@ -18,8 +18,6 @@ import {
   HelpCircle,
   History,
   ShieldCheck,
-  Sun,
-  Moon,
   Group,
   GitBranch,
   Workflow,
@@ -50,7 +48,7 @@ import { useJobStatusStore } from "@/hooks/useJobStatusStore";
 import { cn } from "@/lib/utils";
 import { usePipelineStore } from "@/hooks/usePipelineStore";
 import { useToastStore } from "@/hooks/useToastStore";
-import { useThemeStore } from "@/hooks/useThemeStore";
+// Theme is dark-only; no toggle needed
 import { exportPipeline, importPipeline } from "@/lib/pipelineIO";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { computeLayout } from "@/lib/autoLayout";
@@ -107,13 +105,8 @@ export default function Home() {
   const addToast = useToastStore((s) => s.addToast);
   const toasts = useToastStore((s) => s.toasts);
   const activeJobs = useJobStatusStore((s) => s.activeJobs);
-  const { theme, toggleTheme, initTheme } = useThemeStore();
   const generatedSdpCode = usePipelineStore((s) => s.generatedSdpCode);
   const generatedSssCode = usePipelineStore((s) => s.generatedSssCode);
-
-  useEffect(() => {
-    initTheme();
-  }, [initTheme]);
 
   useEffect(() => {
     if (generatedSdpCode || generatedSssCode) {
@@ -202,18 +195,18 @@ export default function Home() {
   };
 
   return (
-    <div className="flex h-screen flex-col bg-gray-100 dark:bg-slate-950">
+    <div className="flex h-screen flex-col bg-[#1b1f23]">
       <SkipLink href="#main-canvas">Skip to canvas</SkipLink>
-      {/* Top bar */}
-      <header className="flex h-12 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 dark:border-slate-700 dark:bg-slate-900/95">
+      {/* Top bar — Databricks-style header */}
+      <header className="flex h-12 shrink-0 items-center justify-between border-b border-[#30363d] bg-[#161b22] px-4">
         <div className="flex items-center gap-4">
-          <h1 className="text-lg font-semibold text-gray-900 dark:text-slate-200">
+          <h1 className="text-lg font-semibold text-[#e8eaed]">
             LakeStream CEP Builder
           </h1>
           <DropdownMenu.Root open={menuOpen} onOpenChange={setMenuOpen}>
             <DropdownMenu.Trigger asChild>
               <button
-                className="flex items-center gap-2 rounded border border-gray-300 bg-gray-100 px-3 py-1.5 text-sm text-gray-900 hover:bg-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                className="flex items-center gap-2 rounded border border-[#30363d] bg-[#21262d] px-3 py-1.5 text-sm text-[#e8eaed] hover:bg-[#30363d]"
                 aria-label="Pipeline menu"
               >
                 <Menu className="h-4 w-4" />
@@ -223,12 +216,12 @@ export default function Home() {
             </DropdownMenu.Trigger>
             <DropdownMenu.Portal>
               <DropdownMenu.Content
-                className="min-w-[180px] rounded-lg border border-slate-700 bg-slate-900 py-1 shadow-xl"
+                className="min-w-[180px] rounded-lg border border-[#30363d] bg-[#161b22] py-1 shadow-xl"
                 align="start"
                 sideOffset={4}
               >
                 <DropdownMenu.Item
-                  className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-slate-200 outline-none hover:bg-slate-800"
+                  className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-[#e8eaed] outline-none hover:bg-[#21262d]"
                   onSelect={() => {
                     resetPipeline();
                     setMenuOpen(false);
@@ -239,7 +232,7 @@ export default function Home() {
                   New
                 </DropdownMenu.Item>
                 <DropdownMenu.Item
-                  className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-slate-200 outline-none hover:bg-slate-800"
+                  className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-[#e8eaed] outline-none hover:bg-[#21262d]"
                   onSelect={() => {
                     setPipelineListOpen(true);
                     setMenuOpen(false);
@@ -249,7 +242,7 @@ export default function Home() {
                   Open
                 </DropdownMenu.Item>
                 <DropdownMenu.Item
-                  className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-slate-200 outline-none hover:bg-slate-800"
+                  className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-[#e8eaed] outline-none hover:bg-[#21262d]"
                   onSelect={() => {
                     setSaveDialogOpen(true);
                     setMenuOpen(false);
@@ -259,7 +252,7 @@ export default function Home() {
                   Save
                 </DropdownMenu.Item>
                 <DropdownMenu.Item
-                  className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-slate-200 outline-none hover:bg-slate-800"
+                  className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-[#e8eaed] outline-none hover:bg-[#21262d]"
                   onSelect={() => {
                     usePipelineStore.setState({ pipelineId: null });
                     setSaveDialogOpen(true);
@@ -270,7 +263,7 @@ export default function Home() {
                   Save As
                 </DropdownMenu.Item>
                 <DropdownMenu.Item
-                  className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-slate-200 outline-none hover:bg-slate-800"
+                  className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-[#e8eaed] outline-none hover:bg-[#21262d]"
                   onSelect={() => {
                     setVersionDiffOpen(true);
                     setMenuOpen(false);
@@ -280,7 +273,7 @@ export default function Home() {
                   Version History
                 </DropdownMenu.Item>
                 <DropdownMenu.Item
-                  className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-slate-200 outline-none hover:bg-slate-800"
+                  className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-[#e8eaed] outline-none hover:bg-[#21262d]"
                   onSelect={() => {
                     setSaveTemplateDialogOpen(true);
                     setMenuOpen(false);
@@ -290,22 +283,22 @@ export default function Home() {
                   Save as Template
                 </DropdownMenu.Item>
                 <DropdownMenu.Item
-                  className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-slate-200 outline-none hover:bg-slate-800"
+                  className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-[#e8eaed] outline-none hover:bg-[#21262d]"
                   onSelect={handleExportPipeline}
                 >
                   <Download className="h-4 w-4" />
                   Export Pipeline
                 </DropdownMenu.Item>
                 <DropdownMenu.Item
-                  className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-slate-200 outline-none hover:bg-slate-800"
+                  className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-[#e8eaed] outline-none hover:bg-[#21262d]"
                   onSelect={handleImportPipelineClick}
                 >
                   <Upload className="h-4 w-4" />
                   Import Pipeline
                 </DropdownMenu.Item>
-                <DropdownMenu.Separator className="my-1 h-px bg-slate-700" />
+                <DropdownMenu.Separator className="my-1 h-px bg-[#30363d]" />
                 <DropdownMenu.Item
-                  className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-red-400 outline-none hover:bg-slate-800"
+                  className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-red-400 outline-none hover:bg-[#21262d]"
                   onSelect={handleDeletePipeline}
                 >
                   <Trash2 className="h-4 w-4" />
@@ -314,7 +307,7 @@ export default function Home() {
               </DropdownMenu.Content>
             </DropdownMenu.Portal>
           </DropdownMenu.Root>
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-[#484f58]">
             v{pipelineVersion} · {formatLastSaved(lastSavedAt)}
           </span>
           {isDirty && (
@@ -325,7 +318,7 @@ export default function Home() {
         </div>
         <div className="flex items-center gap-2" role="toolbar" aria-label="Pipeline actions">
           <button
-            className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-slate-200 disabled:opacity-60"
+            className="flex items-center gap-2 rounded-md border border-[#30363d] bg-[#21262d] px-4 py-2 text-sm font-medium text-[#c9d1d9] hover:bg-[#30363d] hover:text-[#e8eaed] disabled:opacity-60"
             onClick={handleGroupClick}
             disabled={selectedCount < 2}
             title="Group selected nodes"
@@ -335,7 +328,7 @@ export default function Home() {
             Group
           </button>
           <button
-            className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-slate-200 disabled:opacity-60"
+            className="flex items-center gap-2 rounded-md border border-[#30363d] bg-[#21262d] px-4 py-2 text-sm font-medium text-[#c9d1d9] hover:bg-[#30363d] hover:text-[#e8eaed] disabled:opacity-60"
             onClick={handleAutoLayout}
             disabled={nodes.length === 0}
             title="Auto-arrange pipeline nodes"
@@ -345,7 +338,7 @@ export default function Home() {
             Auto Layout
           </button>
           <button
-            className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-slate-200"
+            className="flex items-center gap-2 rounded-md border border-[#30363d] bg-[#21262d] px-4 py-2 text-sm font-medium text-[#c9d1d9] hover:bg-[#30363d] hover:text-[#e8eaed]"
             onClick={() => setTemplatesOpen(true)}
             aria-label="Open templates gallery"
           >
@@ -353,7 +346,7 @@ export default function Home() {
             Templates
           </button>
           <button
-            className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-slate-200 disabled:opacity-60"
+            className="flex items-center gap-2 rounded-md border border-[#30363d] bg-[#21262d] px-4 py-2 text-sm font-medium text-[#c9d1d9] hover:bg-[#30363d] hover:text-[#e8eaed] disabled:opacity-60"
             onClick={handleSaveClick}
             disabled={isSaving}
             aria-label={isSaving ? "Saving pipeline" : "Save pipeline"}
@@ -367,8 +360,8 @@ export default function Home() {
           </button>
           <button
             className={cn(
-              "rounded-md p-2 text-slate-400 hover:bg-slate-800 hover:text-slate-200",
-              deployHistoryOpen && "bg-slate-800 text-slate-200"
+              "rounded-md p-2 text-[#8b949e] hover:bg-[#30363d] hover:text-[#e8eaed]",
+              deployHistoryOpen && "bg-[#30363d] text-[#e8eaed]"
             )}
             onClick={() => setDeployHistoryOpen((o) => !o)}
             title="Deploy History"
@@ -379,8 +372,8 @@ export default function Home() {
           </button>
           <button
             className={cn(
-              "rounded-md p-2 text-slate-400 hover:bg-slate-800 hover:text-slate-200",
-              flowPreviewOpen && "bg-slate-800 text-slate-200"
+              "rounded-md p-2 text-[#8b949e] hover:bg-[#30363d] hover:text-[#e8eaed]",
+              flowPreviewOpen && "bg-[#30363d] text-[#e8eaed]"
             )}
             onClick={() => setFlowPreviewOpen((o) => !o)}
             title="Flow Preview"
@@ -390,7 +383,7 @@ export default function Home() {
             <Workflow className="h-5 w-5" />
           </button>
           <button
-            className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-slate-200"
+            className="flex items-center gap-2 rounded-md border border-[#30363d] bg-[#21262d] px-4 py-2 text-sm font-medium text-[#c9d1d9] hover:bg-[#30363d] hover:text-[#e8eaed]"
             onClick={() => setValidationPanelOpen(true)}
             title="Validate pipeline"
             aria-label="Validate pipeline"
@@ -399,7 +392,7 @@ export default function Home() {
             Validate
           </button>
           <button
-            className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+            className="flex items-center gap-2 rounded-md bg-[#238636] px-4 py-2 text-sm font-medium text-white hover:bg-[#2ea043] disabled:opacity-60"
             onClick={handleDeployClick}
             aria-label="Deploy pipeline"
           >
@@ -407,18 +400,10 @@ export default function Home() {
             Deploy
           </button>
           <button
-            onClick={toggleTheme}
-            className="rounded-md p-2 text-gray-600 hover:bg-gray-200 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-          >
-            {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-          </button>
-          <button
             onClick={() => setHelpOpen((o) => !o)}
             className={cn(
-              "rounded-md p-2 text-gray-600 hover:bg-gray-200 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200",
-              helpOpen && "bg-gray-200 text-gray-900 dark:bg-slate-800 dark:text-slate-200"
+              "rounded-md p-2 text-[#8b949e] hover:bg-[#30363d] hover:text-[#e8eaed]",
+              helpOpen && "bg-[#30363d] text-[#e8eaed]"
             )}
             title="Help"
             aria-label="Help"

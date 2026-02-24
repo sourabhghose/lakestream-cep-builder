@@ -219,11 +219,11 @@ function PipelineCanvasInner() {
         />
         <Controls
           showInteractive={false}
-          className="!border-slate-700 !bg-slate-800 !shadow-lg"
+          className="!border-[#30363d] !bg-[#21262d] !shadow-lg"
         />
         <MiniMap
           position="bottom-right"
-          className="!rounded-lg !border-slate-700 !bg-slate-900 !shadow-lg"
+          className="!rounded-lg !border-[#30363d] !bg-[#161b22] !shadow-lg"
           maskColor="rgba(15, 23, 42, 0.8)"
           nodeColor={(node) => {
             const def = NODE_REGISTRY[node.data?.type as keyof typeof NODE_REGISTRY];

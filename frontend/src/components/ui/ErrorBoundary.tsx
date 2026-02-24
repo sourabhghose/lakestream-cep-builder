@@ -80,24 +80,24 @@ function ErrorBoundaryFallback({
   const [detailsOpen, setDetailsOpen] = React.useState(false);
 
   return (
-    <div className="flex h-full min-h-[200px] flex-col items-center justify-center rounded-lg border border-red-200 bg-red-50/50 p-6 dark:border-red-900/50 dark:bg-red-950/30">
-      <AlertTriangle className="mb-4 h-12 w-12 text-red-500 dark:text-red-400" />
-      <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-slate-200">
+    <div className="flex h-full min-h-[200px] flex-col items-center justify-center rounded-lg border border-[#f8514930] bg-[#f8514915] p-6">
+      <AlertTriangle className="mb-4 h-12 w-12 text-[#f85149]" />
+      <h3 className="mb-2 text-lg font-semibold text-[#e8eaed]">
         Something went wrong
       </h3>
-      <p className="mb-4 text-center text-sm text-gray-600 dark:text-slate-400">
+      <p className="mb-4 text-center text-sm text-[#8b949e]">
         An unexpected error occurred. You can try again or reset the pipeline.
       </p>
       <div className="flex flex-wrap gap-2">
         <button
           onClick={onTryAgain}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="rounded-md bg-[#1f6feb] px-4 py-2 text-sm font-medium text-white hover:bg-[#388bfd]"
         >
           Try Again
         </button>
         <button
           onClick={onResetPipeline}
-          className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+          className="rounded-md border border-[#30363d] bg-[#21262d] px-4 py-2 text-sm font-medium text-[#c9d1d9] hover:bg-[#30363d]"
         >
           Reset Pipeline
         </button>
@@ -105,12 +105,12 @@ function ErrorBoundaryFallback({
       <div className="mt-4 w-full max-w-md">
         <button
           onClick={() => setDetailsOpen((o) => !o)}
-          className="text-xs text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-300"
+          className="text-xs text-[#8b949e] hover:text-[#c9d1d9]"
         >
           {detailsOpen ? "Hide" : "Show"} error details
         </button>
         {detailsOpen && (
-          <pre className="mt-2 max-h-32 overflow-auto rounded border border-gray-200 bg-gray-100 p-2 text-left text-xs text-gray-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+          <pre className="mt-2 max-h-32 overflow-auto rounded border border-[#30363d] bg-[#15191d] p-2 text-left text-xs text-[#c9d1d9]">
             {error.message}
             {error.stack && `\n\n${error.stack}`}
           </pre>

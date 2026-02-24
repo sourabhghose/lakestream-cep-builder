@@ -117,7 +117,7 @@ export default function PipelineSearch() {
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="absolute right-4 top-4 z-10 flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-800/95 px-3 py-2 text-sm text-slate-300 shadow-lg backdrop-blur hover:border-slate-500 hover:bg-slate-700/95"
+        className="absolute right-4 top-4 z-10 flex items-center gap-2 rounded-lg border border-[#30363d] bg-[#21262d]/95 px-3 py-2 text-sm text-[#c9d1d9] shadow-lg backdrop-blur hover:border-[#484f58] hover:bg-[#30363d]/95"
         title="Search nodes (Ctrl+F / Cmd+F)"
       >
         <Search className="h-4 w-4" />
@@ -127,8 +127,8 @@ export default function PipelineSearch() {
   }
 
   return (
-    <div className="absolute right-4 top-4 z-10 flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-800/95 px-3 py-2 shadow-lg backdrop-blur">
-      <Search className="h-4 w-4 shrink-0 text-slate-400" />
+    <div className="absolute right-4 top-4 z-10 flex items-center gap-2 rounded-lg border border-[#30363d] bg-[#21262d]/95 px-3 py-2 shadow-lg backdrop-blur">
+      <Search className="h-4 w-4 shrink-0 text-[#8b949e]" />
       <input
         type="text"
         value={query}
@@ -137,11 +137,11 @@ export default function PipelineSearch() {
           setSelectedIndex(0);
         }}
         placeholder="Search nodes..."
-        className="w-48 bg-transparent text-sm text-slate-100 placeholder-slate-500 outline-none"
+        className="w-48 bg-transparent text-sm text-[#f0f6fc] placeholder-[#484f58] outline-none"
         ref={inputRef}
         autoFocus
       />
-      <span className="shrink-0 text-xs text-slate-500">
+      <span className="shrink-0 text-xs text-[#484f58]">
         {matchCount} of {totalNodes} nodes
       </span>
       <div className="flex shrink-0 items-center gap-0.5">
@@ -149,7 +149,7 @@ export default function PipelineSearch() {
           type="button"
           onClick={handlePrev}
           disabled={matches.length === 0}
-          className="rounded p-1 text-slate-400 hover:bg-slate-700 hover:text-slate-200 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-400"
+          className="rounded p-1 text-[#8b949e] hover:bg-[#30363d] hover:text-[#e8eaed] disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[#8b949e]"
           title="Previous match"
         >
           <ChevronUp className="h-4 w-4" />
@@ -158,7 +158,7 @@ export default function PipelineSearch() {
           type="button"
           onClick={handleNext}
           disabled={matches.length === 0}
-          className="rounded p-1 text-slate-400 hover:bg-slate-700 hover:text-slate-200 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-400"
+          className="rounded p-1 text-[#8b949e] hover:bg-[#30363d] hover:text-[#e8eaed] disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[#8b949e]"
           title="Next match"
         >
           <ChevronDown className="h-4 w-4" />
@@ -167,7 +167,7 @@ export default function PipelineSearch() {
       <button
         type="button"
         onClick={closeSearch}
-        className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+        className="shrink-0 rounded p-1 text-[#8b949e] hover:bg-[#30363d] hover:text-[#e8eaed]"
         title="Close"
       >
         <X className="h-4 w-4" />

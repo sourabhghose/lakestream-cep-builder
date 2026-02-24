@@ -43,28 +43,28 @@ function GroupNodeInner({ id, data, selected }: NodeProps) {
   return (
     <div
       className={cn(
-        "min-w-[200px] rounded-lg border-2 border-dashed border-slate-500 bg-slate-800/60 px-4 py-3 shadow-lg backdrop-blur dark:bg-slate-800/80",
-        selected && "ring-2 ring-blue-400 ring-offset-2 ring-offset-slate-950"
+        "min-w-[200px] rounded-lg border-2 border-dashed border-[#30363d] bg-[#1e2329]/80 px-4 py-3 shadow-lg backdrop-blur",
+        selected && "ring-2 ring-[#58a6ff] ring-offset-2 ring-offset-[#1b1f23]"
       )}
       onDoubleClick={handleDoubleClick}
     >
       <Handle
         type="target"
         position={Position.Left}
-        className="!bg-slate-500"
+        className="!bg-[#484f58]"
         isConnectable={false}
       />
       <Handle
         type="source"
         position={Position.Right}
-        className="!bg-slate-500"
+        className="!bg-[#484f58]"
         isConnectable={false}
       />
 
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <div className="font-medium text-slate-200 truncate">{name}</div>
-          <div className="mt-1 text-xs text-slate-400">
+          <div className="font-medium text-[#e8eaed] truncate">{name}</div>
+          <div className="mt-1 text-xs text-[#8b949e]">
             {nodeCount} node{nodeCount !== 1 ? "s" : ""}
           </div>
           {nodeTypes.length > 0 && (
@@ -77,10 +77,10 @@ function GroupNodeInner({ id, data, selected }: NodeProps) {
                 return (
                   <div
                     key={type}
-                    className="flex h-6 w-6 items-center justify-center rounded bg-slate-700/80"
+                    className="flex h-6 w-6 items-center justify-center rounded bg-[#30363d]"
                     title={def?.label ?? type}
                   >
-                    <IconComponent className="h-3 w-3 text-slate-300" />
+                    <IconComponent className="h-3 w-3 text-[#c9d1d9]" />
                   </div>
                 );
               })}
@@ -91,7 +91,7 @@ function GroupNodeInner({ id, data, selected }: NodeProps) {
           <button
             type="button"
             onClick={handleExpand}
-            className="rounded p-1.5 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+            className="rounded p-1.5 text-[#8b949e] hover:bg-[#30363d] hover:text-[#e8eaed]"
             title="Expand group"
           >
             <Maximize2 className="h-4 w-4" />
@@ -99,7 +99,7 @@ function GroupNodeInner({ id, data, selected }: NodeProps) {
           <button
             type="button"
             onClick={handleUngroup}
-            className="rounded p-1.5 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+            className="rounded p-1.5 text-[#8b949e] hover:bg-[#30363d] hover:text-[#e8eaed]"
             title="Ungroup"
           >
             <Ungroup className="h-4 w-4" />

@@ -30,7 +30,7 @@ export default function JobStatusBadge({ status, className }: JobStatusBadgeProp
     RUNNING: {
       icon: <Loader2 className="h-3 w-3 animate-spin" aria-hidden />,
       label: "Running",
-      styles: "bg-blue-500/20 text-blue-400 border-blue-500/40",
+      styles: "bg-[#58a6ff]/20 text-[#58a6ff] border-[#58a6ff]/40",
     },
     SUCCEEDED: {
       icon: <Check className="h-3 w-3" aria-hidden />,
@@ -45,7 +45,7 @@ export default function JobStatusBadge({ status, className }: JobStatusBadgeProp
     CANCELLED: {
       icon: <Minus className="h-3 w-3" aria-hidden />,
       label: "Cancelled",
-      styles: "bg-slate-500/20 text-slate-400 border-slate-500/40",
+      styles: "bg-[#484f58]/20 text-[#8b949e] border-[#484f58]/40",
     },
   };
 

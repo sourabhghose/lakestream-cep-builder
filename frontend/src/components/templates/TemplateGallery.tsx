@@ -67,19 +67,19 @@ export default function TemplateGallery({
   return (
     <div
       className={cn(
-        "flex flex-col rounded-lg border border-slate-700 bg-slate-900/95",
+        "flex flex-col rounded-lg border border-[#30363d] bg-[#161b22]",
         className
       )}
     >
-      <div className="flex items-center justify-between border-b border-slate-700 px-4 py-3">
-        <h2 className="flex items-center gap-2 font-semibold text-slate-200">
+      <div className="flex items-center justify-between border-b border-[#30363d] px-4 py-3">
+        <h2 className="flex items-center gap-2 font-semibold text-[#e8eaed]">
           <LayoutTemplate className="h-5 w-5" />
           Use Case Templates
         </h2>
         {onClose && (
           <button
             onClick={onClose}
-            className="rounded p-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+            className="rounded p-1.5 text-[#8b949e] hover:bg-[#21262d] hover:text-[#e8eaed]"
             title="Close"
           >
             <X className="h-4 w-4" />
@@ -87,21 +87,21 @@ export default function TemplateGallery({
         )}
       </div>
 
-      <div className="flex flex-wrap gap-3 border-b border-slate-700 px-4 py-3">
+      <div className="flex flex-wrap gap-3 border-b border-[#30363d] px-4 py-3">
         <div className="relative min-w-[200px] flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#484f58]" />
           <input
             type="text"
             placeholder="Search templates..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-md border border-slate-600 bg-slate-800 py-2 pl-9 pr-3 text-sm text-slate-200 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-md border border-[#30363d] bg-[#21262d] py-2 pl-9 pr-3 text-sm text-[#e8eaed] placeholder-[#484f58] focus:border-[#58a6ff] focus:outline-none focus:ring-1 focus:ring-[#58a6ff]"
           />
         </div>
         <select
           value={industry}
           onChange={(e) => setIndustry(e.target.value)}
-          className="rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200 focus:border-blue-500 focus:outline-none"
+          className="rounded-md border border-[#30363d] bg-[#21262d] px-3 py-2 text-sm text-[#e8eaed] focus:border-[#58a6ff] focus:outline-none"
         >
           {INDUSTRIES.map((ind) => (
             <option key={ind} value={ind}>
@@ -114,7 +114,7 @@ export default function TemplateGallery({
           onChange={(e) =>
             setDifficulty(e.target.value as TemplateDifficulty | "all")
           }
-          className="rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200 focus:border-blue-500 focus:outline-none"
+          className="rounded-md border border-[#30363d] bg-[#21262d] px-3 py-2 text-sm text-[#e8eaed] focus:border-[#58a6ff] focus:outline-none"
         >
           <option value="all">All levels</option>
           {DIFFICULTIES.map((d) => (
@@ -127,7 +127,7 @@ export default function TemplateGallery({
 
       <div className="flex-1 overflow-y-auto p-4">
         {filteredTemplates.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-slate-500">
+          <div className="flex flex-col items-center justify-center py-12 text-[#484f58]">
             <Search className="mb-2 h-10 w-10" />
             <p className="text-sm">No templates match your filters</p>
           </div>

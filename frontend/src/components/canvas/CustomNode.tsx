@@ -185,13 +185,13 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
       aria-label={ariaLabel}
       aria-pressed={selected}
       className={cn(
-        "min-w-[180px] rounded-lg border-2 bg-white px-4 py-3 shadow-lg backdrop-blur dark:bg-gray-800 dark:text-gray-100",
+        "min-w-[180px] rounded-lg border-2 bg-[#1e2329] px-4 py-3 shadow-lg backdrop-blur text-[#e8eaed]",
         "[will-change:transform]",
         borderColor,
-        selected && "ring-2 ring-blue-400 ring-offset-2 ring-offset-slate-950 outline-none",
+        selected && "ring-2 ring-[#58a6ff] ring-offset-2 ring-offset-[#1b1f23] outline-none",
         hasError && "border-red-500",
-        searchHighlight && "ring-2 ring-blue-500 animate-pulse",
-        "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+        searchHighlight && "ring-2 ring-[#58a6ff] animate-pulse",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#58a6ff] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1b1f23]"
       )}
     >
       {Array.from({ length: Math.max(1, inputs) }).map((_, i) => (
@@ -200,7 +200,7 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
           type="target"
           position={Position.Left}
           id={inputs > 1 ? `target-${i}` : undefined}
-          className="!bg-slate-500"
+          className="!bg-[#484f58]"
           style={inputs > 1 ? { top: `${((i + 1) / (inputs + 1)) * 100}%` } : undefined}
         />
       ))}
@@ -210,24 +210,24 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
           type="source"
           position={Position.Right}
           id={outputs > 1 ? `source-${i}` : undefined}
-          className="!bg-slate-500"
+          className="!bg-[#484f58]"
           style={outputs > 1 ? { top: `${((i + 1) / (outputs + 1)) * 100}%` } : undefined}
         />
       ))}
 
       <div className="flex items-start gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-slate-800">
-          <IconComponent className="h-4 w-4 text-slate-300" />
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#30363d]">
+          <IconComponent className="h-4 w-4 text-[#c9d1d9]" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="truncate font-medium text-slate-100">
+            <span className="truncate font-medium text-[#e8eaed]">
               {String(data.label ?? def.label ?? "Unknown")}
             </span>
             <button
               type="button"
               onClick={handlePreviewClick}
-              className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+              className="shrink-0 rounded p-1 text-[#8b949e] hover:bg-[#30363d] hover:text-[#e8eaed]"
               title="Preview data"
               aria-label="Preview node data"
             >
@@ -240,7 +240,7 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
             )}
           </div>
           {data.configSummary != null && data.configSummary !== "" && (
-            <p className="mt-0.5 truncate text-xs text-slate-400">
+            <p className="mt-0.5 truncate text-xs text-[#8b949e]">
               {String(data.configSummary)}
             </p>
           )}
@@ -249,7 +249,7 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
               {badges.map((b) => (
                 <span
                   key={b}
-                  className="rounded bg-slate-700/80 px-1.5 py-0.5 text-[10px] text-slate-300"
+                  className="rounded bg-[#30363d] px-1.5 py-0.5 text-[10px] text-[#c9d1d9]"
                 >
                   {b}
                 </span>
@@ -259,11 +259,11 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
         </div>
       </div>
 
-      <div className="mt-2 flex justify-center border-t border-slate-600/60 pt-2">
+      <div className="mt-2 flex justify-center border-t border-[#30363d] pt-2">
         <button
           type="button"
           onClick={handleInlineExpandClick}
-          className="flex items-center gap-1 rounded px-2 py-1 text-slate-400 hover:bg-slate-700/60 hover:text-slate-200"
+          className="flex items-center gap-1 rounded px-2 py-1 text-[#8b949e] hover:bg-[#30363d] hover:text-[#e8eaed]"
           title={previewExpanded ? "Collapse preview" : "Expand preview"}
           aria-label={previewExpanded ? "Collapse inline preview" : "Expand inline preview"}
         >
@@ -272,7 +272,7 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
           ) : (
             <ChevronDown className="h-3.5 w-3.5" />
           )}
-          <span className="text-[10px]">
+          <span className="text-[10px] font-medium">
             {previewExpanded ? "Collapse" : "Preview"}
           </span>
         </button>
@@ -285,7 +285,7 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
         <div className="mt-2 pt-2">
           {inlinePreviewLoading ? (
             <div className="flex items-center justify-center py-4">
-              <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+              <Loader2 className="h-4 w-4 animate-spin text-[#8b949e]" />
             </div>
           ) : inlinePreviewData && (inlinePreviewData.columns.length > 0 || inlinePreviewData.rows.length > 0) ? (
             <div className={cn("transition-opacity duration-300", dataFlash && "opacity-70")}>
@@ -295,7 +295,7 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
               />
             </div>
           ) : previewExpanded && !inlinePreviewLoading ? (
-            <p className="py-2 text-center text-[10px] text-slate-500">
+            <p className="py-2 text-center text-[10px] text-[#484f58]">
               No preview data
             </p>
           ) : null}
@@ -312,15 +312,15 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
             }}
           >
             <div
-              className="max-h-[80vh] w-full max-w-2xl overflow-hidden rounded-lg border border-slate-700 bg-slate-900 shadow-xl"
+              className="max-h-[80vh] w-full max-w-2xl overflow-hidden rounded-lg border border-[#30363d] bg-[#161b22] shadow-xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between border-b border-slate-700 px-4 py-2">
-                <h3 className="font-medium text-slate-200">Data Preview</h3>
+              <div className="flex items-center justify-between border-b border-[#30363d] px-4 py-2">
+                <h3 className="font-medium text-[#e8eaed]">Data Preview</h3>
                 <button
                   type="button"
                   onClick={() => setShowPreview(false)}
-                  className="rounded p-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                  className="rounded p-1.5 text-[#8b949e] hover:bg-[#21262d] hover:text-[#e8eaed]"
                   aria-label="Close data preview"
                 >
                   <X className="h-4 w-4" />
@@ -329,7 +329,7 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
               <div className="p-4">
                 {previewLoading ? (
                   <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+                    <Loader2 className="h-8 w-8 animate-spin text-[#8b949e]" />
                   </div>
                 ) : previewData ? (
                   <DataPreview
@@ -338,7 +338,7 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
                     rowCount={previewData.row_count}
                   />
                 ) : (
-                  <p className="py-4 text-center text-sm text-slate-500">No preview data</p>
+                  <p className="py-4 text-center text-sm text-[#484f58]">No preview data</p>
                 )}
               </div>
             </div>

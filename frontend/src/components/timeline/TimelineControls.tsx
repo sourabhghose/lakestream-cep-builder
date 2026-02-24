@@ -71,7 +71,7 @@ export default function TimelineControls({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center gap-3 rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2",
+        "flex flex-wrap items-center gap-3 rounded-lg border border-[#30363d] bg-[#161b22]/80 px-3 py-2",
         className
       )}
     >
@@ -86,7 +86,7 @@ export default function TimelineControls({
       {onPlayPause && (
         <button
           onClick={onPlayPause}
-          className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-200"
+          className="flex h-8 w-8 items-center justify-center rounded-md border border-[#30363d] bg-[#21262d] text-[#c9d1d9] hover:bg-[#30363d] hover:text-[#e8eaed]"
           title={isPlaying ? "Pause" : "Play"}
         >
           {isPlaying ? (
@@ -107,7 +107,7 @@ export default function TimelineControls({
                 "rounded px-2 py-1 text-xs font-medium",
                 speed === s
                   ? "bg-purple-600 text-white"
-                  : "border border-slate-600 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+                  : "border border-[#30363d] bg-[#21262d] text-[#8b949e] hover:bg-[#30363d] hover:text-[#e8eaed]"
               )}
             >
               {s}x
@@ -118,7 +118,7 @@ export default function TimelineControls({
 
       {timeRange && onTimeChange && (
         <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-[#484f58]">
             {formatTime(timeRange.min)} – {formatTime(timeRange.max)}
           </span>
           <input
@@ -127,7 +127,7 @@ export default function TimelineControls({
             max={timeRange.max}
             value={currentTime}
             onChange={(e) => onTimeChange(Number(e.target.value))}
-            className="h-1.5 w-24 cursor-pointer appearance-none rounded-full bg-slate-700 accent-purple-500"
+            className="h-1.5 w-24 cursor-pointer appearance-none rounded-full bg-[#30363d] accent-purple-500"
           />
         </div>
       )}
@@ -139,7 +139,7 @@ export default function TimelineControls({
             "flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-medium",
             hasData
               ? "border-green-600/50 bg-green-600/10 text-green-400"
-              : "border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-200"
+              : "border-[#30363d] bg-[#21262d] text-[#c9d1d9] hover:bg-[#30363d] hover:text-[#e8eaed]"
           )}
         >
           <Upload className="h-3.5 w-3.5" />

@@ -31,7 +31,7 @@ export default function InlinePreview({
   return (
     <div
       className={cn(
-        "max-h-[80px] overflow-hidden rounded-md border border-slate-600/60 bg-slate-700/40",
+        "max-h-[80px] overflow-hidden rounded-md border border-[#30363d99] bg-[#30363d]/40",
         className
       )}
     >
@@ -41,21 +41,21 @@ export default function InlinePreview({
             {visibleCols.map((col) => (
               <th
                 key={col}
-                className="border-b border-slate-600/60 px-2 py-1 text-[10px] font-medium text-slate-400"
+                className="border-b border-[#30363d99] px-2 py-1 text-[10px] font-medium text-[#8b949e]"
               >
                 {truncate(col)}
               </th>
             ))}
             {hasMoreCols && (
-              <th className="border-b border-slate-600/60 px-1 py-1 text-[10px] text-slate-500">
+              <th className="border-b border-[#30363d99] px-1 py-1 text-[10px] text-[#484f58]">
                 …
               </th>
             )}
           </tr>
         </thead>
-        <tbody className="font-mono text-xs text-slate-300">
+        <tbody className="font-mono text-xs text-[#c9d1d9]">
           {visibleRows.map((row, i) => (
-            <tr key={i} className="border-b border-slate-600/40 last:border-0">
+            <tr key={i} className="border-b border-[#30363d]/40 last:border-0">
               {visibleCols.map((_, j) => (
                 <td
                   key={j}
@@ -66,7 +66,7 @@ export default function InlinePreview({
                 </td>
               ))}
               {hasMoreCols && (
-                <td className="px-1 py-0.5 text-slate-500">…</td>
+                <td className="px-1 py-0.5 text-[#484f58]">…</td>
               )}
             </tr>
           ))}
@@ -74,7 +74,7 @@ export default function InlinePreview({
             <tr>
               <td
                 colSpan={visibleCols.length + (hasMoreCols ? 1 : 0)}
-                className="px-2 py-0.5 text-[10px] text-slate-500"
+                className="px-2 py-0.5 text-[10px] text-[#484f58]"
               >
                 …
               </td>

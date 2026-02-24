@@ -95,21 +95,21 @@ export default function JobStatusNotification({
 
   return (
     <div
-      className="flex items-start gap-3 rounded-lg border border-slate-700 bg-slate-900/95 px-4 py-3 shadow-lg backdrop-blur"
+      className="flex items-start gap-3 rounded-lg border border-[#30363d] bg-[#161b22] px-4 py-3 shadow-lg backdrop-blur"
       role="status"
       aria-live="polite"
     >
       <div className="flex-1 min-w-0">
-        <p className="truncate text-sm font-medium text-slate-200">
+        <p className="truncate text-sm font-medium text-[#e8eaed]">
           {pipelineName || "Pipeline"}
         </p>
-        <p className="mt-0.5 truncate text-xs text-slate-500">
+        <p className="mt-0.5 truncate text-xs text-[#484f58]">
           Job {jobId.slice(0, 8)}…
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <JobStatusBadge status={status} />
           {elapsed && (
-            <span className="text-xs text-slate-500">{elapsed} elapsed</span>
+            <span className="text-xs text-[#484f58]">{elapsed} elapsed</span>
           )}
         </div>
         {jobUrl && (
@@ -117,7 +117,7 @@ export default function JobStatusNotification({
             href={jobUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-2 inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
+            className="mt-2 inline-flex items-center gap-1 text-xs text-[#58a6ff] hover:text-blue-300"
           >
             Open in Databricks
             <ExternalLink className="h-3 w-3" />
@@ -126,7 +126,7 @@ export default function JobStatusNotification({
       </div>
       <button
         onClick={handleDismiss}
-        className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+        className="shrink-0 rounded p-1 text-[#8b949e] hover:bg-[#21262d] hover:text-[#e8eaed]"
         aria-label="Dismiss"
       >
         <X className="h-4 w-4" />

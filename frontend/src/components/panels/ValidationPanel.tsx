@@ -64,17 +64,17 @@ export default function ValidationPanel({ isOpen, onClose }: ValidationPanelProp
       />
       <div
         className={cn(
-          "fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-slate-700 bg-slate-900 shadow-xl transition-transform duration-200"
+          "fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-[#30363d] bg-[#161b22] shadow-xl transition-transform duration-200"
         )}
       >
-        <div className="flex items-center justify-between border-b border-slate-700 px-4 py-3">
-          <h2 className="text-lg font-semibold text-slate-200">
+        <div className="flex items-center justify-between border-b border-[#30363d] px-4 py-3">
+          <h2 className="text-lg font-semibold text-[#e8eaed]">
             Pipeline Validation
           </h2>
           <div className="flex items-center gap-1">
             <button
               onClick={() => setRefreshKey((k) => k + 1)}
-              className="rounded p-2 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+              className="rounded p-2 text-[#8b949e] hover:bg-[#21262d] hover:text-[#e8eaed]"
               title="Refresh"
               aria-label="Refresh"
             >
@@ -82,7 +82,7 @@ export default function ValidationPanel({ isOpen, onClose }: ValidationPanelProp
             </button>
             <button
               onClick={onClose}
-              className="rounded p-2 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+              className="rounded p-2 text-[#8b949e] hover:bg-[#21262d] hover:text-[#e8eaed]"
               aria-label="Close"
             >
               <X className="h-5 w-5" />
@@ -92,7 +92,7 @@ export default function ValidationPanel({ isOpen, onClose }: ValidationPanelProp
 
         <div className="flex flex-col overflow-hidden">
           {/* Summary bar */}
-          <div className="flex flex-wrap items-center gap-2 border-b border-slate-700 p-3">
+          <div className="flex flex-wrap items-center gap-2 border-b border-[#30363d] p-3">
             {errors.length > 0 && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/20 px-2.5 py-1 text-sm font-medium text-red-400">
                 {errors.length} error{errors.length !== 1 ? "s" : ""}
@@ -104,7 +104,7 @@ export default function ValidationPanel({ isOpen, onClose }: ValidationPanelProp
               </span>
             )}
             {infos.length > 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/20 px-2.5 py-1 text-sm font-medium text-blue-400">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#58a6ff]/20 px-2.5 py-1 text-sm font-medium text-[#58a6ff]">
                 {infos.length} info
               </span>
             )}
@@ -122,10 +122,10 @@ export default function ValidationPanel({ isOpen, onClose }: ValidationPanelProp
             {issues.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <CheckCircle2 className="mb-4 h-16 w-16 text-emerald-500" />
-                <p className="text-base font-medium text-slate-200">
+                <p className="text-base font-medium text-[#e8eaed]">
                   Pipeline is valid and ready to deploy
                 </p>
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-[#484f58]">
                   No errors, warnings, or suggestions
                 </p>
               </div>
@@ -171,7 +171,7 @@ export default function ValidationPanel({ isOpen, onClose }: ValidationPanelProp
 
                 {infos.length > 0 && (
                   <section>
-                    <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-blue-400">
+                    <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-[#58a6ff]">
                       <Info className="h-4 w-4" />
                       Info
                     </h3>
@@ -216,26 +216,26 @@ function IssueItem({
       ? "text-red-400"
       : issue.severity === "warning"
         ? "text-amber-400"
-        : "text-blue-400";
+        : "text-[#58a6ff]";
 
   const nodeLabel = issue.nodeId ? getNodeLabel(nodes, issue.nodeId) : null;
 
   return (
-    <li className="rounded-lg border border-slate-700 bg-slate-800/50 p-3">
+    <li className="rounded-lg border border-[#30363d] bg-[#21262d80] p-3">
       <div className="flex gap-3">
         <Icon className={cn("h-4 w-4 shrink-0", iconColor)} />
         <div className="min-w-0 flex-1">
-          <p className="text-sm text-slate-200">{issue.message}</p>
+          <p className="text-sm text-[#e8eaed]">{issue.message}</p>
           {nodeLabel && (
             <button
               onClick={() => issue.nodeId && onNodeClick(issue.nodeId)}
-              className="mt-1 text-xs font-medium text-slate-400 hover:text-blue-400 hover:underline"
+              className="mt-1 text-xs font-medium text-[#8b949e] hover:text-[#58a6ff] hover:underline"
             >
               {nodeLabel}
             </button>
           )}
           {issue.fixSuggestion && (
-            <p className="mt-1.5 text-xs text-slate-500">
+            <p className="mt-1.5 text-xs text-[#484f58]">
               {issue.fixSuggestion}
             </p>
           )}

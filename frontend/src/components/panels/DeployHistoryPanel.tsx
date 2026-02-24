@@ -40,7 +40,7 @@ function StatusBadge({ status }: { status: string }) {
         isSuccess && "bg-green-500/20 text-green-400",
         isFailed && "bg-red-500/20 text-red-400",
         isPending && "bg-amber-500/20 text-amber-400",
-        !isSuccess && !isFailed && !isPending && "bg-slate-500/20 text-slate-400"
+        !isSuccess && !isFailed && !isPending && "bg-[#484f58]/20 text-[#8b949e]"
       )}
     >
       {status}
@@ -51,7 +51,7 @@ function StatusBadge({ status }: { status: string }) {
 function CodeTargetBadge({ target }: { target: string }) {
   const upper = target.toUpperCase();
   return (
-    <span className="rounded bg-slate-600/50 px-2 py-0.5 text-xs font-medium text-slate-300">
+    <span className="rounded bg-[#30363d]/50 px-2 py-0.5 text-xs font-medium text-[#c9d1d9]">
       {upper}
     </span>
   );
@@ -91,14 +91,14 @@ export default function DeployHistoryPanel({
       />
       <div
         className={cn(
-          "fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-slate-700 bg-slate-900 shadow-xl transition-transform duration-200"
+          "fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-[#30363d] bg-[#161b22] shadow-xl transition-transform duration-200"
         )}
       >
-        <div className="flex items-center justify-between border-b border-slate-700 px-4 py-3">
-          <h2 className="text-lg font-semibold text-slate-200">Deploy History</h2>
+        <div className="flex items-center justify-between border-b border-[#30363d] px-4 py-3">
+          <h2 className="text-lg font-semibold text-[#e8eaed]">Deploy History</h2>
           <button
             onClick={onClose}
-            className="rounded p-2 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+            className="rounded p-2 text-[#8b949e] hover:bg-[#21262d] hover:text-[#e8eaed]"
             aria-label="Close"
           >
             <X className="h-5 w-5" />
@@ -108,15 +108,15 @@ export default function DeployHistoryPanel({
         <div className="flex flex-1 flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto p-3">
             {!pipelineId ? (
-              <div className="py-12 text-center text-sm text-slate-500">
+              <div className="py-12 text-center text-sm text-[#484f58]">
                 Save a pipeline first to see deploy history
               </div>
             ) : loading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-slate-500" />
+                <Loader2 className="h-8 w-8 animate-spin text-[#484f58]" />
               </div>
             ) : deploys.length === 0 ? (
-              <div className="py-12 text-center text-sm text-slate-500">
+              <div className="py-12 text-center text-sm text-[#484f58]">
                 No deployments yet
               </div>
             ) : (
@@ -124,7 +124,7 @@ export default function DeployHistoryPanel({
                 {deploys.map((d) => (
                   <li
                     key={d.id}
-                    className="rounded-lg border border-slate-700 bg-slate-800/50 overflow-hidden"
+                    className="rounded-lg border border-[#30363d] bg-[#21262d80] overflow-hidden"
                   >
                     <div className="p-3">
                       <div className="flex items-start justify-between gap-2">
@@ -133,14 +133,14 @@ export default function DeployHistoryPanel({
                             <CodeTargetBadge target={d.code_target} />
                             <StatusBadge status={d.deploy_status} />
                           </div>
-                          <p className="mt-1 text-sm font-medium text-slate-200">
+                          <p className="mt-1 text-sm font-medium text-[#e8eaed]">
                             v{d.pipeline_version}
                           </p>
-                          <p className="mt-0.5 text-xs text-slate-500">
+                          <p className="mt-0.5 text-xs text-[#484f58]">
                             {formatDate(d.deployed_at)}
                           </p>
                           {d.deployed_by && (
-                            <p className="mt-0.5 text-xs text-slate-500">
+                            <p className="mt-0.5 text-xs text-[#484f58]">
                               by {d.deployed_by}
                             </p>
                           )}
@@ -155,7 +155,7 @@ export default function DeployHistoryPanel({
                                 href={d.job_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="mt-1 inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
+                                className="mt-1 inline-flex items-center gap-1 text-xs text-[#58a6ff] hover:text-blue-300"
                               >
                                 <ExternalLink className="h-3 w-3" />
                                 Open job
@@ -169,7 +169,7 @@ export default function DeployHistoryPanel({
                                 prev === d.id ? null : d.id
                               )
                             }
-                            className="flex shrink-0 items-center gap-1 rounded p-2 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+                            className="flex shrink-0 items-center gap-1 rounded p-2 text-[#8b949e] hover:bg-[#30363d] hover:text-[#e8eaed]"
                             title="View Code"
                           >
                             {expandedId === d.id ? (
@@ -182,8 +182,8 @@ export default function DeployHistoryPanel({
                         )}
                       </div>
                       {expandedId === d.id && d.deployed_code && (
-                        <div className="mt-3 rounded border border-slate-600 bg-slate-950 p-3">
-                          <pre className="max-h-64 overflow-auto text-xs text-slate-300 whitespace-pre-wrap font-mono">
+                        <div className="mt-3 rounded border border-[#30363d] bg-[#0d1117] p-3">
+                          <pre className="max-h-64 overflow-auto text-xs text-[#c9d1d9] whitespace-pre-wrap font-mono">
                             {d.deployed_code}
                           </pre>
                         </div>
@@ -195,7 +195,7 @@ export default function DeployHistoryPanel({
             )}
           </div>
           {pipelineId && deploys.length > 0 && (
-            <div className="border-t border-slate-700 px-4 py-3 text-sm text-slate-500">
+            <div className="border-t border-[#30363d] px-4 py-3 text-sm text-[#484f58]">
               Total: {deploys.length} deployment{deploys.length !== 1 ? "s" : ""}
             </div>
           )}

@@ -53,15 +53,15 @@ export default function ConfigPanel({ isOpen, className }: ConfigPanelProps) {
     return (
       <div
         className={cn(
-          "flex w-[350px] flex-col border-l border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900/95",
+          "flex w-[350px] flex-col border-l border-[#30363d] bg-[#161b22]",
           className
         )}
       >
-        <div className="flex items-center justify-between border-b border-slate-700 px-4 py-3">
-          <h3 className="font-medium text-slate-200">Node Config</h3>
+        <div className="flex items-center justify-between border-b border-[#30363d] px-4 py-3">
+          <h3 className="font-medium text-[#e8eaed]">Node Config</h3>
           <button
             onClick={deselectNode}
-            className="rounded p-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+            className="rounded p-1.5 text-[#8b949e] hover:bg-[#30363d] hover:text-[#e8eaed]"
             title="Close"
             aria-label="Close configuration panel"
           >
@@ -69,7 +69,7 @@ export default function ConfigPanel({ isOpen, className }: ConfigPanelProps) {
           </button>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
-          <p className="text-sm text-slate-500">Unknown node type</p>
+          <p className="text-sm text-[#6e7681]">Unknown node type</p>
         </div>
       </div>
     );
@@ -80,23 +80,23 @@ export default function ConfigPanel({ isOpen, className }: ConfigPanelProps) {
   return (
     <div
       className={cn(
-        "flex w-[350px] flex-col border-l border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900/95",
+        "flex w-[350px] flex-col border-l border-[#30363d] bg-[#161b22]",
         className
       )}
     >
-      <div className="flex items-center justify-between gap-3 border-b border-slate-700 px-4 py-3">
+      <div className="flex items-center justify-between gap-3 border-b border-[#30363d] px-4 py-3">
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-slate-800">
-            <IconComponent className="h-4 w-4 text-slate-300" />
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#30363d]">
+            <IconComponent className="h-4 w-4 text-[#c9d1d9]" />
           </div>
           <div className="min-w-0">
-            <h3 className="truncate font-medium text-slate-200">{definition.label}</h3>
-            <p className="truncate text-xs text-slate-500">{definition.description}</p>
+            <h3 className="truncate font-medium text-[#e8eaed]">{definition.label}</h3>
+            <p className="truncate text-xs text-[#6e7681]">{definition.description}</p>
           </div>
         </div>
         <button
           onClick={deselectNode}
-          className="shrink-0 rounded p-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+          className="shrink-0 rounded p-1.5 text-[#8b949e] hover:bg-[#30363d] hover:text-[#e8eaed]"
           title="Close"
         >
           <X className="h-4 w-4" />
@@ -113,11 +113,11 @@ export default function ConfigPanel({ isOpen, className }: ConfigPanelProps) {
           }}
         />
       </div>
-      <div className="border-t border-slate-700 px-4 py-3">
-        <h4 className="mb-2 text-sm font-medium text-slate-300">Preview Data</h4>
+      <div className="border-t border-[#30363d] px-4 py-3">
+        <h4 className="mb-2 text-sm font-medium text-[#c9d1d9]">Preview Data</h4>
         <button
           type="button"
-          className="flex w-full items-center justify-center gap-2 rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700"
+          className="flex w-full items-center justify-center gap-2 rounded-md border border-[#30363d] bg-[#21262d] px-4 py-2 text-sm font-medium text-[#c9d1d9] hover:bg-[#30363d]"
           aria-label="Preview data for selected node"
           onClick={() => {
             if (selectedNodeId) {
@@ -135,7 +135,7 @@ export default function ConfigPanel({ isOpen, className }: ConfigPanelProps) {
         </button>
         {previewLoading && (
           <div className="mt-3 flex items-center justify-center py-6">
-            <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+            <Loader2 className="h-6 w-6 animate-spin text-[#8b949e]" />
           </div>
         )}
         {!previewLoading && previewData && (
@@ -148,9 +148,9 @@ export default function ConfigPanel({ isOpen, className }: ConfigPanelProps) {
           </div>
         )}
       </div>
-      <div className="flex gap-2 border-t border-slate-700 px-4 py-3">
+      <div className="flex gap-2 border-t border-[#30363d] px-4 py-3">
         <button
-          className="flex-1 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="flex-1 rounded-md bg-[#1f6feb] px-4 py-2 text-sm font-medium text-white hover:bg-[#388bfd]"
           aria-label="Apply configuration"
           onClick={() => {
             if (selectedNodeId && selectedNode) {
@@ -163,7 +163,7 @@ export default function ConfigPanel({ isOpen, className }: ConfigPanelProps) {
           Apply
         </button>
         <button
-          className="rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700"
+          className="rounded-md border border-[#30363d] bg-[#21262d] px-4 py-2 text-sm font-medium text-[#c9d1d9] hover:bg-[#30363d]"
           aria-label="Reset configuration to last saved"
           onClick={() => {
             if (selectedNodeId) {

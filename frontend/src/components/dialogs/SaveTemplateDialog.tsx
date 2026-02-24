@@ -81,17 +81,17 @@ export default function SaveTemplateDialog({
         aria-hidden="true"
       />
       <div
-        className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-slate-700 bg-slate-900 p-6 shadow-xl"
+        className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-[#30363d] bg-[#161b22] p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-slate-700 pb-4">
-          <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-200">
+        <div className="flex items-center justify-between border-b border-[#30363d] pb-4">
+          <h2 className="flex items-center gap-2 text-lg font-semibold text-[#e8eaed]">
             <LayoutTemplate className="h-5 w-5" />
             Save as Template
           </h2>
           <button
             onClick={onClose}
-            className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+            className="rounded p-1 text-[#8b949e] hover:bg-[#21262d] hover:text-[#e8eaed]"
             aria-label="Close"
           >
             <X className="h-5 w-5" />
@@ -100,7 +100,7 @@ export default function SaveTemplateDialog({
 
         <div className="mt-4 space-y-4">
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-300">
+            <label className="mb-1.5 block text-sm font-medium text-[#c9d1d9]">
               Name
             </label>
             <input
@@ -108,12 +108,12 @@ export default function SaveTemplateDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Template name"
-              className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded border border-[#30363d] bg-[#21262d] px-3 py-2 text-sm text-[#e8eaed] placeholder-[#484f58] focus:border-[#58a6ff] focus:outline-none focus:ring-1 focus:ring-[#58a6ff]"
               autoFocus
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-300">
+            <label className="mb-1.5 block text-sm font-medium text-[#c9d1d9]">
               Description
             </label>
             <textarea
@@ -121,11 +121,11 @@ export default function SaveTemplateDialog({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Optional description"
               rows={2}
-              className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded border border-[#30363d] bg-[#21262d] px-3 py-2 text-sm text-[#e8eaed] placeholder-[#484f58] focus:border-[#58a6ff] focus:outline-none focus:ring-1 focus:ring-[#58a6ff]"
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-300">
+            <label className="mb-1.5 block text-sm font-medium text-[#c9d1d9]">
               Industry
             </label>
             <input
@@ -133,7 +133,7 @@ export default function SaveTemplateDialog({
               value={industry}
               onChange={(e) => setIndustry(e.target.value)}
               placeholder="e.g. FinServ, E-commerce"
-              className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded border border-[#30363d] bg-[#21262d] px-3 py-2 text-sm text-[#e8eaed] placeholder-[#484f58] focus:border-[#58a6ff] focus:outline-none focus:ring-1 focus:ring-[#58a6ff]"
             />
           </div>
         </div>
@@ -141,14 +141,14 @@ export default function SaveTemplateDialog({
         <div className="mt-6 flex justify-end gap-2">
           <button
             onClick={onClose}
-            className="rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-slate-200"
+            className="rounded-md border border-[#30363d] bg-[#21262d] px-4 py-2 text-sm font-medium text-[#c9d1d9] hover:bg-[#30363d] hover:text-[#e8eaed]"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={saving || !name.trim() || nodes.length === 0}
-            className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+            className="flex items-center gap-2 rounded-md bg-[#1f6feb] px-4 py-2 text-sm font-medium text-white hover:bg-[#388bfd] disabled:opacity-60"
           >
             {saving ? (
               <Loader2 className="h-4 w-4 animate-spin" />

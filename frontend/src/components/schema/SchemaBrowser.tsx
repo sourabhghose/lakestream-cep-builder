@@ -251,12 +251,12 @@ export default function SchemaBrowser({
     selectedCatalog && selectedSchema && selectedTable;
 
   return (
-    <div className="flex h-full flex-col rounded-lg border border-slate-600 bg-slate-900 shadow-xl">
-      <div className="flex items-center justify-between border-b border-slate-700 px-4 py-3">
-        <h2 className="font-semibold text-slate-200">Unity Catalog Schema Browser</h2>
+    <div className="flex h-full flex-col rounded-lg border border-[#30363d] bg-[#161b22] shadow-xl">
+      <div className="flex items-center justify-between border-b border-[#30363d] px-4 py-3">
+        <h2 className="font-semibold text-[#e8eaed]">Unity Catalog Schema Browser</h2>
         <button
           onClick={onClose}
-          className="rounded p-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+          className="rounded p-1.5 text-[#8b949e] hover:bg-[#21262d] hover:text-[#e8eaed]"
           title="Close"
         >
           <X className="h-4 w-4" />
@@ -265,18 +265,18 @@ export default function SchemaBrowser({
 
       <div className="flex flex-1 min-h-0">
         {/* Tree view */}
-        <div className="w-64 shrink-0 overflow-y-auto border-r border-slate-700 p-2">
+        <div className="w-64 shrink-0 overflow-y-auto border-r border-[#30363d] p-2">
           <div className="space-y-0.5">
-            <div className="text-xs font-medium uppercase tracking-wider text-slate-500 px-2 py-1">
+            <div className="text-xs font-medium uppercase tracking-wider text-[#484f58] px-2 py-1">
               Catalogs
             </div>
             {loadingCatalogs ? (
-              <div className="flex items-center gap-2 px-2 py-2 text-sm text-slate-500">
+              <div className="flex items-center gap-2 px-2 py-2 text-sm text-[#484f58]">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Loading...
               </div>
             ) : catalogs.length === 0 ? (
-              <div className="px-2 py-2 text-sm text-slate-500">
+              <div className="px-2 py-2 text-sm text-[#484f58]">
                 No catalogs (connect Databricks to browse)
               </div>
             ) : (
@@ -293,8 +293,8 @@ export default function SchemaBrowser({
                       className={cn(
                         "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm",
                         isSelected
-                          ? "bg-slate-700 text-slate-100"
-                          : "text-slate-300 hover:bg-slate-800"
+                          ? "bg-[#30363d] text-[#f0f6fc]"
+                          : "text-[#c9d1d9] hover:bg-[#21262d]"
                       )}
                     >
                       <ChevronRight
@@ -303,13 +303,13 @@ export default function SchemaBrowser({
                           isExpanded && "rotate-90"
                         )}
                       />
-                      <Database className="h-4 w-4 shrink-0 text-slate-500" />
+                      <Database className="h-4 w-4 shrink-0 text-[#484f58]" />
                       <span className="truncate">{c.name}</span>
                     </button>
                     {isExpanded && selectedCatalog === c.name && (
-                      <div className="ml-4 mt-0.5 space-y-0.5 border-l border-slate-700 pl-2">
+                      <div className="ml-4 mt-0.5 space-y-0.5 border-l border-[#30363d] pl-2">
                         {loadingSchemas ? (
-                          <div className="flex items-center gap-2 px-2 py-1 text-xs text-slate-500">
+                          <div className="flex items-center gap-2 px-2 py-1 text-xs text-[#484f58]">
                             <Loader2 className="h-3 w-3 animate-spin" />
                             Loading...
                           </div>
@@ -329,8 +329,8 @@ export default function SchemaBrowser({
                                   className={cn(
                                     "flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm",
                                     schemaSelected
-                                      ? "bg-slate-700 text-slate-100"
-                                      : "text-slate-300 hover:bg-slate-800"
+                                      ? "bg-[#30363d] text-[#f0f6fc]"
+                                      : "text-[#c9d1d9] hover:bg-[#21262d]"
                                   )}
                                 >
                                   <ChevronRight
@@ -339,14 +339,14 @@ export default function SchemaBrowser({
                                       schemaExpanded && "rotate-90"
                                     )}
                                   />
-                                  <FolderOpen className="h-3 w-3 shrink-0 text-slate-500" />
+                                  <FolderOpen className="h-3 w-3 shrink-0 text-[#484f58]" />
                                   <span className="truncate">{s.name}</span>
                                 </button>
                                 {schemaExpanded &&
                                   selectedSchema === s.name && (
-                                    <div className="ml-4 mt-0.5 space-y-0.5 border-l border-slate-700 pl-2">
+                                    <div className="ml-4 mt-0.5 space-y-0.5 border-l border-[#30363d] pl-2">
                                       {loadingTables ? (
-                                        <div className="flex items-center gap-2 px-2 py-1 text-xs text-slate-500">
+                                        <div className="flex items-center gap-2 px-2 py-1 text-xs text-[#484f58]">
                                           <Loader2 className="h-3 w-3 animate-spin" />
                                           Loading...
                                         </div>
@@ -363,16 +363,16 @@ export default function SchemaBrowser({
                                               className={cn(
                                                 "flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm",
                                                 tableSelected
-                                                  ? "bg-blue-600/30 text-slate-100"
-                                                  : "text-slate-300 hover:bg-slate-800"
+                                                  ? "bg-[#1f6feb]/30 text-[#f0f6fc]"
+                                                  : "text-[#c9d1d9] hover:bg-[#21262d]"
                                               )}
                                             >
-                                              <Table className="h-3 w-3 shrink-0 text-slate-500" />
+                                              <Table className="h-3 w-3 shrink-0 text-[#484f58]" />
                                               <span className="truncate">
                                                 {t.name}
                                               </span>
                                               {t.table_type && (
-                                                <span className="ml-auto text-xs text-slate-500">
+                                                <span className="ml-auto text-xs text-[#484f58]">
                                                   {t.table_type}
                                                 </span>
                                               )}
@@ -399,8 +399,8 @@ export default function SchemaBrowser({
         <div className="flex flex-1 flex-col overflow-hidden">
           {hasSelection ? (
             <>
-              <div className="border-b border-slate-700 px-4 py-3">
-                <div className="font-mono text-sm text-slate-200">
+              <div className="border-b border-[#30363d] px-4 py-3">
+                <div className="font-mono text-sm text-[#e8eaed]">
                   {selectedCatalog}.{selectedSchema}.{selectedTable}
                 </div>
                 <div className="mt-2 flex gap-2">
@@ -408,7 +408,7 @@ export default function SchemaBrowser({
                     <>
                       <button
                         onClick={handleUseAsSource}
-                        className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                        className="flex items-center gap-2 rounded-md bg-[#1f6feb] px-4 py-2 text-sm font-medium text-white hover:bg-[#388bfd]"
                       >
                         <Database className="h-4 w-4" />
                         Use as Source
@@ -425,7 +425,7 @@ export default function SchemaBrowser({
                   {onSelect && (
                     <button
                       onClick={handleUseAsSource}
-                      className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                      className="flex items-center gap-2 rounded-md bg-[#1f6feb] px-4 py-2 text-sm font-medium text-white hover:bg-[#388bfd]"
                     >
                       Apply to Node
                     </button>
@@ -433,22 +433,22 @@ export default function SchemaBrowser({
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto p-4">
-                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#484f58]">
                   Columns
                 </h3>
                 {loadingColumns ? (
-                  <div className="flex items-center gap-2 text-sm text-slate-500">
+                  <div className="flex items-center gap-2 text-sm text-[#484f58]">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Loading columns...
                   </div>
                 ) : columns.length === 0 ? (
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-[#484f58]">
                     No columns or unable to load
                   </p>
                 ) : (
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-slate-700 text-left text-slate-500">
+                      <tr className="border-b border-[#30363d] text-left text-[#484f58]">
                         <th className="pb-2 pr-4 font-medium">Name</th>
                         <th className="pb-2 pr-4 font-medium">Type</th>
                         <th className="pb-2 font-medium">Nullable</th>
@@ -458,10 +458,10 @@ export default function SchemaBrowser({
                       {columns.map((col) => (
                         <tr
                           key={col.name}
-                          className="border-b border-slate-800 text-slate-300"
+                          className="border-b border-[#21262d] text-[#c9d1d9]"
                         >
                           <td className="py-1.5 pr-4 font-mono">{col.name}</td>
-                          <td className="py-1.5 pr-4 font-mono text-slate-400">
+                          <td className="py-1.5 pr-4 font-mono text-[#8b949e]">
                             {col.type}
                           </td>
                           <td className="py-1.5">
@@ -475,9 +475,9 @@ export default function SchemaBrowser({
               </div>
             </>
           ) : (
-            <div className="flex flex-1 items-center justify-center p-8 text-center text-slate-500">
+            <div className="flex flex-1 items-center justify-center p-8 text-center text-[#484f58]">
               <div>
-                <Table className="mx-auto mb-3 h-12 w-12 text-slate-600" />
+                <Table className="mx-auto mb-3 h-12 w-12 text-[#30363d]" />
                 <p className="text-sm">
                   Select a catalog, schema, and table to view columns
                 </p>

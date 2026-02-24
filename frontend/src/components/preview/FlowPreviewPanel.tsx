@@ -75,16 +75,16 @@ export default function FlowPreviewPanel({ isOpen, onClose }: FlowPreviewPanelPr
       />
       <div
         className={cn(
-          "fixed right-0 top-0 z-50 flex h-full w-full max-w-lg flex-col border-l border-slate-700 bg-slate-900 shadow-xl transition-transform duration-200"
+          "fixed right-0 top-0 z-50 flex h-full w-full max-w-lg flex-col border-l border-[#30363d] bg-[#161b22] shadow-xl transition-transform duration-200"
         )}
       >
-        <div className="flex items-center justify-between border-b border-slate-700 px-4 py-3">
-          <h2 className="text-lg font-semibold text-slate-200">Flow Preview</h2>
+        <div className="flex items-center justify-between border-b border-[#30363d] px-4 py-3">
+          <h2 className="text-lg font-semibold text-[#e8eaed]">Flow Preview</h2>
           <div className="flex items-center gap-1">
             <button
               onClick={fetchPreview}
               disabled={loading || nodesToUse.length === 0}
-              className="rounded p-2 text-slate-400 hover:bg-slate-800 hover:text-slate-200 disabled:opacity-50"
+              className="rounded p-2 text-[#8b949e] hover:bg-[#21262d] hover:text-[#e8eaed] disabled:opacity-50"
               title="Refresh"
               aria-label="Refresh"
             >
@@ -96,7 +96,7 @@ export default function FlowPreviewPanel({ isOpen, onClose }: FlowPreviewPanelPr
             </button>
             <button
               onClick={onClose}
-              className="rounded p-2 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+              className="rounded p-2 text-[#8b949e] hover:bg-[#21262d] hover:text-[#e8eaed]"
               title="Close"
               aria-label="Close"
             >
@@ -107,7 +107,7 @@ export default function FlowPreviewPanel({ isOpen, onClose }: FlowPreviewPanelPr
 
         <div className="flex-1 overflow-y-auto p-4">
           {loading && Object.keys(previews).length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-12 text-slate-400">
+            <div className="flex flex-col items-center justify-center gap-3 py-12 text-[#8b949e]">
               <Loader2 className="h-10 w-10 animate-spin" />
               <p className="text-sm">Computing flow preview…</p>
             </div>
@@ -117,13 +117,13 @@ export default function FlowPreviewPanel({ isOpen, onClose }: FlowPreviewPanelPr
               <p className="text-sm text-center">{error}</p>
               <button
                 onClick={fetchPreview}
-                className="rounded-md border border-slate-600 bg-slate-800 px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-700"
+                className="rounded-md border border-[#30363d] bg-[#21262d] px-3 py-1.5 text-sm text-[#c9d1d9] hover:bg-[#30363d]"
               >
                 Retry
               </button>
             </div>
           ) : Object.keys(previews).length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-12 text-slate-500">
+            <div className="flex flex-col items-center justify-center gap-3 py-12 text-[#484f58]">
               <p className="text-sm">No pipeline or empty pipeline.</p>
               <p className="text-xs">Add nodes and edges, then click Refresh.</p>
             </div>
@@ -138,9 +138,9 @@ export default function FlowPreviewPanel({ isOpen, onClose }: FlowPreviewPanelPr
 
                 return (
                   <div key={nodeId} className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800/60 px-3 py-2">
-                      <IconComponent className="h-4 w-4 shrink-0 text-slate-400" />
-                      <span className="truncate text-sm font-medium text-slate-200">
+                    <div className="flex items-center gap-2 rounded-lg border border-[#30363d] bg-[#21262d]/60 px-3 py-2">
+                      <IconComponent className="h-4 w-4 shrink-0 text-[#8b949e]" />
+                      <span className="truncate text-sm font-medium text-[#e8eaed]">
                         {label}
                       </span>
                     </div>
@@ -153,7 +153,7 @@ export default function FlowPreviewPanel({ isOpen, onClose }: FlowPreviewPanelPr
                     </div>
                     {idx < Object.keys(previews).length - 1 && (
                       <div className="flex justify-center py-1">
-                        <ChevronDown className="h-5 w-5 text-slate-500" />
+                        <ChevronDown className="h-5 w-5 text-[#484f58]" />
                       </div>
                     )}
                   </div>

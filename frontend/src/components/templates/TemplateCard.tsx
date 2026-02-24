@@ -29,10 +29,10 @@ const INDUSTRY_ICON_MAP: Record<string, React.ComponentType<{ className?: string
 };
 
 const INDUSTRY_COLORS: Record<string, string> = {
-  FinServ: "border-l-blue-500 bg-blue-500/10",
+  FinServ: "border-l-[#58a6ff] bg-[#58a6ff]/10",
   "E-commerce": "border-l-emerald-500 bg-emerald-500/10",
   Manufacturing: "border-l-amber-500 bg-amber-500/10",
-  Any: "border-l-slate-500 bg-slate-500/10",
+  Any: "border-l-[#484f58] bg-[#484f58]/10",
   SaaS: "border-l-violet-500 bg-violet-500/10",
   Operations: "border-l-orange-500 bg-orange-500/10",
   Marketing: "border-l-pink-500 bg-pink-500/10",
@@ -71,7 +71,7 @@ export default function TemplateCard({
   return (
     <div
       className={cn(
-        "group flex flex-col overflow-hidden rounded-lg border border-slate-700 bg-slate-900/80 transition-all hover:border-slate-600 hover:bg-slate-800/80 hover:shadow-lg",
+        "group flex flex-col overflow-hidden rounded-lg border border-[#30363d] bg-[#161b22]/80 transition-all hover:border-[#30363d] hover:bg-[#21262d] hover:shadow-lg",
         industryColor,
         "border-l-4",
         className
@@ -79,8 +79,8 @@ export default function TemplateCard({
     >
       <div className="flex flex-1 flex-col p-4">
         <div className="mb-3 flex items-start justify-between gap-2">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-800/80">
-            <IconComponent className="h-5 w-5 text-slate-300" />
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#21262d]">
+            <IconComponent className="h-5 w-5 text-[#c9d1d9]" />
           </div>
           <span
             className={cn(
@@ -91,20 +91,20 @@ export default function TemplateCard({
             {template.difficulty}
           </span>
         </div>
-        <h3 className="mb-1 font-semibold text-slate-200">{template.name}</h3>
-        <p className="mb-3 line-clamp-2 text-sm text-slate-400">
+        <h3 className="mb-1 font-semibold text-[#e8eaed]">{template.name}</h3>
+        <p className="mb-3 line-clamp-2 text-sm text-[#8b949e]">
           {template.description}
         </p>
         <div className="mt-auto flex items-center gap-2">
-          <span className="rounded bg-slate-600/50 px-2 py-0.5 text-xs text-slate-400">
+          <span className="rounded bg-[#30363d]/50 px-2 py-0.5 text-xs text-[#8b949e]">
             {template.industry}
           </span>
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-[#484f58]">
             {template.nodes.length} nodes
           </span>
         </div>
       </div>
-      <div className="flex gap-2 border-t border-slate-700/80 p-3">
+      <div className="flex gap-2 border-t border-[#30363d] p-3">
         {onPreview && (
           <button
             onClick={onPreview}
@@ -112,7 +112,7 @@ export default function TemplateCard({
               "flex-1 rounded-md border px-3 py-2 text-sm font-medium transition",
               isPreviewing
                 ? "border-purple-500 bg-purple-600/20 text-purple-300"
-                : "border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-200"
+                : "border-[#30363d] bg-[#21262d] text-[#c9d1d9] hover:bg-[#30363d] hover:text-[#e8eaed]"
             )}
           >
             Preview
@@ -120,7 +120,7 @@ export default function TemplateCard({
         )}
         <button
           onClick={onUse}
-          className="flex-1 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="flex-1 rounded-md bg-[#1f6feb] px-3 py-2 text-sm font-medium text-white hover:bg-[#388bfd]"
         >
           Use Template
         </button>

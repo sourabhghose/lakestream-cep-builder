@@ -13,9 +13,9 @@ export function ErrorFallback({
   onRetry,
 }: ErrorFallbackProps) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 rounded border border-amber-200 bg-amber-50/50 p-4 dark:border-amber-900/50 dark:bg-amber-950/20">
-      <AlertCircle className="h-6 w-6 text-amber-500 dark:text-amber-400" />
-      <p className="text-sm text-gray-600 dark:text-slate-400">{message}</p>
+    <div className="flex flex-col items-center justify-center gap-2 rounded border border-[#d2992230] bg-[#d2992215] p-4">
+      <AlertCircle className="h-6 w-6 text-[#d29922]" />
+      <p className="text-sm text-[#8b949e]">{message}</p>
       {onRetry && (
         <button
           onClick={onRetry}

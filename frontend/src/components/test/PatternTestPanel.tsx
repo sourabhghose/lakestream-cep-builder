@@ -163,12 +163,12 @@ export default function PatternTestPanel({ isOpen, onClose }: PatternTestPanelPr
         onClick={onClose}
         aria-hidden="true"
       />
-      <div className="fixed right-0 top-0 z-50 flex h-full w-full max-w-lg flex-col border-l border-slate-700 bg-slate-900 shadow-xl">
-        <div className="flex items-center justify-between border-b border-slate-700 px-4 py-3">
-          <h2 className="text-lg font-semibold text-slate-200">Pattern Test</h2>
+      <div className="fixed right-0 top-0 z-50 flex h-full w-full max-w-lg flex-col border-l border-[#30363d] bg-[#161b22] shadow-xl">
+        <div className="flex items-center justify-between border-b border-[#30363d] px-4 py-3">
+          <h2 className="text-lg font-semibold text-[#e8eaed]">Pattern Test</h2>
           <button
             onClick={onClose}
-            className="rounded p-2 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+            className="rounded p-2 text-[#8b949e] hover:bg-[#21262d] hover:text-[#e8eaed]"
             title="Close"
             aria-label="Close"
           >
@@ -180,18 +180,18 @@ export default function PatternTestPanel({ isOpen, onClose }: PatternTestPanelPr
           {/* Input section */}
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-2">
-              <label className="text-sm font-medium text-slate-300">Sample Events</label>
+              <label className="text-sm font-medium text-[#c9d1d9]">Sample Events</label>
               <div className="flex gap-2">
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-1.5 rounded border border-slate-600 bg-slate-800 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-700"
+                  className="flex items-center gap-1.5 rounded border border-[#30363d] bg-[#21262d] px-2.5 py-1.5 text-xs text-[#c9d1d9] hover:bg-[#30363d]"
                 >
                   <Upload className="h-3.5 w-3.5" />
                   Upload JSON
                 </button>
                 <button
                   onClick={handleGenerateSample}
-                  className="flex items-center gap-1.5 rounded border border-slate-600 bg-slate-800 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-700"
+                  className="flex items-center gap-1.5 rounded border border-[#30363d] bg-[#21262d] px-2.5 py-1.5 text-xs text-[#c9d1d9] hover:bg-[#30363d]"
                 >
                   <FileJson className="h-3.5 w-3.5" />
                   Generate Sample
@@ -212,11 +212,11 @@ export default function PatternTestPanel({ isOpen, onClose }: PatternTestPanelPr
                 setError(null);
               }}
               placeholder='[{"timestamp": "2024-01-01T00:00:01", "event_type": "login", "user_id": "u1"}, ...]'
-              className="h-32 w-full resize-y rounded border border-slate-600 bg-slate-800 px-3 py-2 font-mono text-sm text-slate-200 placeholder-slate-500 focus:border-purple-500 focus:outline-none"
+              className="h-32 w-full resize-y rounded border border-[#30363d] bg-[#21262d] px-3 py-2 font-mono text-sm text-[#e8eaed] placeholder-[#484f58] focus:border-purple-500 focus:outline-none"
               spellCheck={false}
             />
             <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-[#484f58]">
                 {count} event{count !== 1 ? "s" : ""}
               </span>
               <button
@@ -250,39 +250,39 @@ export default function PatternTestPanel({ isOpen, onClose }: PatternTestPanelPr
                     "rounded-full px-3 py-1 text-sm font-medium",
                     result.total_matches > 0
                       ? "bg-green-600/20 text-green-400"
-                      : "bg-slate-700 text-slate-400"
+                      : "bg-[#30363d] text-[#8b949e]"
                   )}
                 >
                   {result.total_matches} match{result.total_matches !== 1 ? "es" : ""}
                 </span>
-                <span className="text-sm text-slate-500">
+                <span className="text-sm text-[#484f58]">
                   {result.total_events} events tested
                 </span>
               </div>
 
               {result.matches.length > 0 && (
                 <div>
-                  <h3 className="mb-2 text-sm font-medium text-slate-300">Matches</h3>
+                  <h3 className="mb-2 text-sm font-medium text-[#c9d1d9]">Matches</h3>
                   <ul className="space-y-2">
                     {result.matches.map((match, idx) => (
                       <li
                         key={idx}
                         onClick={() => handleMatchClick(match)}
-                        className="cursor-pointer rounded-lg border border-slate-700 bg-slate-800/60 px-3 py-2 transition hover:border-purple-500/50 hover:bg-slate-800"
+                        className="cursor-pointer rounded-lg border border-[#30363d] bg-[#21262d]/60 px-3 py-2 transition hover:border-purple-500/50 hover:bg-[#21262d]"
                       >
                         <div className="flex items-center justify-between">
-                          <span className="font-medium text-slate-200">
+                          <span className="font-medium text-[#e8eaed]">
                             {match.pattern_name}
                           </span>
-                          <span className="text-xs text-slate-500">
+                          <span className="text-xs text-[#484f58]">
                             {match.pattern_node_id}
                           </span>
                         </div>
-                        <div className="mt-1 text-xs text-slate-400">
+                        <div className="mt-1 text-xs text-[#8b949e]">
                           Events: [{match.matched_events.join(", ")}]
                           {match.match_time && ` · ${match.match_time}`}
                         </div>
-                        <div className="mt-1 text-xs text-slate-500">
+                        <div className="mt-1 text-xs text-[#484f58]">
                           {match.details}
                         </div>
                       </li>
@@ -292,27 +292,27 @@ export default function PatternTestPanel({ isOpen, onClose }: PatternTestPanelPr
               )}
 
               <div>
-                <h3 className="mb-2 text-sm font-medium text-slate-300">Event Flow</h3>
+                <h3 className="mb-2 text-sm font-medium text-[#c9d1d9]">Event Flow</h3>
                 <div className="space-y-1.5">
                   {result.event_flow.map((ef) => (
                     <div
                       key={ef.event_index}
-                      className="flex items-center gap-3 rounded border border-slate-700 bg-slate-800/40 px-2 py-1.5 text-xs"
+                      className="flex items-center gap-3 rounded border border-[#30363d] bg-[#21262d]/40 px-2 py-1.5 text-xs"
                     >
-                      <span className="w-8 shrink-0 font-mono text-slate-500">
+                      <span className="w-8 shrink-0 font-mono text-[#484f58]">
                         E{ef.event_index}
                       </span>
-                      <span className="flex flex-wrap gap-1 text-slate-400">
+                      <span className="flex flex-wrap gap-1 text-[#8b949e]">
                         {ef.reached_nodes.map((nid) => (
                           <span
                             key={nid}
-                            className="rounded bg-slate-700 px-1.5 py-0.5 font-mono"
+                            className="rounded bg-[#30363d] px-1.5 py-0.5 font-mono"
                           >
                             {getNodeLabel(expandedNodes, nid)}
                           </span>
                         ))}
                         {ef.reached_nodes.length === 0 && (
-                          <span className="text-slate-600">—</span>
+                          <span className="text-[#30363d]">—</span>
                         )}
                       </span>
                     </div>
@@ -323,7 +323,7 @@ export default function PatternTestPanel({ isOpen, onClose }: PatternTestPanelPr
           )}
 
           {!result && !loading && !error && expandedNodes.length > 0 && (
-            <div className="mt-6 rounded-lg border border-slate-700 bg-slate-800/40 p-4 text-center text-sm text-slate-500">
+            <div className="mt-6 rounded-lg border border-[#30363d] bg-[#21262d]/40 p-4 text-center text-sm text-[#484f58]">
               Paste or upload JSON events, or generate sample events, then click Run Test.
             </div>
           )}

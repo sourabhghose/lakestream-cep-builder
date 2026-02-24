@@ -127,8 +127,8 @@ function SchemaSelectInput({
       aria-required={required}
       aria-invalid={invalid}
       className={cn(
-        "w-full rounded-md border bg-slate-800/50 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500",
-        "border-slate-600",
+        "w-full rounded-md border bg-[#21262d80] px-3 py-2 text-sm text-[#f0f6fc] placeholder:text-[#484f58] focus:border-[#58a6ff] focus:outline-none focus:ring-1 focus:ring-[#58a6ff]",
+        "border-[#30363d]",
         className
       )}
     >
@@ -160,8 +160,8 @@ function ConfigFieldInput({
   id?: string;
 }) {
   const baseInputClass =
-    "w-full rounded-md border bg-slate-800/50 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
-  const errorClass = invalid ? "border-red-500" : "border-slate-600";
+    "w-full rounded-md border bg-[#21262d80] px-3 py-2 text-sm text-[#f0f6fc] placeholder:text-[#484f58] focus:border-[#58a6ff] focus:outline-none focus:ring-1 focus:ring-[#58a6ff]";
+  const errorClass = invalid ? "border-red-500" : "border-[#30363d]";
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -301,9 +301,9 @@ function ConfigFieldInput({
             aria-label={field.label}
             aria-required={field.required}
             aria-invalid={invalid}
-            className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500"
+            className="h-4 w-4 rounded border-[#30363d] bg-[#21262d] text-[#58a6ff] focus:ring-[#58a6ff]"
           />
-          <span className="text-sm text-slate-300">
+          <span className="text-sm text-[#c9d1d9]">
             {Boolean(value ?? field.defaultValue ?? false) ? "Yes" : "No"}
           </span>
         </label>
@@ -312,7 +312,7 @@ function ConfigFieldInput({
     case "code": {
       const lang = field.codeLanguage ?? "python";
       return (
-        <div className="min-h-[120px] overflow-hidden rounded-md border border-slate-600" aria-label={field.label}>
+        <div className="min-h-[120px] overflow-hidden rounded-md border border-[#30363d]" aria-label={field.label}>
           <Editor
             height="120px"
             defaultLanguage={lang}
@@ -419,7 +419,7 @@ function ConfigFieldInput({
     case "schema-picker": {
       const schemaLang = field.codeLanguage ?? "json";
       return (
-        <div className="min-h-[80px] overflow-hidden rounded-md border border-slate-600" aria-label={field.label}>
+        <div className="min-h-[80px] overflow-hidden rounded-md border border-[#30363d]" aria-label={field.label}>
           <Editor
             height="80px"
             defaultLanguage={schemaLang}
@@ -486,12 +486,12 @@ function MultiselectInput({
   };
   return (
     <div
-      className="flex flex-wrap gap-2 rounded-md border border-slate-600 bg-slate-800/50 p-2"
+      className="flex flex-wrap gap-2 rounded-md border border-[#30363d] bg-[#21262d80] p-2"
       role="group"
       aria-label={label}
     >
       {options.length === 0 ? (
-        <span className="text-sm text-slate-500">{placeholder ?? "No options"}</span>
+        <span className="text-sm text-[#484f58]">{placeholder ?? "No options"}</span>
       ) : (
         options.map((opt) => (
           <button
@@ -503,8 +503,8 @@ function MultiselectInput({
             className={cn(
               "rounded-full px-3 py-1 text-xs font-medium transition-colors",
               selected.includes(opt.value)
-                ? "bg-blue-600 text-white"
-                : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                ? "bg-[#1f6feb] text-white"
+                : "bg-[#30363d] text-[#c9d1d9] hover:bg-[#30363d]"
             )}
           >
             {opt.label}
@@ -555,7 +555,7 @@ function KeyValueInput({
             placeholder="Key"
             aria-label={`${ariaLabel ?? "Key-value"} pair ${i + 1} key`}
             className={cn(
-              "flex-1 rounded-md border bg-slate-800/50 px-3 py-2 text-sm text-slate-100",
+              "flex-1 rounded-md border bg-[#21262d80] px-3 py-2 text-sm text-[#f0f6fc]",
               className
             )}
           />
@@ -566,14 +566,14 @@ function KeyValueInput({
             placeholder="Value"
             aria-label={`${ariaLabel ?? "Key-value"} pair ${i + 1} value`}
             className={cn(
-              "flex-1 rounded-md border bg-slate-800/50 px-3 py-2 text-sm text-slate-100",
+              "flex-1 rounded-md border bg-[#21262d80] px-3 py-2 text-sm text-[#f0f6fc]",
               className
             )}
           />
           <button
             type="button"
             onClick={() => remove(i)}
-            className="rounded-md border border-slate-600 px-2 text-red-400 hover:bg-red-500/10"
+            className="rounded-md border border-[#30363d] px-2 text-red-400 hover:bg-red-500/10"
             aria-label={`Remove pair ${i + 1}`}
           >
             −
@@ -583,7 +583,7 @@ function KeyValueInput({
       <button
         type="button"
         onClick={add}
-        className="rounded-md border border-dashed border-slate-500 px-3 py-1.5 text-sm text-slate-400 hover:border-slate-400 hover:text-slate-300"
+        className="rounded-md border border-dashed border-[#484f58] px-3 py-1.5 text-sm text-[#8b949e] hover:border-[#8b949e] hover:text-[#c9d1d9]"
         aria-label="Add key-value pair"
       >
         + Add
@@ -676,7 +676,7 @@ export function DynamicConfigForm({
       <div className="space-y-6">
         {Object.entries(byGroup).map(([group, groupFields]) => (
           <div key={group}>
-            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#484f58]">
               {group}
             </h4>
             <div className="space-y-4">
@@ -688,7 +688,7 @@ export function DynamicConfigForm({
                   const fieldId = `config-${f.key}-${group}`;
                   return (
                     <div key={f.key}>
-                      <label htmlFor={fieldId} className="mb-1.5 block text-sm font-medium text-slate-300">
+                      <label htmlFor={fieldId} className="mb-1.5 block text-sm font-medium text-[#c9d1d9]">
                         {f.label}
                         {f.required && (
                           <span className="ml-1 text-red-400">*</span>
@@ -704,7 +704,7 @@ export function DynamicConfigForm({
                         id={fieldId}
                       />
                       {f.helpText && (
-                        <p className="mt-1 text-xs text-slate-500">
+                        <p className="mt-1 text-xs text-[#484f58]">
                           {f.helpText}
                         </p>
                       )}
@@ -744,7 +744,7 @@ export function DynamicConfigForm({
         <button
           type="button"
           onClick={() => setSchemaBrowserOpen(true)}
-          className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-800/50 px-3 py-2 text-sm font-medium text-slate-300 hover:border-slate-500 hover:bg-slate-800 hover:text-slate-200"
+          className="flex items-center gap-2 rounded-md border border-[#30363d] bg-[#21262d80] px-3 py-2 text-sm font-medium text-[#c9d1d9] hover:border-[#484f58] hover:bg-[#21262d] hover:text-[#e8eaed]"
           aria-label="Browse schema to select catalog, schema, and table"
         >
             <Search className="h-4 w-4" />
@@ -759,12 +759,12 @@ export function DynamicConfigForm({
           <button
             type="button"
             onClick={() => setAdvancedOpen((o) => !o)}
-            className="flex w-full items-center justify-between rounded-md border border-slate-600 bg-slate-800/30 px-3 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800/50"
+            className="flex w-full items-center justify-between rounded-md border border-[#30363d] bg-[#21262d]/30 px-3 py-2 text-sm font-medium text-[#c9d1d9] hover:bg-[#21262d80]"
             aria-expanded={advancedOpen}
             aria-label="Advanced configuration options"
           >
             Advanced
-            <span className="text-slate-500">{advancedOpen ? "▼" : "▶"}</span>
+            <span className="text-[#484f58]">{advancedOpen ? "▼" : "▶"}</span>
           </button>
           {advancedOpen && (
             <div className="mt-4 pl-0">

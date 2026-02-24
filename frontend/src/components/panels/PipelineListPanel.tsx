@@ -88,14 +88,14 @@ export default function PipelineListPanel({ isOpen, onClose }: PipelineListPanel
       />
       <div
         className={cn(
-          "fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-slate-700 bg-slate-900 shadow-xl transition-transform duration-200"
+          "fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-[#30363d] bg-[#161b22] shadow-xl transition-transform duration-200"
         )}
       >
-        <div className="flex items-center justify-between border-b border-slate-700 px-4 py-3">
-          <h2 className="text-lg font-semibold text-slate-200">Pipelines</h2>
+        <div className="flex items-center justify-between border-b border-[#30363d] px-4 py-3">
+          <h2 className="text-lg font-semibold text-[#e8eaed]">Pipelines</h2>
           <button
             onClick={onClose}
-            className="rounded p-2 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+            className="rounded p-2 text-[#8b949e] hover:bg-[#21262d] hover:text-[#e8eaed]"
             aria-label="Close"
           >
             <X className="h-5 w-5" />
@@ -103,10 +103,10 @@ export default function PipelineListPanel({ isOpen, onClose }: PipelineListPanel
         </div>
 
         <div className="flex flex-1 flex-col overflow-hidden">
-          <div className="border-b border-slate-700 p-3">
+          <div className="border-b border-[#30363d] p-3">
             <button
               onClick={handleNew}
-              className="flex w-full items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
+              className="flex w-full items-center justify-center gap-2 rounded-md bg-[#1f6feb] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#388bfd]"
             >
               <Plus className="h-4 w-4" />
               New Pipeline
@@ -116,10 +116,10 @@ export default function PipelineListPanel({ isOpen, onClose }: PipelineListPanel
           <div className="flex-1 overflow-y-auto p-3">
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-slate-500" />
+                <Loader2 className="h-8 w-8 animate-spin text-[#484f58]" />
               </div>
             ) : pipelines.length === 0 ? (
-              <div className="py-12 text-center text-sm text-slate-500">
+              <div className="py-12 text-center text-sm text-[#484f58]">
                 No saved pipelines yet
               </div>
             ) : (
@@ -127,26 +127,26 @@ export default function PipelineListPanel({ isOpen, onClose }: PipelineListPanel
                 {pipelines.map((p) => (
                   <li
                     key={p.id}
-                    className="rounded-lg border border-slate-700 bg-slate-800/50 p-3"
+                    className="rounded-lg border border-[#30363d] bg-[#21262d80] p-3"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium text-slate-200">
+                        <p className="truncate font-medium text-[#e8eaed]">
                           {p.name || "Untitled"}
                         </p>
                         {p.description && (
-                          <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">
+                          <p className="mt-0.5 line-clamp-2 text-xs text-[#484f58]">
                             {p.description}
                           </p>
                         )}
-                        <p className="mt-1 text-xs text-slate-500">
+                        <p className="mt-1 text-xs text-[#484f58]">
                           {p.node_count} nodes · {formatDate(p.updated_at)}
                         </p>
                       </div>
                       <div className="flex shrink-0 items-center gap-1">
                         <button
                           onClick={() => handleLoad(p.id)}
-                          className="rounded p-2 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+                          className="rounded p-2 text-[#8b949e] hover:bg-[#30363d] hover:text-[#e8eaed]"
                           title="Load"
                         >
                           <FolderOpen className="h-4 w-4" />
@@ -166,7 +166,7 @@ export default function PipelineListPanel({ isOpen, onClose }: PipelineListPanel
                             </button>
                             <button
                               onClick={() => setConfirmDeleteId(null)}
-                              className="rounded px-2 py-1 text-xs text-slate-400 hover:text-slate-200"
+                              className="rounded px-2 py-1 text-xs text-[#8b949e] hover:text-[#e8eaed]"
                             >
                               Cancel
                             </button>
@@ -174,7 +174,7 @@ export default function PipelineListPanel({ isOpen, onClose }: PipelineListPanel
                         ) : (
                           <button
                             onClick={() => setConfirmDeleteId(p.id)}
-                            className="rounded p-2 text-slate-400 hover:bg-slate-700 hover:text-red-400"
+                            className="rounded p-2 text-[#8b949e] hover:bg-[#30363d] hover:text-red-400"
                             title="Delete"
                           >
                             <Trash2 className="h-4 w-4" />

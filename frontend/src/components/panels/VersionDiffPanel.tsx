@@ -181,14 +181,14 @@ export default function VersionDiffPanel({ isOpen, onClose }: VersionDiffPanelPr
       />
       <div
         className={cn(
-          "fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-slate-700 bg-slate-900 shadow-xl transition-transform duration-200"
+          "fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-[#30363d] bg-[#161b22] shadow-xl transition-transform duration-200"
         )}
       >
-        <div className="flex items-center justify-between border-b border-slate-700 px-4 py-3">
-          <h2 className="text-lg font-semibold text-slate-200">Version History</h2>
+        <div className="flex items-center justify-between border-b border-[#30363d] px-4 py-3">
+          <h2 className="text-lg font-semibold text-[#e8eaed]">Version History</h2>
           <button
             onClick={handleClose}
-            className="rounded p-2 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+            className="rounded p-2 text-[#8b949e] hover:bg-[#21262d] hover:text-[#e8eaed]"
             aria-label="Close"
           >
             <X className="h-5 w-5" />
@@ -198,22 +198,22 @@ export default function VersionDiffPanel({ isOpen, onClose }: VersionDiffPanelPr
         <div className="flex flex-1 flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto p-3 space-y-4">
             {!pipelineId ? (
-              <div className="py-12 text-center text-sm text-slate-500">
+              <div className="py-12 text-center text-sm text-[#484f58]">
                 Save a pipeline first to compare versions
               </div>
             ) : loading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-slate-500" />
+                <Loader2 className="h-8 w-8 animate-spin text-[#484f58]" />
               </div>
             ) : (
               <>
                 <div className="flex items-center gap-4">
                   <div className="flex-1">
-                    <label className="mb-1 block text-xs text-slate-500">Version A</label>
+                    <label className="mb-1 block text-xs text-[#484f58]">Version A</label>
                     <select
                       value={versionA}
                       onChange={handleVersionAChange}
-                      className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200"
+                      className="w-full rounded border border-[#30363d] bg-[#21262d] px-3 py-2 text-sm text-[#e8eaed]"
                     >
                       <option value="current">Current (v{pipelineVersion})</option>
                       {versions.map((v) => (
@@ -224,11 +224,11 @@ export default function VersionDiffPanel({ isOpen, onClose }: VersionDiffPanelPr
                     </select>
                   </div>
                   <div className="flex-1">
-                    <label className="mb-1 block text-xs text-slate-500">Version B</label>
+                    <label className="mb-1 block text-xs text-[#484f58]">Version B</label>
                     <select
                       value={versionB}
                       onChange={handleVersionBChange}
-                      className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200"
+                      className="w-full rounded border border-[#30363d] bg-[#21262d] px-3 py-2 text-sm text-[#e8eaed]"
                     >
                       <option value="prev">Previous</option>
                       <option value="current">Current (v{pipelineVersion})</option>
@@ -243,7 +243,7 @@ export default function VersionDiffPanel({ isOpen, onClose }: VersionDiffPanelPr
 
                 {diff && (
                   <>
-                    <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-3 text-sm text-slate-300">
+                    <div className="rounded-lg border border-[#30363d] bg-[#21262d80] p-3 text-sm text-[#c9d1d9]">
                       {diff.added.length} node{diff.added.length !== 1 ? "s" : ""} added,{" "}
                       {diff.removed.length} removed, {diff.modified.length} modified,{" "}
                       {diff.edgesChanged} edge{diff.edgesChanged !== 1 ? "s" : ""} changed
@@ -252,7 +252,7 @@ export default function VersionDiffPanel({ isOpen, onClose }: VersionDiffPanelPr
                     <div className="space-y-3">
                       {diff.added.length > 0 && (
                         <div>
-                          <h3 className="mb-2 text-xs font-medium uppercase text-slate-500">Added nodes</h3>
+                          <h3 className="mb-2 text-xs font-medium uppercase text-[#484f58]">Added nodes</h3>
                           <ul className="space-y-1">
                             {diff.added.map((n: { id: string; label?: string; data?: { label?: string } }) => (
                               <li key={n.id}>
@@ -274,7 +274,7 @@ export default function VersionDiffPanel({ isOpen, onClose }: VersionDiffPanelPr
                       )}
                       {diff.removed.length > 0 && (
                         <div>
-                          <h3 className="mb-2 text-xs font-medium uppercase text-slate-500">Removed nodes</h3>
+                          <h3 className="mb-2 text-xs font-medium uppercase text-[#484f58]">Removed nodes</h3>
                           <ul className="space-y-1">
                             {diff.removed.map((n: { id: string; label?: string; data?: { label?: string } }) => (
                               <li key={n.id}>
@@ -296,7 +296,7 @@ export default function VersionDiffPanel({ isOpen, onClose }: VersionDiffPanelPr
                       )}
                       {diff.modified.length > 0 && (
                         <div>
-                          <h3 className="mb-2 text-xs font-medium uppercase text-slate-500">Modified nodes</h3>
+                          <h3 className="mb-2 text-xs font-medium uppercase text-[#484f58]">Modified nodes</h3>
                           <ul className="space-y-1">
                             {diff.modified.map((n: { id: string; label?: string; data?: { label?: string } }) => (
                               <li key={n.id}>
@@ -318,8 +318,8 @@ export default function VersionDiffPanel({ isOpen, onClose }: VersionDiffPanelPr
                       )}
                       {diff.edgesChanged > 0 && (
                         <div>
-                          <h3 className="mb-2 text-xs font-medium uppercase text-slate-500">Edge changes</h3>
-                          <p className="text-xs text-slate-400">
+                          <h3 className="mb-2 text-xs font-medium uppercase text-[#484f58]">Edge changes</h3>
+                          <p className="text-xs text-[#8b949e]">
                             {diff.edgesAdded.length} added, {diff.edgesRemoved.length} removed
                           </p>
                         </div>
@@ -329,7 +329,7 @@ export default function VersionDiffPanel({ isOpen, onClose }: VersionDiffPanelPr
                 )}
 
                 {versions.length === 0 && pipelineId && !loading && (
-                  <p className="py-4 text-center text-sm text-slate-500">
+                  <p className="py-4 text-center text-sm text-[#484f58]">
                     No version history yet. Save the pipeline to create versions.
                   </p>
                 )}

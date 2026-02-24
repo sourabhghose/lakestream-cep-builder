@@ -78,7 +78,7 @@ export default function PatternTimeline({
         width="100%"
         height={svgHeight}
         viewBox={`0 0 600 ${svgHeight}`}
-        className="bg-slate-900 rounded-md"
+        className="bg-[#161b22] rounded-md"
       >
         {pattern.steps.map((step, i) => {
           const y = padding.top + i * laneHeight;
@@ -92,7 +92,7 @@ export default function PatternTimeline({
                 x={padding.left - 10}
                 y={y + laneHeight / 2 + 4}
                 textAnchor="end"
-                className="fill-slate-400 text-xs"
+                className="fill-[#8b949e] text-xs"
                 fontSize={11}
               >
                 {step.name}
@@ -132,7 +132,7 @@ export default function PatternTimeline({
                 x={cx}
                 y={y + laneHeight / 2 + 22}
                 textAnchor="middle"
-                className="fill-slate-500"
+                className="fill-[#484f58]"
                 fontSize={9}
               >
                 {step.filter.length > 25
@@ -180,7 +180,7 @@ export default function PatternTimeline({
               x={600 - padding.right - 4}
               y={padding.top - 10}
               textAnchor="end"
-              className="fill-blue-400"
+              className="fill-[#58a6ff]"
               fontSize={10}
             >
               WITHIN {pattern.within}
@@ -193,7 +193,7 @@ export default function PatternTimeline({
           <text
             x={padding.left}
             y={padding.top - 10}
-            className="fill-slate-500"
+            className="fill-[#484f58]"
             fontSize={10}
           >
             {pattern.contiguity} contiguity
@@ -226,7 +226,7 @@ export default function PatternTimeline({
       width="100%"
       height={svgHeight}
       viewBox={`0 0 600 ${svgHeight}`}
-      className="bg-slate-900 rounded-md"
+      className="bg-[#161b22] rounded-md"
     >
       {/* Lanes */}
       {pattern.steps.map((step, i) => {
@@ -237,7 +237,7 @@ export default function PatternTimeline({
               x={padding.left - 10}
               y={y + laneHeight / 2 + 4}
               textAnchor="end"
-              className="fill-slate-400 text-xs"
+              className="fill-[#8b949e] text-xs"
               fontSize={11}
             >
               {step.name}

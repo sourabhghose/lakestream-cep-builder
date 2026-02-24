@@ -63,9 +63,9 @@ export default function PatternTimelinePanel() {
   };
 
   return (
-    <div className="border-t border-slate-700 bg-slate-900/80">
+    <div className="border-t border-[#30363d] bg-[#161b22]/80">
       <div className="flex items-center justify-between px-3 py-2">
-        <h4 className="text-xs font-medium uppercase tracking-wider text-slate-400">
+        <h4 className="text-xs font-medium uppercase tracking-wider text-[#8b949e]">
           Pattern Timeline — {definition.label}
         </h4>
         <div className="flex gap-1">
@@ -73,8 +73,8 @@ export default function PatternTimelinePanel() {
             onClick={() => setMode("design")}
             className={`rounded px-2 py-1 text-xs ${
               mode === "design"
-                ? "bg-blue-600 text-white"
-                : "bg-slate-800 text-slate-400 hover:text-slate-200"
+                ? "bg-[#1f6feb] text-white"
+                : "bg-[#21262d] text-[#8b949e] hover:text-[#e8eaed]"
             }`}
           >
             Design
@@ -83,8 +83,8 @@ export default function PatternTimelinePanel() {
             onClick={() => setMode("test")}
             className={`rounded px-2 py-1 text-xs ${
               mode === "test"
-                ? "bg-blue-600 text-white"
-                : "bg-slate-800 text-slate-400 hover:text-slate-200"
+                ? "bg-[#1f6feb] text-white"
+                : "bg-[#21262d] text-[#8b949e] hover:text-[#e8eaed]"
             }`}
           >
             Test

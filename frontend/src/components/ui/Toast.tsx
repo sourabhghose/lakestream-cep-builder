@@ -37,8 +37,8 @@ const VARIANT_STYLES: Record<
     icon: "AlertTriangle",
   },
   info: {
-    bg: "bg-blue-500/15",
-    border: "border-blue-500/50",
+    bg: "bg-[#58a6ff]/15",
+    border: "border-[#58a6ff]/50",
     icon: "Info",
   },
 };
@@ -59,10 +59,10 @@ function ToastItemComponent({ toast }: { toast: ToastItem }) {
       )}
     >
       <IconComponent className="h-5 w-5 shrink-0 text-current opacity-80" />
-      <p className="flex-1 text-sm font-medium text-slate-200">{toast.message}</p>
+      <p className="flex-1 text-sm font-medium text-[#e8eaed]">{toast.message}</p>
       <button
         onClick={() => removeToast(toast.id)}
-        className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-700/50 hover:text-slate-200"
+        className="shrink-0 rounded p-1 text-[#8b949e] hover:bg-[#30363d]/50 hover:text-[#e8eaed]"
         aria-label="Dismiss"
       >
         <X className="h-4 w-4" />

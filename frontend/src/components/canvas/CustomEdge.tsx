@@ -83,7 +83,7 @@ function CustomEdge({
           {(selected || isHovered) && (
             <button
               className={cn(
-                "rounded-full bg-slate-700 p-1 text-slate-300 shadow-md transition hover:bg-red-500 hover:text-white",
+                "rounded-full bg-[#30363d] p-1 text-[#c9d1d9] shadow-md transition hover:bg-red-500 hover:text-white",
                 "flex h-6 w-6 items-center justify-center"
               )}
               onClick={handleDelete}

@@ -202,14 +202,14 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
         aria-hidden="true"
       />
       <div
-        className="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-full max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-slate-700 bg-slate-900 p-6 shadow-xl"
+        className="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-full max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-[#30363d] bg-[#161b22] p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-slate-700 pb-4">
-          <h2 className="text-lg font-semibold text-slate-200">Deploy to Databricks</h2>
+        <div className="flex items-center justify-between border-b border-[#30363d] pb-4">
+          <h2 className="text-lg font-semibold text-[#e8eaed]">Deploy to Databricks</h2>
           <button
             onClick={handleClose}
-            className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+            className="rounded p-1 text-[#8b949e] hover:bg-[#21262d] hover:text-[#e8eaed]"
             aria-label="Close"
           >
             <X className="h-5 w-5" />
@@ -218,19 +218,19 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
 
         <div className="mt-4 space-y-4">
           {/* 1. Pipeline Summary */}
-          <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
-            <h3 className="mb-2 text-sm font-medium text-slate-300">Pipeline Summary</h3>
-            <div className="space-y-1 text-sm text-slate-400">
+          <div className="rounded-lg border border-[#30363d] bg-[#21262d80] p-4">
+            <h3 className="mb-2 text-sm font-medium text-[#c9d1d9]">Pipeline Summary</h3>
+            <div className="space-y-1 text-sm text-[#8b949e]">
               <p>
-                <span className="text-slate-500">Name:</span>{" "}
-                <span className="text-slate-200">{pipelineName || "Untitled"}</span>
+                <span className="text-[#484f58]">Name:</span>{" "}
+                <span className="text-[#e8eaed]">{pipelineName || "Untitled"}</span>
               </p>
               <p>
-                <span className="text-slate-500">Nodes:</span> {nodes.length} ·{" "}
-                <span className="text-slate-500">Edges:</span> {edges.length}
+                <span className="text-[#484f58]">Nodes:</span> {nodes.length} ·{" "}
+                <span className="text-[#484f58]">Edges:</span> {edges.length}
               </p>
               <p>
-                <span className="text-slate-500">Code target:</span>{" "}
+                <span className="text-[#484f58]">Code target:</span>{" "}
                 {formatCodeTarget(codeTarget)}
               </p>
             </div>
@@ -244,20 +244,20 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
 
           {/* 2. Job Configuration */}
           <div>
-            <h3 className="mb-2 text-sm font-medium text-slate-300">Job Configuration</h3>
+            <h3 className="mb-2 text-sm font-medium text-[#c9d1d9]">Job Configuration</h3>
             <div className="space-y-3">
               <div>
-                <label className="mb-1 block text-xs text-slate-500">Job name</label>
+                <label className="mb-1 block text-xs text-[#484f58]">Job name</label>
                 <input
                   type="text"
                   value={jobName}
                   onChange={(e) => setJobName(e.target.value)}
                   placeholder={pipelineName || "my-job"}
-                  className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded border border-[#30363d] bg-[#21262d] px-3 py-2 text-sm text-[#e8eaed] placeholder-[#484f58] focus:border-[#58a6ff] focus:outline-none focus:ring-1 focus:ring-[#58a6ff]"
                 />
               </div>
               <div>
-                <label className="mb-2 block text-xs text-slate-500">Code target</label>
+                <label className="mb-2 block text-xs text-[#484f58]">Code target</label>
                 <div className="space-y-2">
                   <label className="flex cursor-pointer items-center gap-2">
                     <input
@@ -265,9 +265,9 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
                       name="code_target"
                       checked={codeTargetChoice === "sdp"}
                       onChange={() => setCodeTargetChoice("sdp")}
-                      className="text-blue-600"
+                      className="text-[#1f6feb]"
                     />
-                    <span className="text-sm text-slate-300">
+                    <span className="text-sm text-[#c9d1d9]">
                       Lakeflow Declarative Pipelines (SDP)
                     </span>
                   </label>
@@ -277,15 +277,15 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
                       name="code_target"
                       checked={codeTargetChoice === "sss"}
                       onChange={() => setCodeTargetChoice("sss")}
-                      className="text-blue-600"
+                      className="text-[#1f6feb]"
                     />
-                    <span className="text-sm text-slate-300">
+                    <span className="text-sm text-[#c9d1d9]">
                       Spark Structured Streaming
                     </span>
                   </label>
                 </div>
                 {isHybrid && (
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 text-xs text-[#484f58]">
                     Hybrid pipeline: both SDP and SSS code exist. Choose one for this job.
                     Multi-task jobs may be supported in future.
                   </p>
@@ -296,14 +296,14 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
 
           {/* 3. Compute Configuration */}
           <div>
-            <h3 className="mb-2 text-sm font-medium text-slate-300">Compute Configuration</h3>
+            <h3 className="mb-2 text-sm font-medium text-[#c9d1d9]">Compute Configuration</h3>
             <div className="space-y-3">
               <div>
-                <label className="mb-1 block text-xs text-slate-500">Cluster mode</label>
+                <label className="mb-1 block text-xs text-[#484f58]">Cluster mode</label>
                 <select
                   value={clusterMode}
                   onChange={(e) => setClusterMode(e.target.value as "new" | "existing")}
-                  className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded border border-[#30363d] bg-[#21262d] px-3 py-2 text-sm text-[#e8eaed] focus:border-[#58a6ff] focus:outline-none focus:ring-1 focus:ring-[#58a6ff]"
                 >
                   <option value="new">New Job Cluster</option>
                   <option value="existing">Existing Cluster</option>
@@ -312,33 +312,33 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
               {clusterMode === "new" ? (
                 <>
                   <div>
-                    <label className="mb-1 block text-xs text-slate-500">Worker count</label>
+                    <label className="mb-1 block text-xs text-[#484f58]">Worker count</label>
                     <input
                       type="number"
                       min={0}
                       value={workerCount}
                       onChange={(e) => setWorkerCount(parseInt(e.target.value, 10) || 0)}
-                      className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full rounded border border-[#30363d] bg-[#21262d] px-3 py-2 text-sm text-[#e8eaed] focus:border-[#58a6ff] focus:outline-none focus:ring-1 focus:ring-[#58a6ff]"
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs text-slate-500">Node type</label>
+                    <label className="mb-1 block text-xs text-[#484f58]">Node type</label>
                     <input
                       type="text"
                       value={nodeType}
                       onChange={(e) => setNodeType(e.target.value)}
                       placeholder="i3.xlarge"
-                      className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full rounded border border-[#30363d] bg-[#21262d] px-3 py-2 text-sm text-[#e8eaed] placeholder-[#484f58] focus:border-[#58a6ff] focus:outline-none focus:ring-1 focus:ring-[#58a6ff]"
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs text-slate-500">Spark version</label>
+                    <label className="mb-1 block text-xs text-[#484f58]">Spark version</label>
                     <input
                       type="text"
                       value={sparkVersion}
                       onChange={(e) => setSparkVersion(e.target.value)}
                       placeholder="14.3.x-scala2.12"
-                      className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full rounded border border-[#30363d] bg-[#21262d] px-3 py-2 text-sm text-[#e8eaed] placeholder-[#484f58] focus:border-[#58a6ff] focus:outline-none focus:ring-1 focus:ring-[#58a6ff]"
                     />
                   </div>
                   <div className="flex items-center gap-2">
@@ -347,32 +347,32 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
                       id="autoscale"
                       checked={autoscale}
                       onChange={(e) => setAutoscale(e.target.checked)}
-                      className="rounded text-blue-600"
+                      className="rounded text-[#1f6feb]"
                     />
-                    <label htmlFor="autoscale" className="text-sm text-slate-300">
+                    <label htmlFor="autoscale" className="text-sm text-[#c9d1d9]">
                       Autoscale
                     </label>
                   </div>
                   {autoscale && (
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="mb-1 block text-xs text-slate-500">Min workers</label>
+                        <label className="mb-1 block text-xs text-[#484f58]">Min workers</label>
                         <input
                           type="number"
                           min={0}
                           value={minWorkers}
                           onChange={(e) => setMinWorkers(parseInt(e.target.value, 10) || 0)}
-                          className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          className="w-full rounded border border-[#30363d] bg-[#21262d] px-3 py-2 text-sm text-[#e8eaed] focus:border-[#58a6ff] focus:outline-none focus:ring-1 focus:ring-[#58a6ff]"
                         />
                       </div>
                       <div>
-                        <label className="mb-1 block text-xs text-slate-500">Max workers</label>
+                        <label className="mb-1 block text-xs text-[#484f58]">Max workers</label>
                         <input
                           type="number"
                           min={0}
                           value={maxWorkers}
                           onChange={(e) => setMaxWorkers(parseInt(e.target.value, 10) || 0)}
-                          className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          className="w-full rounded border border-[#30363d] bg-[#21262d] px-3 py-2 text-sm text-[#e8eaed] focus:border-[#58a6ff] focus:outline-none focus:ring-1 focus:ring-[#58a6ff]"
                         />
                       </div>
                     </div>
@@ -380,13 +380,13 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
                 </>
               ) : (
                 <div>
-                  <label className="mb-1 block text-xs text-slate-500">Cluster ID</label>
+                  <label className="mb-1 block text-xs text-[#484f58]">Cluster ID</label>
                   <input
                     type="text"
                     value={existingClusterId}
                     onChange={(e) => setExistingClusterId(e.target.value)}
                     placeholder="1234-567890-abcdef"
-                    className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded border border-[#30363d] bg-[#21262d] px-3 py-2 text-sm text-[#e8eaed] placeholder-[#484f58] focus:border-[#58a6ff] focus:outline-none focus:ring-1 focus:ring-[#58a6ff]"
                   />
                 </div>
               )}
@@ -394,11 +394,11 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
           </div>
 
           {/* 4. Schedule (collapsible) */}
-          <div className="rounded-lg border border-slate-700">
+          <div className="rounded-lg border border-[#30363d]">
             <button
               type="button"
               onClick={() => setScheduleExpanded(!scheduleExpanded)}
-              className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium text-slate-300 hover:bg-slate-800/50"
+              className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium text-[#c9d1d9] hover:bg-[#21262d80]"
             >
               Schedule
               {scheduleExpanded ? (
@@ -408,23 +408,23 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
               )}
             </button>
             {scheduleExpanded && (
-              <div className="space-y-3 border-t border-slate-700 p-4">
+              <div className="space-y-3 border-t border-[#30363d] p-4">
                 <div className="flex items-center gap-2">
                   <input
                     type="checkbox"
                     id="continuous"
                     checked={continuous}
                     onChange={(e) => setContinuous(e.target.checked)}
-                    className="rounded text-blue-600"
+                    className="rounded text-[#1f6feb]"
                   />
-                  <label htmlFor="continuous" className="text-sm text-slate-300">
+                  <label htmlFor="continuous" className="text-sm text-[#c9d1d9]">
                     Continuous (streaming)
                   </label>
                 </div>
                 {!continuous && (
                   <>
                     <div>
-                      <label className="mb-1 block text-xs text-slate-500">
+                      <label className="mb-1 block text-xs text-[#484f58]">
                         Cron expression
                       </label>
                       <input
@@ -432,7 +432,7 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
                         value={cronExpression}
                         onChange={(e) => setCronExpression(e.target.value)}
                         placeholder="0 0 * * *"
-                        className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="w-full rounded border border-[#30363d] bg-[#21262d] px-3 py-2 text-sm text-[#e8eaed] placeholder-[#484f58] focus:border-[#58a6ff] focus:outline-none focus:ring-1 focus:ring-[#58a6ff]"
                       />
                       <div className="mt-1 flex flex-wrap gap-1">
                         {CRON_EXAMPLES.map((ex) => (
@@ -440,7 +440,7 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
                             key={ex.value}
                             type="button"
                             onClick={() => setCronExpression(ex.value)}
-                            className="rounded bg-slate-700 px-2 py-0.5 text-xs text-slate-400 hover:bg-slate-600 hover:text-slate-200"
+                            className="rounded bg-[#30363d] px-2 py-0.5 text-xs text-[#8b949e] hover:bg-[#30363d] hover:text-[#e8eaed]"
                           >
                             {ex.label}
                           </button>
@@ -448,7 +448,7 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
                       </div>
                     </div>
                     <div>
-                      <label className="mb-1 block text-xs text-slate-500">
+                      <label className="mb-1 block text-xs text-[#484f58]">
                         Max retries
                       </label>
                       <input
@@ -456,20 +456,20 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
                         min={0}
                         value={maxRetries}
                         onChange={(e) => setMaxRetries(parseInt(e.target.value, 10) || 0)}
-                        className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="w-full rounded border border-[#30363d] bg-[#21262d] px-3 py-2 text-sm text-[#e8eaed] focus:border-[#58a6ff] focus:outline-none focus:ring-1 focus:ring-[#58a6ff]"
                       />
                     </div>
                   </>
                 )}
                 {continuous && (
                   <div>
-                    <label className="mb-1 block text-xs text-slate-500">Max retries</label>
+                    <label className="mb-1 block text-xs text-[#484f58]">Max retries</label>
                     <input
                       type="number"
                       min={0}
                       value={maxRetries}
                       onChange={(e) => setMaxRetries(parseInt(e.target.value, 10) || 0)}
-                      className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full rounded border border-[#30363d] bg-[#21262d] px-3 py-2 text-sm text-[#e8eaed] focus:border-[#58a6ff] focus:outline-none focus:ring-1 focus:ring-[#58a6ff]"
                     />
                   </div>
                 )}
@@ -478,11 +478,11 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
           </div>
 
           {/* 5. Checkpoint Configuration (collapsible) */}
-          <div className="rounded-lg border border-slate-700">
+          <div className="rounded-lg border border-[#30363d]">
             <button
               type="button"
               onClick={() => setCheckpointExpanded(!checkpointExpanded)}
-              className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium text-slate-300 hover:bg-slate-800/50"
+              className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium text-[#c9d1d9] hover:bg-[#21262d80]"
             >
               Checkpoint Configuration
               {checkpointExpanded ? (
@@ -492,21 +492,21 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
               )}
             </button>
             {checkpointExpanded && (
-              <div className="space-y-3 border-t border-slate-700 p-4">
+              <div className="space-y-3 border-t border-[#30363d] p-4">
                 <div className="flex items-center gap-2">
                   <input
                     type="checkbox"
                     id="auto_checkpoint"
                     checked={autoGenerateCheckpoint}
                     onChange={(e) => setAutoGenerateCheckpoint(e.target.checked)}
-                    className="rounded text-blue-600"
+                    className="rounded text-[#1f6feb]"
                   />
-                  <label htmlFor="auto_checkpoint" className="text-sm text-slate-300">
+                  <label htmlFor="auto_checkpoint" className="text-sm text-[#c9d1d9]">
                     Auto-generate from pipeline name
                   </label>
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs text-slate-500">
+                  <label className="mb-1 block text-xs text-[#484f58]">
                     Checkpoint location
                   </label>
                   <input
@@ -515,7 +515,7 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
                     onChange={(e) => setCheckpointLocation(e.target.value)}
                     placeholder="dbfs:/checkpoints/my-pipeline"
                     disabled={autoGenerateCheckpoint}
-                    className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-60"
+                    className="w-full rounded border border-[#30363d] bg-[#21262d] px-3 py-2 text-sm text-[#e8eaed] placeholder-[#484f58] focus:border-[#58a6ff] focus:outline-none focus:ring-1 focus:ring-[#58a6ff] disabled:opacity-60"
                   />
                 </div>
               </div>
@@ -523,13 +523,13 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
           </div>
 
           {/* 6. Deploy Action */}
-          <div className="space-y-3 border-t border-slate-700 pt-4">
+          <div className="space-y-3 border-t border-[#30363d] pt-4">
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={handleValidateConnection}
                 disabled={validating}
-                className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-slate-200 disabled:opacity-60"
+                className="flex items-center gap-2 rounded-md border border-[#30363d] bg-[#21262d] px-4 py-2 text-sm font-medium text-[#c9d1d9] hover:bg-[#30363d] hover:text-[#e8eaed] disabled:opacity-60"
               >
                 {validating ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -559,7 +559,7 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
                   href={deploySuccess.jobUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-blue-400 underline hover:text-blue-300"
+                  className="text-sm text-[#58a6ff] underline hover:text-blue-300"
                 >
                   Open job in Databricks →
                 </a>
@@ -568,7 +568,7 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
               <div className="flex justify-end gap-2">
                 <button
                   onClick={handleClose}
-                  className="rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-slate-200"
+                  className="rounded-md border border-[#30363d] bg-[#21262d] px-4 py-2 text-sm font-medium text-[#c9d1d9] hover:bg-[#30363d] hover:text-[#e8eaed]"
                 >
                   Cancel
                 </button>
@@ -580,7 +580,7 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
                     hasValidationErrors ||
                     !jobName.trim()
                   }
-                  className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+                  className="flex items-center gap-2 rounded-md bg-[#1f6feb] px-4 py-2 text-sm font-medium text-white hover:bg-[#388bfd] disabled:opacity-60"
                 >
                   {deploying ? (
                     <Loader2 className="h-4 w-4 animate-spin" />

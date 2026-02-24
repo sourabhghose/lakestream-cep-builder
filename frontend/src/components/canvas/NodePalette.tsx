@@ -10,7 +10,7 @@ import type { Node } from "@xyflow/react";
 import type { NodeDefinition } from "@/types/nodes";
 
 const CATEGORY_COLORS: Record<string, string> = {
-  blue: "border-l-blue-500 bg-blue-500/5",
+  blue: "border-l-[#58a6ff] bg-[#58a6ff]/5",
   purple: "border-l-purple-500 bg-purple-500/5",
   green: "border-l-green-500 bg-green-500/5",
   orange: "border-l-orange-500 bg-orange-500/5",
@@ -160,10 +160,10 @@ export default function NodePalette({
 
   if (collapsed) {
     return (
-      <div className="flex w-12 flex-col border-r border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900/95">
+      <div className="flex w-12 flex-col border-r border-[#30363d] bg-[#161b22]">
         <button
           onClick={onToggleCollapse}
-          className="flex h-12 items-center justify-center border-b border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+          className="flex h-12 items-center justify-center border-b border-[#30363d] text-[#8b949e] hover:bg-[#21262d] hover:text-[#e8eaed]"
           title="Expand palette"
           aria-label="Expand node palette"
         >
@@ -174,13 +174,13 @@ export default function NodePalette({
   }
 
   return (
-    <div className="flex h-full w-[250px] flex-col overflow-hidden border-r border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900/95">
-      <div className="flex h-12 items-center justify-between border-b border-slate-700 px-4">
-        <span className="font-medium text-slate-200">Node Palette</span>
+    <div className="flex h-full w-[250px] flex-col overflow-hidden border-r border-[#30363d] bg-[#161b22]">
+      <div className="flex h-12 items-center justify-between border-b border-[#30363d] px-4">
+        <span className="font-medium text-[#e8eaed]">Node Palette</span>
         <div className="flex items-center gap-1">
           <button
             onClick={toggleExpandAll}
-            className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+            className="rounded p-1 text-[#8b949e] hover:bg-[#21262d] hover:text-[#e8eaed]"
             title={allExpanded ? "Collapse all" : "Expand all"}
             aria-label={allExpanded ? "Collapse all categories" : "Expand all categories"}
           >
@@ -192,7 +192,7 @@ export default function NodePalette({
           </button>
           <button
             onClick={onToggleCollapse}
-            className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+            className="rounded p-1 text-[#8b949e] hover:bg-[#21262d] hover:text-[#e8eaed]"
             title="Collapse palette"
             aria-label="Collapse node palette"
           >
@@ -200,13 +200,13 @@ export default function NodePalette({
           </button>
         </div>
       </div>
-      <div className="border-b border-slate-700 px-2 pb-2">
+      <div className="border-b border-[#30363d] px-2 pb-2">
         <input
           type="text"
           placeholder="Search nodes..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full rounded-md border border-[#30363d] bg-[#21262d] px-3 py-2 text-sm text-[#e8eaed] placeholder-[#6e7681] focus:border-[#58a6ff] focus:outline-none focus:ring-1 focus:ring-[#58a6ff]"
           aria-label="Search nodes"
         />
       </div>
@@ -220,7 +220,7 @@ export default function NodePalette({
               <button
                 onClick={() => toggleCategory(category.id)}
                 className={cn(
-                  "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-200 transition hover:bg-slate-800/50",
+                  "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-[#e8eaed] transition hover:bg-[#21262d]/50",
                   colorClass
                 )}
                 aria-label={`${category.label} category, ${isExpanded ? "collapse" : "expand"}`}
@@ -262,19 +262,19 @@ export default function NodePalette({
                         aria-label={`${def.label}${def.description ? `, ${def.description}` : ""}. Press Enter to add to canvas.`}
                         className={cn(
                           "flex cursor-grab items-center gap-3 rounded-md px-3 py-2",
-                          "border border-transparent hover:border-slate-600 hover:bg-slate-800/50",
-                          "active:cursor-grabbing focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset"
+                          "border border-transparent hover:border-[#30363d] hover:bg-[#21262d]/50",
+                          "active:cursor-grabbing focus:outline-none focus:ring-2 focus:ring-[#58a6ff] focus:ring-inset"
                         )}
                       >
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-slate-800">
-                          <IconComponent className="h-4 w-4 text-slate-400" />
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-[#21262d]">
+                          <IconComponent className="h-4 w-4 text-[#8b949e]" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-medium text-slate-200">
+                          <div className="truncate text-sm font-medium text-[#e8eaed]">
                             {def.label}
                           </div>
                           {def.description && (
-                            <div className="truncate text-xs text-slate-500">
+                            <div className="truncate text-xs text-[#6e7681]">
                               {def.description}
                             </div>
                           )}
@@ -285,7 +285,7 @@ export default function NodePalette({
                   {category.nodes.length > NODES_BEFORE_SHOW_MORE && (
                     <button
                       onClick={() => toggleShowMore(category.id)}
-                      className="mt-1 w-full rounded px-2 py-1 text-left text-xs text-slate-500 hover:bg-slate-800/50 hover:text-slate-300"
+                      className="mt-1 w-full rounded px-2 py-1 text-left text-xs text-[#6e7681] hover:bg-[#21262d]/50 hover:text-[#c9d1d9]"
                       aria-label={
                         expandedCategoryNodes[category.id]
                           ? "Show fewer nodes"
