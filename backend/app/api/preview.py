@@ -108,7 +108,7 @@ def _generate_source_sample(node_type: str, config: dict) -> tuple[list[str], li
             rows = []
             for i in range(5):
                 sid = random.randint(1, 100)
-                rows.append([sid, f"sensor-{sid}", round(20 + random.random() * 20, 1), round(30 + random.random() * 70, 1), _random_timestamp()])
+                rows.append([sid, f"sensor-{sid}", round(-10 + random.random() * 60, 1), round(10 + random.random() * 90, 1), _random_timestamp()])
             return columns, rows
         if profile == "clickstream":
             columns = ["user_id", "session_id", "event_type", "page_url", "event_time"]
@@ -136,21 +136,26 @@ def _generate_source_sample(node_type: str, config: dict) -> tuple[list[str], li
 
 
 def _apply_filter_best_effort(columns: list[str], rows: list[list[Any]], condition: str) -> list[list[Any]]:
-    """Best-effort filter supporting =, !=, >, <, >=, <= on numeric/string columns."""
+    """Best-effort filter supporting compound AND/OR conditions with =, !=, >, <, >=, <=."""
     if not condition or not rows:
         return rows[:5]
 
     import re
 
-    def _parse_simple_condition(cond: str) -> tuple[str, str, str] | None:
+    def _parse_atom(cond: str) -> tuple[str, str, str] | None:
         """Parse 'col OP value' into (column, operator, value)."""
         m = re.match(
-            r"^\s*(\w+)\s*(>=|<=|!=|>|<|=)\s*['\"]?([^'\"]+?)['\"]?\s*$",
+            r"^\s*(\w+)\s*(>=|<=|!=|<>|>|<|=)\s*['\"]?([^'\"]+?)['\"]?\s*$",
             cond.strip(),
         )
-        return (m.group(1), m.group(2), m.group(3)) if m else None
+        if not m:
+            return None
+        op = m.group(2)
+        if op == "<>":
+            op = "!="
+        return (m.group(1), op, m.group(3))
 
-    def _eval_condition(row_dict: dict, col: str, op: str, rhs: str) -> bool:
+    def _eval_atom(row_dict: dict, col: str, op: str, rhs: str) -> bool:
         if col not in row_dict:
             return True
         val = row_dict[col]
@@ -177,16 +182,30 @@ def _apply_filter_best_effort(columns: list[str], rows: list[list[Any]], conditi
                 return s_val != rhs
         return True
 
-    parsed = _parse_simple_condition(condition)
-    if not parsed:
-        return rows[:5]
+    def _eval_row(row_dict: dict, condition_str: str) -> bool:
+        """Evaluate a condition string (supports AND / OR) against a row."""
+        # Split on OR first (lower precedence), then AND
+        or_groups = re.split(r"\bOR\b", condition_str, flags=re.IGNORECASE)
+        for or_group in or_groups:
+            and_parts = re.split(r"\bAND\b", or_group, flags=re.IGNORECASE)
+            all_true = True
+            for part in and_parts:
+                atom = _parse_atom(part)
+                if atom is None:
+                    continue
+                col, op, rhs = atom
+                if not _eval_atom(row_dict, col, op, rhs):
+                    all_true = False
+                    break
+            if all_true:
+                return True
+        return False
 
-    col, op, rhs = parsed
     filtered = []
     for row in rows:
         row_dict = dict(zip(columns, row))
         try:
-            if _eval_condition(row_dict, col, op, rhs):
+            if _eval_row(row_dict, condition):
                 filtered.append(row)
         except Exception:
             filtered.append(row)
@@ -287,7 +306,7 @@ def _get_upstream_sample(pipeline: dict, node_id: str, visited: set[str], seed: 
                 if seed is not None:
                     random.seed(seed)
                 extra_cols, extra_rows = _generate_source_sample(up_type, up_config)
-                for _ in range(4):
+                for _ in range(9):
                     _, more = _generate_source_sample(up_type, up_config)
                     extra_rows.extend(more)
                 rows = extra_rows

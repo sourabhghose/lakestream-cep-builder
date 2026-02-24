@@ -17,8 +17,8 @@ df_{{ node_id | pyvar }} = (
 df_{{ node_id | pyvar }} = df_{{ node_id | pyvar }}.select(
     (F.col("value") % 100).alias("sensor_id"),
     F.concat(F.lit("sensor-"), (F.col("value") % 100).cast("string")).alias("device_id"),
-    (F.lit(20.0) + F.rand() * 20.0).alias("temperature"),
-    (F.lit(30.0) + F.rand() * 70.0).alias("humidity"),
+    (F.lit(-10.0) + F.rand() * 60.0).alias("temperature"),
+    (F.lit(10.0) + F.rand() * 90.0).alias("humidity"),
     F.col("timestamp").alias("event_time"),
 )
 {% elif data_profile == 'clickstream' %}

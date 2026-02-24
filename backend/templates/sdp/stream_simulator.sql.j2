@@ -5,8 +5,8 @@ SELECT
 {% if data_profile == 'iot-sensors' %}
   CAST(value AS LONG) % 100 AS sensor_id,
   CONCAT('sensor-', CAST(CAST(value AS LONG) % 100 AS STRING)) AS device_id,
-  20.0 + (RAND() * 20.0) AS temperature,
-  30.0 + (RAND() * 70.0) AS humidity,
+  -10.0 + (RAND() * 60.0) AS temperature,
+  10.0 + (RAND() * 90.0) AS humidity,
   timestamp AS event_time
 {% elif data_profile == 'clickstream' %}
   CONCAT('user-', CAST(CAST(value AS LONG) % 1000 AS STRING)) AS user_id,
