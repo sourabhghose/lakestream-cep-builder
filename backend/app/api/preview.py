@@ -25,6 +25,7 @@ class PreviewRequest(BaseModel):
         description="Pipeline definition with nodes and edges",
     )
     node_id: str = Field(..., description="Target node ID to preview")
+    seed: int | None = Field(None, description="Random seed for consistent data across connected nodes")
 
 
 class PreviewResponse(BaseModel):
@@ -258,7 +259,7 @@ def _get_node_category(node_type: str) -> str:
     return "transform"
 
 
-def _get_upstream_sample(pipeline: dict, node_id: str, visited: set[str]) -> tuple[list[str], list[list[Any]]]:
+def _get_upstream_sample(pipeline: dict, node_id: str, visited: set[str], seed: int | None = None) -> tuple[list[str], list[list[Any]]]:
     """Recursively get sample from upstream nodes."""
     if node_id in visited:
         return ["id", "value"], [["circular", 0]]
@@ -272,16 +273,19 @@ def _get_upstream_sample(pipeline: dict, node_id: str, visited: set[str]) -> tup
 
     upstream_ids = _get_upstream_node_ids(pipeline, node_id)
     if upstream_ids:
-        cols, rows = _get_upstream_sample(pipeline, upstream_ids[0], visited)
+        cols, rows = _get_upstream_sample(pipeline, upstream_ids[0], visited, seed=seed)
         category = _get_node_category(node_type)
 
         if category == "transform" and node_type == "filter":
             cond = config.get("condition", "")
-            # Generate more upstream rows to increase chance of filter matches
+            # Re-seed so the upstream source produces the same base rows,
+            # then generate extra rounds for better filter match rates
             upstream_node = _get_node_by_id(pipeline, upstream_ids[0])
             if upstream_node:
                 up_type = upstream_node.get("type", "")
                 up_config = upstream_node.get("config", {})
+                if seed is not None:
+                    random.seed(seed)
                 extra_cols, extra_rows = _generate_source_sample(up_type, up_config)
                 for _ in range(4):
                     _, more = _generate_source_sample(up_type, up_config)
@@ -316,6 +320,11 @@ async def preview_sample(request: PreviewRequest) -> PreviewResponse:
     pipeline = request.pipeline
     node_id = request.node_id
 
+    # Seed random for deterministic data within a refresh cycle.
+    # Connected nodes using the same seed will generate consistent upstream data.
+    if request.seed is not None:
+        random.seed(request.seed)
+
     node = _get_node_by_id(pipeline, node_id)
     if not node:
         raise HTTPException(status_code=404, detail=f"Node {node_id} not found")
@@ -326,7 +335,7 @@ async def preview_sample(request: PreviewRequest) -> PreviewResponse:
         pipeline["edges"] = pipeline.get("edges", [])
 
     try:
-        columns, rows = _get_upstream_sample(pipeline, node_id, set())
+        columns, rows = _get_upstream_sample(pipeline, node_id, set(), seed=request.seed)
         rows = rows[:10]
         return PreviewResponse(
             columns=columns,

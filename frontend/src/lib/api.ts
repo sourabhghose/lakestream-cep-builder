@@ -285,7 +285,8 @@ export interface PreviewSampleResponse {
 
 export async function getNodePreview(
   pipeline: { nodes: any[]; edges: any[] },
-  nodeId: string
+  nodeId: string,
+  seed?: number
 ): Promise<PreviewSampleResponse> {
   const res = await api.post("/api/preview/sample", {
     pipeline: {
@@ -293,6 +294,7 @@ export async function getNodePreview(
       edges: edgesToApi(pipeline.edges),
     },
     node_id: nodeId,
+    seed: seed ?? null,
   });
   return res.data;
 }

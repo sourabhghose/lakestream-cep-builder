@@ -30,6 +30,8 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
   const [previewData, setPreviewData] = useState<PreviewSampleResponse | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
 
+  const panelRefreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const handlePreviewClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -39,13 +41,32 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
       }
       setPreviewLoading(true);
       setShowPreview(true);
-      getNodePreview({ nodes, edges }, nodeId)
+      const seed = Math.floor(Date.now() / PREVIEW_REFRESH_MS);
+      getNodePreview({ nodes, edges }, nodeId, seed)
         .then((res) => setPreviewData(res))
         .catch(() => setPreviewData({ columns: [], rows: [], row_count: 0 }))
         .finally(() => setPreviewLoading(false));
     },
     [showPreview, nodes, edges, nodeId]
   );
+
+  // Auto-refresh the Preview Data modal panel while it's open
+  useEffect(() => {
+    if (showPreview) {
+      panelRefreshTimerRef.current = setInterval(() => {
+        const seed = Math.floor(Date.now() / PREVIEW_REFRESH_MS);
+        getNodePreview({ nodes: nodesRef.current, edges: edgesRef.current }, nodeId, seed)
+          .then((res) => setPreviewData(res))
+          .catch(() => {});
+      }, PREVIEW_REFRESH_MS);
+    }
+    return () => {
+      if (panelRefreshTimerRef.current) {
+        clearInterval(panelRefreshTimerRef.current);
+        panelRefreshTimerRef.current = null;
+      }
+    };
+  }, [showPreview, nodeId]);
 
   const previewExpanded = data.previewExpanded === true;
   const inlinePreviewData = data.previewData as { columns: string[]; rows: (string | number | boolean | null)[][] } | undefined;
@@ -58,7 +79,8 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
   edgesRef.current = edges;
 
   const fetchPreview = useCallback(() => {
-    getNodePreview({ nodes: nodesRef.current, edges: edgesRef.current }, nodeId)
+    const seed = Math.floor(Date.now() / PREVIEW_REFRESH_MS);
+    getNodePreview({ nodes: nodesRef.current, edges: edgesRef.current }, nodeId, seed)
       .then((res) => {
         setNodePreviewData(nodeId, { columns: res.columns, rows: res.rows });
         setDataFlash(true);
@@ -73,7 +95,8 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
       autoExpandedRef.current = true;
       toggleNodePreview(nodeId);
       setInlinePreviewLoading(true);
-      getNodePreview({ nodes, edges }, nodeId)
+      const seed = Math.floor(Date.now() / PREVIEW_REFRESH_MS);
+      getNodePreview({ nodes, edges }, nodeId, seed)
         .then((res) =>
           setNodePreviewData(nodeId, { columns: res.columns, rows: res.rows })
         )
@@ -103,7 +126,8 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
       toggleNodePreview(nodeId);
       if (willExpand && !inlinePreviewData) {
         setInlinePreviewLoading(true);
-        getNodePreview({ nodes, edges }, nodeId)
+        const seed = Math.floor(Date.now() / PREVIEW_REFRESH_MS);
+        getNodePreview({ nodes, edges }, nodeId, seed)
           .then((res) =>
             setNodePreviewData(nodeId, { columns: res.columns, rows: res.rows })
           )
