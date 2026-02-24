@@ -14,7 +14,7 @@
 
 ## What Is This?
 
-LakeStream CEP Builder is a **Databricks App** that lets you design Complex Event Processing pipelines visually using drag-and-drop, then deploy them to Databricks with one click. You compose streaming pipelines from **38 node types** — sources, CEP patterns, transforms, and sinks — and the backend generates production-ready code for **Lakeflow Declarative Pipelines (SDP)** or **Spark Structured Streaming + TransformWithState**.
+LakeStream CEP Builder is a **Databricks App** that lets you design Complex Event Processing pipelines visually using drag-and-drop, then deploy them to Databricks with one click. You compose streaming pipelines from **41 node types** — sources, CEP patterns, transforms, and sinks — and the backend generates production-ready code for **Lakeflow Declarative Pipelines (SDP)** or **Spark Structured Streaming + TransformWithState**.
 
 No other tool on Databricks provides visual CEP capabilities. Lakeflow Designer is batch-first with no pattern matching. This tool fills that gap.
 
@@ -32,7 +32,7 @@ Deployed as a **Databricks App** — a single FastAPI process serves the React f
 │  │   React Frontend     │    │       FastAPI Backend              │ │
 │  │                      │    │                                    │ │
 │  │  React Flow Canvas   │───▶│  /api/pipelines     (CRUD)        │ │
-│  │  38-Node Palette     │    │  /api/codegen       (SDP + SSS)   │ │
+│  │  41-Node Palette     │    │  /api/codegen       (SDP + SSS)   │ │
 │  │  Monaco Editor       │    │  /api/deploy        (SDK)         │ │
 │  │  Schema Browser      │    │  /api/schema        (UC discovery)│ │
 │  │  Pattern Timeline    │    │  /api/preview       (sample data) │ │
@@ -61,7 +61,7 @@ Deployed as a **Databricks App** — a single FastAPI process serves the React f
 
 | Feature | Description |
 |---------|-------------|
-| **38 Node Types** | 8 sources, 12 CEP patterns, 10 transforms, 8 sinks |
+| **41 Node Types** | 9 sources, 12 CEP patterns, 11 transforms, 9 sinks |
 | **Dual Code Generation** | Lakeflow Declarative Pipelines (SDP) + Spark Structured Streaming |
 | **12 CEP Patterns** | Sequence, absence, count, velocity, geofence, correlation, trend, outlier, session, dedup, MATCH_RECOGNIZE, custom |
 | **TransformWithState** | Spark 4.0 stateful processing for advanced CEP patterns |
@@ -69,19 +69,24 @@ Deployed as a **Databricks App** — a single FastAPI process serves the React f
 | **Monaco Editor** | Bidirectional sync, diff view vs last deploy, line-level code annotations |
 | **Schema Discovery** | Browse Unity Catalog catalogs/schemas/tables with cascading dropdowns |
 | **Data Preview** | Per-node synthetic preview + flow-through source-to-sink simulation |
+| **Live Auto-Refresh** | Preview data auto-refreshes every 3 seconds with consistent seeding across connected nodes |
 | **Inline Node Preview** | Expandable data tables directly on canvas nodes |
 | **Pattern Timeline** | SVG visualization of event sequences in design and test modes |
-| **10+ Templates** | Pre-built pipelines + save your own as reusable templates |
+| **11 Templates** | Pre-built pipelines (incl. Trucking IoT Analytics) + save your own |
 | **Deploy Dialog** | Full config: compute, schedule, checkpoint, connection validation |
 | **Job Notifications** | Real-time polling of deployed job status with badges |
 | **Deploy History** | Audit trail with status, code view, and Databricks links |
 | **Pipeline Management** | Save, load, version, delete, export/import as JSON |
 | **Version Diff** | Side-by-side comparison of pipeline versions |
+| **Stream Simulator** | Built-in streaming source simulator for testing without real infrastructure |
+| **ML Model Endpoint** | Connect to Databricks ML serving endpoints for real-time predictions |
+| **Union / Merge Node** | Combine up to 8 streams (union-all or union-distinct) |
+| **Single-Input Enforcement** | Transform/sink nodes enforce single input; Union node for multi-stream |
 | **Validation Panel** | 12+ pre-deploy checks with clickable fix navigation |
 | **Node Grouping** | Collapse multiple nodes into subgraphs |
 | **Pipeline Search** | Ctrl+F with node highlighting and auto-pan |
 | **Copy/Paste** | Ctrl+C/V/D/A with clipboard and ID remapping |
-| **Dark Mode** | Toggle with system preference detection |
+| **Databricks Dark Theme** | Always-on dark UI matching Databricks look and feel |
 | **Lakebase Storage** | All state persisted in Databricks' serverless PostgreSQL |
 | **OAuth Identity** | User identity from Databricks App service principal |
 | **Undo/Redo** | 50-entry history stack with keyboard shortcuts |
@@ -110,13 +115,23 @@ Deployed as a **Databricks App** — a single FastAPI process serves the React f
 ### Option 1: Deploy as Databricks App (Production)
 
 1. **Create a Databricks App** in your workspace
-2. **Add a Lakebase database** as an App resource (permission: "Can connect and create")
-3. **Deploy the code**:
+2. **Create a Lakebase database instance** (via UI or API):
+   ```bash
+   databricks api post /api/2.0/database/instances \
+     --json '{"name":"lakestream-cep","capacity":"CU_1","pg_version":"PG_VERSION_16"}'
+   ```
+3. **Add the database as an App resource** (permission: "Can connect and create"):
+   ```bash
+   databricks api patch /api/2.0/apps/<app-name> \
+     --json '{"resources":[{"name":"database","database":{"instance_name":"lakestream-cep","database_name":"postgres","permission":"CAN_CONNECT_AND_CREATE"}}]}'
+   ```
+4. **Deploy the code**:
    ```bash
    make build-app
-   databricks apps deploy
+   databricks bundle deploy
+   databricks apps deploy <app-name> --source-code-path <bundle-path>
    ```
-4. The app will be available at your Databricks App URL
+5. The app will be available at your Databricks App URL. Schema tables are auto-created on first startup.
 
 ### Option 2: Local Development
 
@@ -181,7 +196,7 @@ lakestream-cep-builder/
 │   │   │   ├── dialogs/        # SaveDialog
 │   │   │   └── ui/             # Toast
 │   │   ├── hooks/              # usePipelineStore, useToastStore, useKeyboardShortcuts
-│   │   ├── lib/                # api, nodeRegistry, edgeValidator, autoLayout, iconRegistry
+│   │   ├── lib/                # api, nodeRegistry (41 nodes), edgeValidator, autoLayout, templates (11)
 │   │   └── types/              # nodes.ts, pipeline.ts
 │   └── package.json
 ├── backend/                     # FastAPI backend
@@ -252,7 +267,7 @@ lakestream-cep-builder/
 | `pipelines` | Pipeline definitions — canvas JSON, generated code, version, status |
 | `deploy_history` | Deployment audit trail — job IDs, status, timestamps, errors |
 | `user_preferences` | Per-user settings — default catalog/schema, canvas preferences |
-| `saved_templates` | Built-in (10) + user-created pipeline templates |
+| `saved_templates` | Built-in (11) + user-created pipeline templates |
 
 ---
 

@@ -50,14 +50,20 @@ Lakebase is added as a **Databricks App resource** (type: database). This:
 - Grants `CONNECT` + `CREATE` on the selected database
 - Auto-injects environment variables: `PGHOST`, `PGUSER`, `PGDATABASE`, `PGPORT`, `PGSSLMODE`
 
-The backend connects via `psycopg3` (PostgreSQL 3.x driver):
+The backend connects via `psycopg3` (PostgreSQL 3.x driver) with OAuth token authentication:
 
 ```python
 from psycopg_pool import ConnectionPool
+from databricks.sdk import WorkspaceClient
 
-conninfo = f"host={PGHOST} port={PGPORT} dbname={PGDATABASE} user={PGUSER} sslmode={PGSSLMODE}"
-pool = ConnectionPool(conninfo, min_size=2, max_size=10)
+# OAuth token fetched from Databricks SDK for Lakebase auth
+token = WorkspaceClient().config.authenticate()("GET", "...")["Authorization"][7:]
+
+conninfo = f"host={PGHOST} port={PGPORT} dbname={PGDATABASE} user={PGUSER} sslmode={PGSSLMODE} password={token}"
+pool = ConnectionPool(conninfo, min_size=1, max_size=10)
 ```
+
+If the Lakebase connection fails on startup, the app gracefully falls back to `LocalFileStore` (JSON files on disk). This is controlled by `is_postgres_available()` in `db.py` which all store factories check.
 
 ---
 
@@ -116,7 +122,7 @@ Per-user settings.
 | updated_at | TIMESTAMPTZ | Last update |
 
 ### saved_templates
-Built-in (10 pre-loaded) and user-created templates.
+Built-in (11 pre-loaded) and user-created templates.
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -195,7 +201,7 @@ Single store (`usePipelineStore`) manages:
 | Component | Purpose |
 |-----------|---------|
 | `PipelineCanvas` | React Flow wrapper with drag-drop, edge validation |
-| `NodePalette` | Searchable, collapsible node catalog (38 nodes in 4 categories) |
+| `NodePalette` | Searchable, collapsible node catalog (41 nodes in 4 categories) |
 | `CustomNode` | Memoized node rendering with error states and preview |
 | `ConfigPanel` | Dynamic form generation from node registry |
 | `DynamicConfigForm` | Schema-aware dropdowns for catalog/schema/table fields |
@@ -290,7 +296,7 @@ PipelineDefinition (JSON)
 
 ## Node Type System
 
-Each of the 38 node types is defined in `NODE_REGISTRY` (`frontend/src/lib/nodeRegistry.ts`):
+Each of the 41 node types is defined in `NODE_REGISTRY` (`frontend/src/lib/nodeRegistry.ts`):
 
 ```typescript
 interface NodeDefinition {
@@ -311,7 +317,8 @@ interface NodeDefinition {
 
 - Sources: 0 inputs, 1 output
 - Sinks: 1 input, 0 outputs
-- Transforms: 1-2 inputs, 1 output
+- Transforms: 1 input, 1 output (except Union/Merge: up to 8 inputs)
 - CEP patterns: 1-2 inputs, 1 output
 - Graph must be a DAG (directed acyclic graph)
+- Single-input enforcement: transform/sink nodes accept one input; use Union/Merge to combine streams
 - Semantic edge validation prevents invalid connections (e.g., sink → sink)
