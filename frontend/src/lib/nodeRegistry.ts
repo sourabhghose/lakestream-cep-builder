@@ -1570,14 +1570,28 @@ export const NODE_REGISTRY: Record<NodeType, NodeDefinition> = {
   "union-merge": {
     type: "union-merge",
     label: "Union / Merge",
-    description: "Merge multiple streams (requires 2+ inputs)",
+    description: "Combine multiple streams into one (2–8 inputs)",
     category: "transform",
     codeTarget: "sdp-or-sss",
     icon: "Combine",
     color: "#22c55e",
-    inputs: 2,
+    inputs: 8,
     outputs: 1,
-    configFields: [],
+    configFields: [
+      {
+        key: "unionType",
+        label: "Union Type",
+        type: "select",
+        required: false,
+        defaultValue: "union-all",
+        options: [
+          { value: "union-all", label: "UNION ALL (keep duplicates)" },
+          { value: "union-distinct", label: "UNION (deduplicate)" },
+        ],
+        helpText: "How to combine the incoming streams",
+        group: "Union",
+      },
+    ],
   },
 
   "rename-cast": {

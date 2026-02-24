@@ -292,8 +292,45 @@ def _get_upstream_sample(pipeline: dict, node_id: str, visited: set[str], seed: 
 
     upstream_ids = _get_upstream_node_ids(pipeline, node_id)
     if upstream_ids:
-        cols, rows = _get_upstream_sample(pipeline, upstream_ids[0], visited, seed=seed)
         category = _get_node_category(node_type)
+
+        # Union / Merge: combine rows from all upstream sources
+        if node_type == "union-merge" and len(upstream_ids) >= 2:
+            all_cols: list[str] = []
+            all_rows: list[list[Any]] = []
+            for uid in upstream_ids:
+                ucols, urows = _get_upstream_sample(pipeline, uid, set(visited), seed=seed)
+                if not all_cols:
+                    all_cols = ucols
+                    all_rows = urows
+                else:
+                    # UNION ALL: pad columns to superset
+                    merged_cols = list(all_cols)
+                    for c in ucols:
+                        if c not in merged_cols:
+                            merged_cols.append(c)
+                    # Re-index existing rows
+                    col_idx_old = {c: i for i, c in enumerate(all_cols)}
+                    col_idx_new = {c: i for i, c in enumerate(ucols)}
+                    padded_existing = []
+                    for r in all_rows:
+                        new_row = [None] * len(merged_cols)
+                        for ci, c in enumerate(merged_cols):
+                            if c in col_idx_old:
+                                new_row[ci] = r[col_idx_old[c]]
+                        padded_existing.append(new_row)
+                    padded_new = []
+                    for r in urows:
+                        new_row = [None] * len(merged_cols)
+                        for ci, c in enumerate(merged_cols):
+                            if c in col_idx_new:
+                                new_row[ci] = r[col_idx_new[c]]
+                        padded_new.append(new_row)
+                    all_cols = merged_cols
+                    all_rows = padded_existing + padded_new
+            return all_cols, all_rows[:5]
+
+        cols, rows = _get_upstream_sample(pipeline, upstream_ids[0], visited, seed=seed)
 
         if category == "transform" and node_type == "filter":
             cond = config.get("condition", "")

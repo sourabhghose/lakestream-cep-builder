@@ -19,6 +19,7 @@ function getNodeCategory(nodeType: NodeType): NodeCategory {
  * - CEP patterns must have a Source or Transform upstream (validated when connecting TO them)
  * - Transforms can connect to: Transforms, CEP patterns, Sinks
  * - Sinks cannot have downstream connections (they are terminal nodes)
+ * - Target node must not exceed its declared max input count
  */
 export function validateConnection(
   sourceNode: Node,
@@ -35,10 +36,30 @@ export function validateConnection(
   const sourceCat = getNodeCategory(sourceType);
   const targetCat = getNodeCategory(targetType);
 
-  // Sinks cannot have downstream connections - they have outputs: 0
   const sourceDef = NODE_REGISTRY[sourceType];
+  const targetDef = NODE_REGISTRY[targetType];
+
+  // Sinks cannot have downstream connections - they have outputs: 0
   if (sourceDef?.outputs === 0) {
     return { valid: false, reason: "Sink nodes cannot have outgoing connections" };
+  }
+
+  // Enforce max input count on the target node
+  if (targetDef) {
+    const maxInputs = targetDef.inputs;
+    const existingInputs = edges.filter((e) => e.target === targetNode.id).length;
+    if (existingInputs >= maxInputs) {
+      if (maxInputs === 1) {
+        return {
+          valid: false,
+          reason: `${targetDef.label} accepts a single input. Use a Union / Merge node to combine streams first.`,
+        };
+      }
+      return {
+        valid: false,
+        reason: `${targetDef.label} already has the maximum number of inputs (${maxInputs})`,
+      };
+    }
   }
 
   // Sources can connect to: Transforms, CEP patterns, Sinks
@@ -102,6 +123,12 @@ export function markInvalidEdges(
 ): Edge[] {
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
 
+  // Pre-compute incoming edge counts per target node
+  const incomingCount = new Map<string, number>();
+  for (const e of edges) {
+    incomingCount.set(e.target, (incomingCount.get(e.target) ?? 0) + 1);
+  }
+
   return edges.map((edge) => {
     const sourceNode = nodeMap.get(edge.source);
     const targetNode = nodeMap.get(edge.target);
@@ -110,14 +137,36 @@ export function markInvalidEdges(
       return { ...edge, data: { ...edge.data, isInvalid: true } };
     }
 
-    const result = validateConnection(sourceNode, targetNode, edges);
+    const sourceType = sourceNode.data?.type as NodeType | undefined;
+    const targetType = targetNode.data?.type as NodeType | undefined;
 
+    if (!sourceType || !targetType) {
+      return { ...edge, data: { ...edge.data, isInvalid: true, invalidReason: "Unknown node type" } };
+    }
+
+    // Category-level validation (sinks can't output, sources can't receive, etc.)
+    const result = validateConnection(sourceNode, targetNode, []);
     if (!result.valid) {
       return { ...edge, data: { ...edge.data, isInvalid: true, invalidReason: result.reason } };
     }
 
+    // Check if target node exceeds its max input count
+    const targetDef = NODE_REGISTRY[targetType];
+    if (targetDef) {
+      const count = incomingCount.get(edge.target) ?? 0;
+      if (count > targetDef.inputs) {
+        return {
+          ...edge,
+          data: {
+            ...edge.data,
+            isInvalid: true,
+            invalidReason: `${targetDef.label} accepts at most ${targetDef.inputs} input(s). Use Union / Merge to combine streams.`,
+          },
+        };
+      }
+    }
+
     // CEP pattern target: ensure it has valid upstream
-    const targetType = targetNode.data?.type as NodeType | undefined;
     if (targetType) {
       const targetCat = getNodeCategory(targetType);
       if (targetCat === "cep-pattern") {
