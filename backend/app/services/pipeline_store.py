@@ -414,7 +414,8 @@ class LakebaseStore(PipelineStore):
 
 
 def get_pipeline_store() -> PipelineStore:
-    """Return LakebaseStore if PGHOST is set, otherwise LocalFileStore."""
-    if os.environ.get("PGHOST"):
+    """Return LakebaseStore if Lakebase is available, otherwise LocalFileStore."""
+    from app.db import is_postgres_available
+    if is_postgres_available():
         return LakebaseStore()
     return LocalFileStore()

@@ -217,7 +217,8 @@ class LakebaseTemplateStore(TemplateStore):
 
 
 def get_template_store() -> TemplateStore:
-    """Return LakebaseTemplateStore if PGHOST is set, else LocalTemplateStore."""
-    if os.environ.get("PGHOST"):
+    """Return LakebaseTemplateStore if Lakebase is available, else LocalTemplateStore."""
+    from app.db import is_postgres_available
+    if is_postgres_available():
         return LakebaseTemplateStore()
     return LocalTemplateStore()

@@ -124,7 +124,8 @@ class LakebasePreferencesStore(PreferencesStore):
 
 
 def get_preferences_store() -> PreferencesStore:
-    """Return LakebasePreferencesStore if PGHOST is set, otherwise LocalPreferencesStore."""
-    if os.environ.get("PGHOST"):
+    """Return LakebasePreferencesStore if Lakebase is available, otherwise LocalPreferencesStore."""
+    from app.db import is_postgres_available
+    if is_postgres_available():
         return LakebasePreferencesStore()
     return LocalPreferencesStore()
