@@ -24,6 +24,7 @@ const INDUSTRY_ICON_MAP: Record<string, React.ComponentType<{ className?: string
   Operations: Settings,
   Marketing: Megaphone,
   Logistics: Truck,
+  Transportation: Truck,
   Cybersecurity: Shield,
   "Supply Chain": Package,
 };
@@ -37,6 +38,7 @@ const INDUSTRY_COLORS: Record<string, string> = {
   Operations: "border-l-orange-500 bg-orange-500/10",
   Marketing: "border-l-pink-500 bg-pink-500/10",
   Logistics: "border-l-cyan-500 bg-cyan-500/10",
+  Transportation: "border-l-sky-500 bg-sky-500/10",
   Cybersecurity: "border-l-red-500 bg-red-500/10",
   "Supply Chain": "border-l-teal-500 bg-teal-500/10",
 };

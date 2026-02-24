@@ -518,4 +518,122 @@ export const PIPELINE_TEMPLATES: PipelineTemplate[] = [
       createEdge("absence-3", "email-2"),
     ],
   },
+  {
+    id: "trucking-iot-analytics",
+    name: "Trucking IoT Analytics",
+    description:
+      "Monitor a fleet of trucks in real time: join geo-location and speed sensor streams, detect speeding violations (avg speed > 80 mph over 3-min windows), trigger alerts, apply ML predictions, and sink to a lakehouse for BI.",
+    industry: "Transportation",
+    difficulty: "advanced",
+    nodes: [
+      // Two Kafka sources for the two sensor streams
+      createNode("kafka-geo", "kafka-topic", 0, 0, {
+        bootstrapServers: "broker1:9092,broker2:9092",
+        topics: "truck_geo_events",
+        consumerGroup: "trucking-iot-consumer",
+        startingOffset: "latest",
+        schemaSource: "schema-registry",
+        deserializationFormat: "avro",
+      }, "Truck Geo Events"),
+      createNode("kafka-speed", "kafka-topic", 0, 180, {
+        bootstrapServers: "broker1:9092,broker2:9092",
+        topics: "truck_speed_events",
+        consumerGroup: "trucking-iot-consumer",
+        startingOffset: "latest",
+        schemaSource: "schema-registry",
+        deserializationFormat: "avro",
+      }, "Truck Speed Events"),
+
+      // Join the two streams on driver_id with a 5-second watermark
+      createNode("join-drivers", "stream-stream-join", 280, 80, {
+        joinType: "inner",
+        leftKey: "driver_id",
+        rightKey: "driver_id",
+        watermarkColumn: "event_time",
+        watermarkDelay: "5 seconds",
+      }, "Join on Driver ID"),
+
+      // Filter for violation events only
+      createNode("filter-violations", "filter", 520, 80, {
+        condition: "event_type != 'normal'",
+      }, "Violation Events"),
+
+      // Windowed aggregate: average speed over 3-min tumbling window
+      createNode("avg-speed", "window-aggregate", 520, 260, {
+        windowType: "tumbling",
+        windowDuration: { value: 3, unit: "minutes" },
+        groupByColumns: "driver_id, driver_name",
+        aggregations: [
+          { column: "speed", function: "avg", alias: "avg_speed" },
+        ],
+      }, "Avg Speed (3 min)"),
+
+      // Rule: flag drivers whose 3-min average exceeds 80 mph
+      createNode("filter-speeding", "filter", 760, 260, {
+        condition: "avg_speed > 80",
+      }, "Speeding Drivers"),
+
+      // Alert via email when speeding detected
+      createNode("email-alert", "email-sink", 1000, 200, {
+        smtpProvider: "sendgrid",
+        to: "fleet-ops@example.com",
+        subjectTemplate: "Speeding Alert: Driver {{driver_name}}",
+        bodyTemplate: "Driver {{driver_name}} (ID {{driver_id}}) averaged {{avg_speed}} mph over a 3-min window. Immediate attention required.",
+      }, "Email Alert"),
+
+      // Alert via Slack/PagerDuty
+      createNode("slack-alert", "slack-teams-pagerduty", 1000, 340, {
+        provider: "pagerduty",
+        webhookUrl: "https://events.pagerduty.com/v2/enqueue",
+        messageTemplate: "🚨 Driver {{driver_name}} exceeding speed limit: {{avg_speed}} mph average",
+      }, "PagerDuty Alert"),
+
+      // ML prediction: likelihood of driver committing a violation
+      createNode("ml-predict", "ml-model-endpoint", 760, 80, {
+        endpointName: "driver-violation-prediction",
+        inputColumns: "driver_id, speed, route_id, event_type",
+        outputColumn: "violation_probability",
+        outputType: "DoubleType()",
+        timeout: 5000,
+        fallbackValue: "-1.0",
+      }, "Violation Prediction"),
+
+      // Sink all violation events to lakehouse for BI analytics
+      createNode("lakehouse-violations", "lakehouse-sink", 1000, 0, {
+        catalog: "main",
+        schema: "trucking",
+        tableName: "violation_events",
+        tableType: "streaming-table",
+        writeMode: "append",
+        checkpointLocation: "/checkpoints/trucking/violations",
+      }, "Violation Events Table"),
+
+      // Sink ML-scored events to a separate analytics table
+      createNode("lakehouse-predictions", "lakehouse-sink", 1000, 100, {
+        catalog: "main",
+        schema: "trucking",
+        tableName: "driver_risk_scores",
+        tableType: "streaming-table",
+        writeMode: "append",
+        checkpointLocation: "/checkpoints/trucking/risk_scores",
+      }, "Risk Scores Table"),
+    ],
+    edges: [
+      // Two Kafka sources → Stream-Stream Join
+      createEdge("kafka-geo", "join-drivers"),
+      createEdge("kafka-speed", "join-drivers"),
+      // Join → Filter violations
+      createEdge("join-drivers", "filter-violations"),
+      // Violations → ML prediction → lakehouse
+      createEdge("filter-violations", "ml-predict"),
+      createEdge("ml-predict", "lakehouse-predictions"),
+      // Violations → lakehouse for BI
+      createEdge("filter-violations", "lakehouse-violations"),
+      // Violations → windowed avg speed → speeding filter → alerts
+      createEdge("filter-violations", "avg-speed"),
+      createEdge("avg-speed", "filter-speeding"),
+      createEdge("filter-speeding", "email-alert"),
+      createEdge("filter-speeding", "slack-alert"),
+    ],
+  },
 ];

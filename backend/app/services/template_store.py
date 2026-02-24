@@ -26,6 +26,7 @@ BUILTIN_TEMPLATES = [
     {"id": "fleet-monitoring", "name": "Fleet Monitoring", "description": "Monitor vehicle GPS and geofence events.", "industry": "Logistics"},
     {"id": "security-threat-detection", "name": "Security Threat Detection", "description": "Detect brute force and credential stuffing.", "industry": "Cybersecurity"},
     {"id": "order-to-cash-tracking", "name": "Order-to-Cash Tracking", "description": "Track order lifecycle.", "industry": "Supply Chain"},
+    {"id": "trucking-iot-analytics", "name": "Trucking IoT Analytics", "description": "Monitor truck fleet: join geo + speed streams, detect speeding, ML predictions.", "industry": "Transportation"},
 ]
 
 
