@@ -1,0 +1,5 @@
+-- [node:{{ node_id }}] Feature Store Sink: {{ node_label }}
+-- Feature table: {{ feature_table_name }}
+CREATE OR REFRESH STREAMING TABLE {{ node_id | replace('-', '_') }}
+AS SELECT * FROM STREAM({{ upstream_table }});
+-- NOTE: Feature Store write requires Databricks SDK; use SSS target for full Feature Store support.

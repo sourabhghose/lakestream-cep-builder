@@ -1,0 +1,11 @@
+-- [node:{{ node_id }}] Split / Router: {{ node_label }}
+{% for route in routes %}
+CREATE OR REFRESH STREAMING TABLE {{ node_id | replace('-', '_') }}_{{ route.name | replace(' ', '_') }}
+AS SELECT * FROM STREAM({{ upstream_table }})
+WHERE {{ route.condition }};
+{% endfor %}
+{% if default_route %}
+CREATE OR REFRESH STREAMING TABLE {{ node_id | replace('-', '_') }}_{{ default_route }}
+AS SELECT * FROM STREAM({{ upstream_table }})
+WHERE NOT ({{ routes | map(attribute='condition') | join(' OR ') }});
+{% endif %}

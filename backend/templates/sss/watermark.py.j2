@@ -1,0 +1,2 @@
+# [node:{{ node_id }}] Watermark: {{ node_label }}
+df_{{ node_id | pyvar }} = {{ upstream_var }}.withWatermark("{{ timestamp_column }}", "{{ delay_threshold }}")

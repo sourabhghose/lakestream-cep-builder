@@ -21,6 +21,7 @@ _env = Environment(
     autoescape=select_autoescape(enabled_extensions=()),
 )
 _env.filters["pyvar"] = lambda s: str(s).replace("-", "_")
+_env.filters["tojson"] = lambda x: json.dumps(x)
 
 
 def _camel_to_snake(name: str) -> str:
@@ -98,6 +99,49 @@ def _node_label(node: PipelineNode) -> str:
     if node.label and node.label.strip():
         return node.label.strip()
     return node.type.replace("-", " ").title()
+
+
+def _parse_json_config(val) -> list:
+    """Parse JSON config (string or list) to list."""
+    if val is None:
+        return []
+    if isinstance(val, list):
+        return val
+    if isinstance(val, str):
+        try:
+            parsed = json.loads(val)
+            return parsed if isinstance(parsed, list) else [parsed]
+        except (json.JSONDecodeError, TypeError):
+            return []
+    return []
+
+
+def _duration_to_ms(duration) -> int:
+    """Convert duration (string or dict) to milliseconds."""
+    if isinstance(duration, (int, float)):
+        return int(duration)
+    if isinstance(duration, dict):
+        val = duration.get("value", duration.get("val", 60))
+        unit = str(duration.get("unit", "minutes")).lower()
+        if "second" in unit:
+            return int(val * 1000)
+        if "minute" in unit:
+            return int(val * 60 * 1000)
+        if "hour" in unit:
+            return int(val * 3600 * 1000)
+        return int(val * 60000)
+    return _parse_duration_to_ms(str(duration))
+
+
+def _format_duration(duration) -> str:
+    """Format duration (string or dict) to human-readable string."""
+    if isinstance(duration, str) and duration:
+        return duration
+    if isinstance(duration, dict):
+        val = duration.get("value", duration.get("val", 10))
+        unit = duration.get("unit", "seconds")
+        return f"{val} {unit}"
+    return str(duration) if duration else "10 seconds"
 
 
 def _parse_duration_to_ms(duration: str) -> int:
@@ -608,8 +652,9 @@ query_{safe_id} = (
             checkpoint_location=config.get("checkpoint_location", f"/tmp/checkpoints/{node.id}"),
         )
 
-    if node.type == "lakehouse-sink":
-        template = _env.get_template("lakehouse_sink.py.j2")
+    if node.type in ("lakehouse-sink", "lakebase-sink"):
+        tpl_name = "lakebase_sink.py.j2" if node.type == "lakebase-sink" else "lakehouse_sink.py.j2"
+        template = _env.get_template(tpl_name)
         upstream = _get_upstream_var(node, pipeline)
         merge_keys_raw = config.get("merge_keys", [])
         if isinstance(merge_keys_raw, str):
@@ -628,6 +673,87 @@ query_{safe_id} = (
             merge_keys=merge_keys_py,
             partition_columns=partition_cols,
             checkpoint_location=config.get("checkpoint_location", f"/tmp/checkpoints/{node.id}"),
+        )
+
+    if node.type == "state-machine":
+        tpl = _env.get_template("state_machine.py.j2")
+        upstream = _get_upstream_var(node, pipeline)
+        states = _parse_json_config(config.get("states", "[]")) or ["s0"]
+        transitions = _parse_json_config(config.get("transitions", "[]"))
+        terminal_states = [s.strip() for s in str(config.get("terminal_states", "")).split(",") if s.strip()]
+        return tpl.render(
+            node_id=node.id, node_label=_node_label(node),
+            upstream_var=upstream,
+            states=states, transitions=transitions,
+            key_column=config.get("key_column", "entity_id"),
+            emit_on=config.get("emit_on", "transition"),
+            terminal_states=terminal_states,
+            state_timeout=config.get("state_timeout", ""),
+        )
+
+    if node.type == "heartbeat-liveness":
+        tpl = _env.get_template("heartbeat_liveness.py.j2")
+        upstream = _get_upstream_var(node, pipeline)
+        expected_interval = config.get("expected_interval", "1 minute")
+        return tpl.render(
+            node_id=node.id, node_label=_node_label(node),
+            upstream_var=upstream,
+            entity_key=config.get("entity_key", "device_id"),
+            expected_interval=expected_interval,
+            expected_interval_ms=_duration_to_ms(expected_interval),
+            grace_period_ms=_duration_to_ms(config.get("grace_period", 0)),
+            output_mode=config.get("output_mode", "dead-only"),
+        )
+
+    if node.type == "google-pubsub":
+        tpl = _env.get_template("google_pubsub.py.j2")
+        return tpl.render(
+            node_id=node.id, node_label=_node_label(node),
+            project_id=config.get("project_id", ""),
+            subscription_id=config.get("subscription_id", ""),
+            credentials_path=config.get("credentials_path", ""),
+        )
+
+    if node.type == "split-router":
+        tpl = _env.get_template("split_router.py.j2")
+        upstream = _get_upstream_var(node, pipeline)
+        routes = _parse_json_config(config.get("routes", "[]"))
+        return tpl.render(
+            node_id=node.id, node_label=_node_label(node),
+            upstream_var=upstream,
+            routes=routes,
+            default_route=config.get("default_route", "other"),
+        )
+
+    if node.type == "watermark":
+        tpl = _env.get_template("watermark.py.j2")
+        upstream = _get_upstream_var(node, pipeline)
+        return tpl.render(
+            node_id=node.id, node_label=_node_label(node),
+            upstream_var=upstream,
+            timestamp_column=config.get("timestamp_column", "event_time"),
+            delay_threshold=_format_duration(config.get("delay_threshold", "10 seconds")),
+        )
+
+    if node.type == "data-quality-expectations":
+        tpl = _env.get_template("data_quality_expectations.py.j2")
+        upstream = _get_upstream_var(node, pipeline)
+        expectations = _parse_json_config(config.get("expectations", "[]"))
+        return tpl.render(
+            node_id=node.id, node_label=_node_label(node),
+            upstream_var=upstream,
+            expectations=expectations,
+        )
+
+    if node.type == "feature-store-sink":
+        tpl = _env.get_template("feature_store_sink.py.j2")
+        upstream = _get_upstream_var(node, pipeline)
+        return tpl.render(
+            node_id=node.id, node_label=_node_label(node),
+            upstream_var=upstream,
+            feature_table_name=config.get("feature_table_name", ""),
+            write_mode=config.get("write_mode", "merge"),
+            timestamp_key=config.get("timestamp_key", ""),
         )
 
     if node.type == "dead-letter-queue":

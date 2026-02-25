@@ -3,7 +3,7 @@
 ## Overview
 LakeStream CEP Builder — Visual CEP Pipeline Builder for Databricks
 
-## Completed (52 workstreams across 12 rounds + post-deployment)
+## Completed (53 workstreams across 12 rounds + post-deployment)
 
 ### Round 1 (2026-02-22)
 **WS1: Frontend scaffold** — Next.js 14, React Flow canvas, 38-node palette, custom nodes/edges, config panel, code preview, Zustand store
@@ -73,13 +73,14 @@ LakeStream CEP Builder — Visual CEP Pipeline Builder for Databricks
 
 ### Post-Deployment (2026-02-24)
 **Databricks App Deployment** — Initial deployment to Databricks workspace, resolved React #185 error (infinite re-render), fixed UI layout issues (code dock, config panel)
-**WS46: New node types** — Stream Simulator source (built-in testing without real infra), Lakehouse sink, Databricks ML Model Endpoint (vectorized scoring via Pandas UDF), Union/Merge transform (2–8 input streams)
+**WS46: New node types** — Stream Simulator source (built-in testing without real infra), Lakebase sink, Databricks ML Model Endpoint (vectorized scoring via Pandas UDF), Union/Merge transform (2–8 input streams)
 **WS47: Live preview** — Auto-refreshing preview data every 3s, time-based deterministic seeding for consistent data across connected nodes, compound AND/OR filter support in preview
 **WS48: Databricks dark theme** — Complete UI restyle to Databricks look & feel, dark-only mode (removed toggle), custom color palette with CSS variables
 **WS49: Single-input enforcement** — Transform/sink nodes restricted to single input via edgeValidator, Union/Merge node for combining streams, clear error messages suggesting alternatives
-**WS50: Trucking IoT template** — 11-node advanced template: Kafka geo + speed sources, stream-stream join, filter, window aggregate, ML model endpoint, email/PagerDuty sinks, lakehouse sinks
+**WS50: Trucking IoT template** — 11-node advanced template: Kafka geo + speed sources, stream-stream join, filter, window aggregate, ML model endpoint, email/PagerDuty sinks, lakebase sinks
 **WS51: Databricks favicon** — Custom SVG favicon with Databricks diamond logo
 **WS52: Lakebase integration** — Created Lakebase database instance (lakestream-cep), attached as App resource, OAuth token auth via Databricks SDK, graceful fallback to LocalFileStore, all stores use centralized `is_postgres_available()` check
+**WS53: Gap fill — 8 new node types** — Google Pub/Sub source, State Machine CEP pattern (FSM with named transitions), Heartbeat/Liveness CEP (silent entity detection), Split/Router transform (1→N conditional routing), Watermark transform, Data Quality/Expectations transform (inline DLT expectations), Feature Store sink (Databricks Feature Engineering), renamed Lakehouse sink → Lakebase sink. Total: 48 nodes (10 sources, 14 CEP, 14 transforms, 10 sinks), 65 Jinja2 templates
 
 ## Final State
 
@@ -87,9 +88,9 @@ LakeStream CEP Builder — Visual CEP Pipeline Builder for Databricks
 | --- | --- |
 | **Frontend** | 30+ components, Databricks dark theme, accessibility, error boundaries |
 | **Backend API** | 20+ endpoints across 8 routers |
-| **SDP Code Gen** | 22+ Jinja2 SQL templates — all 41 node types |
-| **SSS Code Gen** | 29+ Jinja2 Python templates — all 41 node types |
-| **CEP Patterns** | All 12 implemented (TransformWithState) |
+| **SDP Code Gen** | 29 Jinja2 SQL templates — all 48 node types |
+| **SSS Code Gen** | 36 Jinja2 Python templates — all 48 node types |
+| **CEP Patterns** | All 14 implemented (TransformWithState) |
 | **Code Annotations** | Line-level node-to-code mapping in Monaco |
 | **Monaco Editor** | Bidirectional sync, diff view, gutter annotations |
 | **Templates** | 11 built-in + user-created via API |
@@ -128,7 +129,7 @@ LakeStream CEP Builder — Visual CEP Pipeline Builder for Databricks
 │  │   30+ components     │    │                                              ││
 │  │                      │    │  /api/pipelines     CRUD + versions          ││
 │  │  React Flow Canvas   │───▶│  /api/codegen       SDP + SSS generation     ││
-│  │  41-Node Palette     │    │  /api/codeparse     SQL → canvas             ││
+│  │  48-Node Palette     │    │  /api/codeparse     SQL → canvas             ││
 │  │  Monaco Editor+Diff  │    │  /api/deploy        SDK + history            ││
 │  │  Deploy Dialog       │    │  /api/schema        UC discovery             ││
 │  │  Pattern Test        │    │  /api/preview       per-node + flow-through  ││
@@ -138,7 +139,7 @@ LakeStream CEP Builder — Visual CEP Pipeline Builder for Databricks
 │  │  Flow Preview        │    │  /api/jobs          job status polling       ││
 │  │  Version Diff        │    │  /health            health check             ││
 │  │  Job Notifications   │    │                                              ││
-│  │  Dark Mode + A11y    │    │  51 Jinja2 code gen templates                ││
+│  │  Dark Mode + A11y    │    │  65 Jinja2 code gen templates                ││
 │  └──────────────────────┘    └──────────┬───────────────────────────────────┘│
 │        Static at /                      │                                    │
 │        API at /api/*                    │                                    │
@@ -170,6 +171,7 @@ LakeStream CEP Builder — Visual CEP Pipeline Builder for Databricks
 | 11 | Flow + perf | Flow preview, version diff, job notifications |
 | 12 | Test + a11y | Pattern test, accessibility, error boundaries |
 | Post | Deploy + Lakebase | New nodes, live preview, dark theme, Lakebase integration |
+| Post | Gap fill | 8 new nodes (48 total), lakehouse→lakebase rename, 14 new Jinja2 templates |
 
 ---
-*Updated: 2026-02-24 after Lakebase integration*
+*Updated: 2026-02-25 after gap fill (48 nodes, 65 templates)*

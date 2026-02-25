@@ -14,7 +14,7 @@
 
 ## What Is This?
 
-LakeStream CEP Builder is a **Databricks App** that lets you design Complex Event Processing pipelines visually using drag-and-drop, then deploy them to Databricks with one click. You compose streaming pipelines from **41 node types** — sources, CEP patterns, transforms, and sinks — and the backend generates production-ready code for **Lakeflow Declarative Pipelines (SDP)** or **Spark Structured Streaming + TransformWithState**.
+LakeStream CEP Builder is a **Databricks App** that lets you design Complex Event Processing pipelines visually using drag-and-drop, then deploy them to Databricks with one click. You compose streaming pipelines from **48 node types** — sources, CEP patterns, transforms, and sinks — and the backend generates production-ready code for **Lakeflow Declarative Pipelines (SDP)** or **Spark Structured Streaming + TransformWithState**.
 
 No other tool on Databricks provides visual CEP capabilities. Lakeflow Designer is batch-first with no pattern matching. This tool fills that gap.
 
@@ -32,7 +32,7 @@ Deployed as a **Databricks App** — a single FastAPI process serves the React f
 │  │   React Frontend     │    │       FastAPI Backend              │ │
 │  │                      │    │                                    │ │
 │  │  React Flow Canvas   │───▶│  /api/pipelines     (CRUD)        │ │
-│  │  41-Node Palette     │    │  /api/codegen       (SDP + SSS)   │ │
+│  │  48-Node Palette     │    │  /api/codegen       (SDP + SSS)   │ │
 │  │  Monaco Editor       │    │  /api/deploy        (SDK)         │ │
 │  │  Schema Browser      │    │  /api/schema        (UC discovery)│ │
 │  │  Pattern Timeline    │    │  /api/preview       (sample data) │ │
@@ -61,9 +61,9 @@ Deployed as a **Databricks App** — a single FastAPI process serves the React f
 
 | Feature | Description |
 |---------|-------------|
-| **41 Node Types** | 9 sources, 12 CEP patterns, 11 transforms, 9 sinks |
+| **48 Node Types** | 10 sources, 14 CEP patterns, 14 transforms, 10 sinks |
 | **Dual Code Generation** | Lakeflow Declarative Pipelines (SDP) + Spark Structured Streaming |
-| **12 CEP Patterns** | Sequence, absence, count, velocity, geofence, correlation, trend, outlier, session, dedup, MATCH_RECOGNIZE, custom |
+| **14 CEP Patterns** | Sequence, absence, count, velocity, geofence, correlation, trend, outlier, session, dedup, MATCH_RECOGNIZE, custom, state machine, heartbeat/liveness |
 | **TransformWithState** | Spark 4.0 stateful processing for advanced CEP patterns |
 | **Pattern Test Mode** | Upload sample events, simulate CEP matching, see results + event flow |
 | **Monaco Editor** | Bidirectional sync, diff view vs last deploy, line-level code annotations |
@@ -79,7 +79,15 @@ Deployed as a **Databricks App** — a single FastAPI process serves the React f
 | **Pipeline Management** | Save, load, version, delete, export/import as JSON |
 | **Version Diff** | Side-by-side comparison of pipeline versions |
 | **Stream Simulator** | Built-in streaming source simulator for testing without real infrastructure |
+| **Google Pub/Sub Source** | Subscribe to GCP Pub/Sub topics with JSON/Avro/Protobuf deserialization |
 | **ML Model Endpoint** | Connect to Databricks ML serving endpoints for real-time predictions |
+| **State Machine** | Multi-state FSM with named transitions, entity tracking, and timeout |
+| **Heartbeat / Liveness** | Detect silent entities — alert when no heartbeat within expected interval |
+| **Split / Router** | Route events to different outputs based on conditions (1→N) |
+| **Watermark** | Configure event-time watermark for late data handling |
+| **Data Quality** | Inline DLT expectations (expect, expect_or_drop, expect_or_fail) |
+| **Feature Store Sink** | Write streaming features to Databricks Feature Store for ML serving |
+| **Lakebase Sink** | Write to Databricks Lakebase (serverless PostgreSQL) with streaming tables |
 | **Union / Merge Node** | Combine up to 8 streams (union-all or union-distinct) |
 | **Single-Input Enforcement** | Transform/sink nodes enforce single input; Union node for multi-stream |
 | **Validation Panel** | 12+ pre-deploy checks with clickable fix navigation |
@@ -102,7 +110,7 @@ Deployed as a **Databricks App** — a single FastAPI process serves the React f
 | Layer | Technology |
 |-------|------------|
 | **Frontend** | Next.js 14 (static export), React Flow v12, Monaco Editor, Zustand, Tailwind CSS, Radix UI |
-| **Backend** | FastAPI, Jinja2 (51 templates), Databricks SDK, Pydantic v2, psycopg3 |
+| **Backend** | FastAPI, Jinja2 (65 templates), Databricks SDK, Pydantic v2, psycopg3 |
 | **Database** | Lakebase PostgreSQL (Databricks App resource) — falls back to local files for dev |
 | **Runtime** | Lakeflow Declarative Pipelines (SDP), Spark Structured Streaming + TransformWithState |
 | **CI/CD** | GitHub Actions (backend tests, frontend build, linting, deploy) |
@@ -196,7 +204,7 @@ lakestream-cep-builder/
 │   │   │   ├── dialogs/        # SaveDialog
 │   │   │   └── ui/             # Toast
 │   │   ├── hooks/              # usePipelineStore, useToastStore, useKeyboardShortcuts
-│   │   ├── lib/                # api, nodeRegistry (41 nodes), edgeValidator, autoLayout, templates (11)
+│   │   ├── lib/                # api, nodeRegistry (48 nodes), edgeValidator, autoLayout, templates (11)
 │   │   └── types/              # nodes.ts, pipeline.ts
 │   └── package.json
 ├── backend/                     # FastAPI backend
@@ -210,8 +218,8 @@ lakestream-cep-builder/
 │   │   ├── db_schema.sql       # Database DDL
 │   │   └── main.py             # FastAPI app + static file serving
 │   ├── templates/              # Jinja2 code gen templates
-│   │   ├── sdp/                # 22 SDP SQL templates
-│   │   └── sss/                # 29 SSS PySpark templates
+│   │   ├── sdp/                # 29 SDP SQL templates
+│   │   └── sss/                # 36 SSS PySpark templates
 │   ├── tests/                  # 37 pytest tests
 │   └── requirements.txt
 ├── .github/workflows/           # CI + Deploy workflows
@@ -257,6 +265,8 @@ lakestream-cep-builder/
 | **Deduplication** | Exactly-once by key within watermark | dropDuplicatesWithinWatermark |
 | **MATCH_RECOGNIZE SQL** | SQL pattern matching (ISO standard) | Native Spark SQL |
 | **Custom StatefulProcessor** | User-written TransformWithState Python | Direct code |
+| **State Machine** | Multi-state FSM with named transitions and entity tracking | TransformWithState |
+| **Heartbeat / Liveness** | Alert when entity goes silent beyond expected interval | TransformWithState + timers |
 
 ---
 

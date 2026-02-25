@@ -1,0 +1,48 @@
+# [node:{{ node_id }}] Heartbeat / Liveness: {{ node_label }}
+from pyspark.sql.streaming import StatefulProcessor, StatefulProcessorHandle
+from pyspark.sql.types import StructType, StructField, StringType, TimestampType, BooleanType
+import datetime
+
+class HeartbeatMonitor_{{ node_id | pyvar }}(StatefulProcessor):
+    """Alert when entity '{{ entity_key }}' goes silent for > {{ expected_interval }}"""
+
+    def init(self, handle: StatefulProcessorHandle) -> None:
+        self.handle = handle
+        self.last_seen = handle.getValueState("last_seen", "string")
+        self.expected_ms = {{ expected_interval_ms }}
+        self.grace_ms = {{ grace_period_ms | default(0) }}
+        self.output_mode = "{{ output_mode | default('dead-only') }}"
+
+    def handleInputRows(self, key, rows):
+        now = datetime.datetime.utcnow()
+        was_dead = False
+        if self.last_seen.exists():
+            last = datetime.datetime.fromisoformat(self.last_seen.get())
+            gap_ms = (now - last).total_seconds() * 1000
+            was_dead = gap_ms > (self.expected_ms + self.grace_ms)
+
+        self.last_seen.update(now.isoformat())
+        is_alive = True
+
+        if self.output_mode == "dead-only" and was_dead:
+            yield (key[0], False, now.isoformat(),)
+        elif self.output_mode == "alive-and-dead":
+            yield (key[0], is_alive, now.isoformat(),)
+        elif self.output_mode == "status-change" and was_dead:
+            yield (key[0], True, now.isoformat(),)
+
+    def close(self) -> None:
+        pass
+
+df_{{ node_id | pyvar }}_schema = StructType([
+    StructField("{{ entity_key }}", StringType()),
+    StructField("is_alive", BooleanType()),
+    StructField("checked_at", TimestampType()),
+])
+
+df_{{ node_id | pyvar }} = {{ upstream_var }}.groupBy("{{ entity_key }}").transformWithState(
+    HeartbeatMonitor_{{ node_id | pyvar }}(),
+    outputStructType=df_{{ node_id | pyvar }}_schema,
+    outputMode="append",
+    timeMode="processingTime",
+)

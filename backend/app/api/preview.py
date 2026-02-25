@@ -129,6 +129,19 @@ def _generate_source_sample(node_type: str, config: dict) -> tuple[list[str], li
                 rows.append([f"order-{random.randint(10000, 99999)}", f"cust-{random.randint(1, 500)}", f"prod-{random.randint(1, 100)}", random.randint(1, 10), round(random.random() * 200, 2), random.choice(["pending", "shipped", "delivered"]), _random_timestamp()])
             return columns, rows
 
+    if node_type == "google-pubsub":
+        columns = ["message_id", "data", "publish_time", "subscription"]
+        sub = config.get("subscriptionId", config.get("subscription_id", "my-subscription"))
+        rows = []
+        for i in range(5):
+            rows.append([
+                f"msg-{_random_string(10)}",
+                json.dumps({"event": f"event_{i}", "value": random.randint(1, 500)}),
+                _random_timestamp(),
+                sub,
+            ])
+        return columns, rows
+
     # Default for other sources
     columns = ["id", "value", "timestamp"]
     rows = [[f"row-{i + 1}", random.randint(1, 100), _random_timestamp()] for i in range(5)]
@@ -266,9 +279,9 @@ def _generate_delta_sink_schema_sample(upstream_columns: list[str], upstream_row
 
 def _get_node_category(node_type: str) -> str:
     """Map node type to category."""
-    source_types = {"kafka-topic", "delta-table-source", "auto-loader", "rest-webhook-source", "cdc-stream", "event-hub-kinesis", "mqtt", "custom-python-source", "stream-simulator"}
-    sink_types = {"delta-table-sink", "kafka-topic-sink", "rest-webhook-sink", "slack-teams-pagerduty", "email-sink", "sql-warehouse-sink", "unity-catalog-table-sink", "dead-letter-queue", "lakehouse-sink"}
-    pattern_types = {"sequence-detector", "absence-detector", "count-threshold", "velocity-detector", "geofence-location", "temporal-correlation", "trend-detector", "outlier-anomaly", "session-detector", "deduplication", "match-recognize-sql", "custom-stateful-processor"}
+    source_types = {"kafka-topic", "delta-table-source", "auto-loader", "rest-webhook-source", "cdc-stream", "event-hub-kinesis", "mqtt", "custom-python-source", "stream-simulator", "google-pubsub"}
+    sink_types = {"delta-table-sink", "kafka-topic-sink", "rest-webhook-sink", "slack-teams-pagerduty", "email-sink", "sql-warehouse-sink", "unity-catalog-table-sink", "dead-letter-queue", "feature-store-sink", "lakebase-sink"}
+    pattern_types = {"sequence-detector", "absence-detector", "count-threshold", "velocity-detector", "geofence-location", "temporal-correlation", "trend-detector", "outlier-anomaly", "session-detector", "deduplication", "match-recognize-sql", "custom-stateful-processor", "state-machine", "heartbeat-liveness"}
     if node_type in source_types:
         return "source"
     if node_type in sink_types:

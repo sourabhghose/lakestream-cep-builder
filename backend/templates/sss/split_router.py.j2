@@ -1,0 +1,7 @@
+# [node:{{ node_id }}] Split / Router: {{ node_label }}
+{% for route in routes %}
+df_{{ node_id | pyvar }}_{{ route.name | replace(' ', '_') }} = {{ upstream_var }}.filter("{{ route.condition }}")
+{% endfor %}
+{% if default_route %}
+df_{{ node_id | pyvar }}_{{ default_route }} = {{ upstream_var }}.filter("NOT ({{ routes | map(attribute='condition') | join(' OR ') }})")
+{% endif %}

@@ -1,0 +1,39 @@
+# Lakebase Sink: {{ node_id }}
+# Table: {{ catalog }}.{{ schema }}.{{ table_name }}
+
+{% if write_mode in ('merge', 'upsert') %}
+from delta.tables import DeltaTable
+
+def _merge_{{ node_id | pyvar }}(batch_df, batch_id):
+    target = DeltaTable.forName(spark, "{{ catalog }}.{{ schema }}.{{ table_name }}")
+    merge_cond = " AND ".join(
+        f"target.{k} = source.{k}" for k in [{{ merge_keys }}]
+    )
+    (
+        target.alias("target")
+        .merge(batch_df.alias("source"), merge_cond)
+        .whenMatchedUpdateAll()
+        .whenNotMatchedInsertAll()
+        .execute()
+    )
+
+query_{{ node_id | pyvar }} = (
+    {{ upstream_var }}
+    .writeStream
+    .foreachBatch(_merge_{{ node_id | pyvar }})
+    .option("checkpointLocation", "{{ checkpoint_location }}")
+    .start()
+)
+{% else %}
+query_{{ node_id | pyvar }} = (
+    {{ upstream_var }}
+    .writeStream
+    .format("delta")
+    .outputMode("{{ write_mode }}")
+    .option("checkpointLocation", "{{ checkpoint_location }}")
+{% if partition_columns %}
+    .partitionBy({{ partition_columns }})
+{% endif %}
+    .toTable("{{ catalog }}.{{ schema }}.{{ table_name }}")
+)
+{% endif %}

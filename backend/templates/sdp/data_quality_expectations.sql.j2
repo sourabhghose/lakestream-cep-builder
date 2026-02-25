@@ -1,0 +1,14 @@
+-- [node:{{ node_id }}] Data Quality: {{ node_label }}
+{% if expectations %}
+CREATE OR REFRESH STREAMING TABLE {{ node_id | replace('-', '_') }}
+(
+{% for exp in expectations %}
+  CONSTRAINT {{ exp.name }} EXPECT ({{ exp.constraint }}){% if exp.action == 'drop' %} ON VIOLATION DROP ROW{% elif exp.action == 'fail' %} ON VIOLATION FAIL UPDATE{% endif %}{% if not loop.last %},{% endif %}
+
+{% endfor %}
+)
+AS SELECT * FROM STREAM({{ upstream_table }});
+{% else %}
+CREATE OR REFRESH STREAMING TABLE {{ node_id | replace('-', '_') }}
+AS SELECT * FROM STREAM({{ upstream_table }});
+{% endif %}

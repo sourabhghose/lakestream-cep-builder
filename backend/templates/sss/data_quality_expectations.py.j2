@@ -1,0 +1,12 @@
+# [node:{{ node_id }}] Data Quality: {{ node_label }}
+df_{{ node_id | pyvar }} = {{ upstream_var }}
+{% for exp in expectations %}
+{% if exp.action == 'drop' %}
+df_{{ node_id | pyvar }} = df_{{ node_id | pyvar }}.filter("{{ exp.constraint }}")  # {{ exp.name }}: drop rows failing {{ exp.constraint }}
+{% elif exp.action == 'fail' %}
+# Expectation '{{ exp.name }}': FAIL if {{ exp.constraint }} is violated
+assert df_{{ node_id | pyvar }}.filter("NOT ({{ exp.constraint }})").count() == 0, "Data quality check failed: {{ exp.name }}"
+{% else %}
+# Expectation '{{ exp.name }}': WARN — log violations of {{ exp.constraint }}
+{% endif %}
+{% endfor %}

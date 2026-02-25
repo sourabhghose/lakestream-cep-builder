@@ -6,7 +6,7 @@ export type CodeTarget = "sdp" | "sss" | "sdp-or-sss";
 
 // Every node type as a union
 export type NodeType =
-  // Sources (9)
+  // Sources (10)
   | "kafka-topic"
   | "delta-table-source"
   | "auto-loader"
@@ -16,7 +16,8 @@ export type NodeType =
   | "mqtt"
   | "custom-python-source"
   | "stream-simulator"
-  // CEP Patterns (12)
+  | "google-pubsub"
+  // CEP Patterns (14)
   | "sequence-detector"
   | "absence-detector"
   | "count-threshold"
@@ -29,7 +30,9 @@ export type NodeType =
   | "deduplication"
   | "match-recognize-sql"
   | "custom-stateful-processor"
-  // Transforms (11)
+  | "state-machine"
+  | "heartbeat-liveness"
+  // Transforms (14)
   | "filter"
   | "map-select"
   | "flatten-explode"
@@ -41,7 +44,10 @@ export type NodeType =
   | "rename-cast"
   | "custom-python-udf"
   | "ml-model-endpoint"
-  // Sinks (9)
+  | "split-router"
+  | "watermark"
+  | "data-quality-expectations"
+  // Sinks (10)
   | "delta-table-sink"
   | "kafka-topic-sink"
   | "rest-webhook-sink"
@@ -50,7 +56,8 @@ export type NodeType =
   | "sql-warehouse-sink"
   | "unity-catalog-table-sink"
   | "dead-letter-queue"
-  | "lakehouse-sink";
+  | "feature-store-sink"
+  | "lakebase-sink";
 
 // Config field types for dynamic form rendering
 export type ConfigFieldType =

@@ -598,8 +598,8 @@ export const PIPELINE_TEMPLATES: PipelineTemplate[] = [
         fallbackValue: "-1.0",
       }, "Violation Prediction"),
 
-      // Sink all violation events to lakehouse for BI analytics
-      createNode("lakehouse-violations", "lakehouse-sink", 1000, 0, {
+      // Sink all violation events to lakebase for BI analytics
+      createNode("lakebase-violations", "lakebase-sink", 1000, 0, {
         catalog: "main",
         schema: "trucking",
         tableName: "violation_events",
@@ -609,7 +609,7 @@ export const PIPELINE_TEMPLATES: PipelineTemplate[] = [
       }, "Violation Events Table"),
 
       // Sink ML-scored events to a separate analytics table
-      createNode("lakehouse-predictions", "lakehouse-sink", 1000, 100, {
+      createNode("lakebase-predictions", "lakebase-sink", 1000, 100, {
         catalog: "main",
         schema: "trucking",
         tableName: "driver_risk_scores",

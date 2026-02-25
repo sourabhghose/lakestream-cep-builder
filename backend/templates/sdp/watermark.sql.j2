@@ -1,0 +1,5 @@
+-- [node:{{ node_id }}] Watermark: {{ node_label }}
+-- Watermark on column '{{ timestamp_column }}' with delay {{ delay_threshold }}
+CREATE OR REFRESH STREAMING TABLE {{ node_id | replace('-', '_') }}
+AS SELECT *
+FROM STREAM({{ upstream_table }});

@@ -156,13 +156,13 @@ Pipeline Definition
 
 ### SDP Path (Lakeflow Declarative Pipelines)
 
-- 22 Jinja2 SQL templates in `backend/templates/sdp/`
+- 29 Jinja2 SQL templates in `backend/templates/sdp/`
 - Generates `CREATE OR REFRESH STREAMING TABLE` statements
 - Output: Databricks notebook with SDP SQL cells
 
 ### SSS Path (Spark Structured Streaming)
 
-- 29 Jinja2 Python templates in `backend/templates/sss/`
+- 36 Jinja2 Python templates in `backend/templates/sss/`
 - CEP patterns use `TransformWithState` (Spark 4.0)
 - Each CEP pattern compiles to a `StatefulProcessor` subclass
 - Output: PySpark notebook with streaming dataframe operations
@@ -201,7 +201,7 @@ Single store (`usePipelineStore`) manages:
 | Component | Purpose |
 |-----------|---------|
 | `PipelineCanvas` | React Flow wrapper with drag-drop, edge validation |
-| `NodePalette` | Searchable, collapsible node catalog (41 nodes in 4 categories) |
+| `NodePalette` | Searchable, collapsible node catalog (48 nodes in 4 categories) |
 | `CustomNode` | Memoized node rendering with error states and preview |
 | `ConfigPanel` | Dynamic form generation from node registry |
 | `DynamicConfigForm` | Schema-aware dropdowns for catalog/schema/table fields |
@@ -296,7 +296,7 @@ PipelineDefinition (JSON)
 
 ## Node Type System
 
-Each of the 41 node types is defined in `NODE_REGISTRY` (`frontend/src/lib/nodeRegistry.ts`):
+Each of the 48 node types is defined in `NODE_REGISTRY` (`frontend/src/lib/nodeRegistry.ts`):
 
 ```typescript
 interface NodeDefinition {
@@ -317,7 +317,7 @@ interface NodeDefinition {
 
 - Sources: 0 inputs, 1 output
 - Sinks: 1 input, 0 outputs
-- Transforms: 1 input, 1 output (except Union/Merge: up to 8 inputs)
+- Transforms: 1 input, 1 output (except Union/Merge: up to 8 inputs, Split/Router: up to 4 outputs)
 - CEP patterns: 1-2 inputs, 1 output
 - Graph must be a DAG (directed acyclic graph)
 - Single-input enforcement: transform/sink nodes accept one input; use Union/Merge to combine streams

@@ -112,6 +112,22 @@ _env = Environment(
 )
 
 
+def _parse_json_config(val) -> list:
+    """Parse JSON config (string or list) to list."""
+    if val is None:
+        return []
+    if isinstance(val, list):
+        return val
+    if isinstance(val, str):
+        try:
+            import json
+            parsed = json.loads(val)
+            return parsed if isinstance(parsed, list) else [parsed]
+        except (json.JSONDecodeError, TypeError):
+            return []
+    return []
+
+
 def _sanitize_python_id(node_id: str) -> str:
     """Convert node ID to valid Python identifier (e.g. kafka-sink-1 -> kafka_sink_1)."""
     return node_id.replace("-", "_").replace(".", "_")
@@ -354,16 +370,10 @@ def _render_node_snippet(node: PipelineNode, edges: list) -> str:
             smtp_password=config.get("smtp_password", ""),
         )
 
-    if node.type == "lakehouse-sink":
-        template = _env.get_template("lakehouse_sink.sql.j2")
-        expectations_raw = config.get("expectations")
-        expectations = []
-        if expectations_raw:
-            import json
-            try:
-                expectations = json.loads(expectations_raw) if isinstance(expectations_raw, str) else expectations_raw
-            except (json.JSONDecodeError, TypeError):
-                expectations = []
+    if node.type in ("lakehouse-sink", "lakebase-sink"):
+        tpl_name = "lakebase_sink.sql.j2" if node.type == "lakebase-sink" else "lakehouse_sink.sql.j2"
+        template = _env.get_template(tpl_name)
+        expectations = _parse_json_config(config.get("expectations"))
         return template.render(
             node_id=node.id,
             source_table=config.get("source_table") or _source_table(),
@@ -374,6 +384,55 @@ def _render_node_snippet(node: PipelineNode, edges: list) -> str:
             partition_columns=config.get("partition_columns"),
             clustering_columns=config.get("clustering_columns"),
             expectations=expectations,
+        )
+
+    if node.type == "google-pubsub":
+        tpl = _env.get_template("google_pubsub.sql.j2")
+        return tpl.render(
+            node_id=node.id, node_label=_node_label(node),
+            project_id=config.get("project_id", ""),
+            subscription_id=config.get("subscription_id", ""),
+            deserialization_format=config.get("deserialization_format", "json"),
+        )
+
+    if node.type == "split-router":
+        tpl = _env.get_template("split_router.sql.j2")
+        routes = _parse_json_config(config.get("routes", "[]"))
+        upstream_table = _source_table().replace("-", "_")
+        return tpl.render(
+            node_id=node.id, node_label=_node_label(node),
+            upstream_table=upstream_table,
+            routes=routes,
+            default_route=config.get("default_route", "other"),
+        )
+
+    if node.type == "watermark":
+        tpl = _env.get_template("watermark.sql.j2")
+        upstream_table = _source_table().replace("-", "_")
+        return tpl.render(
+            node_id=node.id, node_label=_node_label(node),
+            upstream_table=upstream_table,
+            timestamp_column=config.get("timestamp_column", "event_time"),
+            delay_threshold=config.get("delay_threshold", "10 seconds"),
+        )
+
+    if node.type == "data-quality-expectations":
+        tpl = _env.get_template("data_quality_expectations.sql.j2")
+        expectations = _parse_json_config(config.get("expectations", "[]"))
+        upstream_table = _source_table().replace("-", "_")
+        return tpl.render(
+            node_id=node.id, node_label=_node_label(node),
+            upstream_table=upstream_table,
+            expectations=expectations,
+        )
+
+    if node.type == "feature-store-sink":
+        tpl = _env.get_template("feature_store_sink.sql.j2")
+        upstream_table = _source_table().replace("-", "_")
+        return tpl.render(
+            node_id=node.id, node_label=_node_label(node),
+            upstream_table=upstream_table,
+            feature_table_name=config.get("feature_table_name", ""),
         )
 
     if node.type == "dead-letter-queue":

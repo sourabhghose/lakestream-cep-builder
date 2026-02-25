@@ -1,0 +1,11 @@
+-- [node:{{ node_id }}] Google Pub/Sub Source: {{ node_label }}
+CREATE OR REFRESH STREAMING TABLE {{ node_id | replace('-', '_') }}_raw
+AS SELECT
+  CAST(data AS STRING) AS data,
+  CAST(messageId AS STRING) AS message_id,
+  CAST(publishTime AS TIMESTAMP) AS publish_time,
+  CAST(attributes AS MAP<STRING, STRING>) AS attributes
+FROM cloud_files(
+  'gs://{{ project_id }}/{{ subscription_id }}',
+  '{{ deserialization_format | default("json") }}'
+);

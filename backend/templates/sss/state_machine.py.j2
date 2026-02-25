@@ -1,0 +1,47 @@
+# [node:{{ node_id }}] State Machine: {{ node_label }}
+from pyspark.sql.streaming import StatefulProcessor, StatefulProcessorHandle
+from pyspark.sql.types import StructType, StructField, StringType, TimestampType
+import json
+
+class StateMachine_{{ node_id | pyvar }}(StatefulProcessor):
+    """FSM with states: {{ states | join(', ') }}"""
+
+    def init(self, handle: StatefulProcessorHandle) -> None:
+        self.handle = handle
+        self.state = handle.getValueState("fsm_state", "string")
+        self.transitions = {{ transitions | tojson }}
+        self.initial_state = "{{ states[0] }}"
+        self.terminal_states = set({{ terminal_states | default([]) | tojson }})
+        self.emit_on = "{{ emit_on | default('transition') }}"
+        {% if state_timeout %}self.handle.registerTimer({{ state_timeout }}){% endif %}
+
+    def handleInputRows(self, key, rows):
+        current = self.state.get() if self.state.exists() else self.initial_state
+        for row in rows:
+            new_state = current
+            for t in self.transitions:
+                # Evaluate transition condition
+                if t["from"] == current:
+                    new_state = t["to"]
+                    break
+            if new_state != current or self.emit_on == "all":
+                yield (key[0], current, new_state, str(row["{{ key_column }}"]),)
+            current = new_state
+            self.state.update(current)
+
+    def close(self) -> None:
+        pass
+
+df_{{ node_id | pyvar }}_output_schema = StructType([
+    StructField("{{ key_column }}", StringType()),
+    StructField("previous_state", StringType()),
+    StructField("current_state", StringType()),
+    StructField("entity_key", StringType()),
+])
+
+df_{{ node_id | pyvar }} = {{ upstream_var }}.groupBy("{{ key_column }}").transformWithState(
+    StateMachine_{{ node_id | pyvar }}(),
+    outputStructType=df_{{ node_id | pyvar }}_output_schema,
+    outputMode="append",
+    timeMode="processingTime",
+)

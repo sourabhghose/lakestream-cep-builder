@@ -23,6 +23,7 @@ export const NODE_CATEGORIES: {
       "mqtt",
       "custom-python-source",
       "stream-simulator",
+      "google-pubsub",
     ],
   },
   {
@@ -42,6 +43,8 @@ export const NODE_CATEGORIES: {
       "deduplication",
       "match-recognize-sql",
       "custom-stateful-processor",
+      "state-machine",
+      "heartbeat-liveness",
     ],
   },
   {
@@ -60,6 +63,9 @@ export const NODE_CATEGORIES: {
       "rename-cast",
       "custom-python-udf",
       "ml-model-endpoint",
+      "split-router",
+      "watermark",
+      "data-quality-expectations",
     ],
   },
   {
@@ -75,7 +81,8 @@ export const NODE_CATEGORIES: {
       "sql-warehouse-sink",
       "unity-catalog-table-sink",
       "dead-letter-queue",
-      "lakehouse-sink",
+      "feature-store-sink",
+      "lakebase-sink",
     ],
   },
 ];
@@ -2246,10 +2253,10 @@ export const NODE_REGISTRY: Record<NodeType, NodeDefinition> = {
     ],
   },
 
-  "lakehouse-sink": {
-    type: "lakehouse-sink",
-    label: "Lakehouse Sink",
-    description: "Write to Databricks Lakehouse with streaming tables, materialized views, and data quality expectations",
+  "lakebase-sink": {
+    type: "lakebase-sink",
+    label: "Lakebase Sink",
+    description: "Write to Databricks Lakebase (serverless PostgreSQL) with streaming tables, materialized views, and data quality expectations",
     category: "sink",
     codeTarget: "sdp-or-sss",
     icon: "Warehouse",
@@ -2344,6 +2351,423 @@ export const NODE_REGISTRY: Record<NodeType, NodeDefinition> = {
         placeholder: '[{"name": "valid_amount", "constraint": "amount > 0", "action": "drop"}]',
         helpText: "JSON array of {name, constraint, action} — action: drop, fail, or warn",
         group: "Quality",
+      },
+    ],
+  },
+
+  // ============ NEW: GOOGLE PUB/SUB SOURCE ============
+  "google-pubsub": {
+    type: "google-pubsub",
+    label: "Google Pub/Sub",
+    description: "Subscribe to Google Cloud Pub/Sub topics for streaming events",
+    category: "source",
+    codeTarget: "sdp-or-sss",
+    icon: "Cloud",
+    color: "#60a5fa",
+    inputs: 0,
+    outputs: 1,
+    configFields: [
+      {
+        key: "projectId",
+        label: "GCP Project ID",
+        type: "text",
+        required: true,
+        placeholder: "my-gcp-project",
+        group: "Connection",
+      },
+      {
+        key: "subscriptionId",
+        label: "Subscription ID",
+        type: "text",
+        required: true,
+        placeholder: "my-subscription",
+        helpText: "Pub/Sub subscription name",
+        group: "Connection",
+      },
+      {
+        key: "credentialsPath",
+        label: "Credentials Path",
+        type: "text",
+        required: false,
+        placeholder: "/dbfs/keys/gcp-service-account.json",
+        helpText:
+          "Path to GCP service account JSON key file (optional if using Databricks secrets)",
+        group: "Connection",
+      },
+      {
+        key: "deserializationFormat",
+        label: "Deserialization Format",
+        type: "select",
+        required: true,
+        defaultValue: "json",
+        options: [
+          { value: "json", label: "JSON" },
+          { value: "avro", label: "Avro" },
+          { value: "protobuf", label: "Protobuf" },
+          { value: "text", label: "Plain Text" },
+        ],
+        group: "Format",
+      },
+    ],
+  },
+
+  // ============ NEW: CEP PATTERN – STATE MACHINE ============
+  "state-machine": {
+    type: "state-machine",
+    label: "State Machine",
+    description:
+      "Multi-state FSM with named transitions (e.g. idle → active → alert → resolved)",
+    category: "cep-pattern",
+    codeTarget: "sss",
+    icon: "GitBranch",
+    color: "#8b5cf6",
+    inputs: 1,
+    outputs: 1,
+    configFields: [
+      {
+        key: "states",
+        label: "States",
+        type: "code",
+        required: true,
+        codeLanguage: "json",
+        placeholder: '["idle", "active", "alert", "resolved"]',
+        helpText: "JSON array of state names. First state is the initial state.",
+        group: "FSM",
+      },
+      {
+        key: "transitions",
+        label: "Transitions",
+        type: "code",
+        required: true,
+        codeLanguage: "json",
+        placeholder:
+          '[{"from": "idle", "to": "active", "condition": "event_type = \'start\'"}, {"from": "active", "to": "alert", "condition": "severity > 5"}]',
+        helpText: "JSON array of {from, to, condition} transition rules",
+        group: "FSM",
+      },
+      {
+        key: "keyColumn",
+        label: "Entity Key",
+        type: "text",
+        required: true,
+        placeholder: "device_id",
+        helpText:
+          "Column used to track state per entity (e.g. device_id, user_id)",
+        group: "FSM",
+      },
+      {
+        key: "emitOn",
+        label: "Emit On",
+        type: "select",
+        required: true,
+        defaultValue: "transition",
+        options: [
+          { value: "transition", label: "Every Transition" },
+          { value: "terminal", label: "Terminal States Only" },
+          { value: "all", label: "All Events" },
+        ],
+        helpText: "When to emit output events",
+        group: "FSM",
+      },
+      {
+        key: "terminalStates",
+        label: "Terminal States",
+        type: "text",
+        required: false,
+        placeholder: "resolved, closed",
+        helpText:
+          "Comma-separated list of states that end the FSM (used with 'Terminal States Only' emit mode)",
+        group: "FSM",
+      },
+      {
+        key: "stateTimeout",
+        label: "State Timeout",
+        type: "duration",
+        required: false,
+        defaultValue: { value: 30, unit: "minutes" },
+        helpText:
+          "Reset to initial state if no event within this duration",
+        group: "FSM",
+      },
+    ],
+    advancedFields: [
+      {
+        key: "groupByKeys",
+        label: "Group By Keys",
+        type: "text",
+        required: false,
+        placeholder: "device_id, region",
+        helpText: "Additional columns to partition state by",
+        group: "Advanced",
+      },
+      {
+        key: "watermarkDuration",
+        label: "Watermark Duration",
+        type: "duration",
+        required: false,
+        defaultValue: { value: 10, unit: "seconds" },
+        group: "Advanced",
+      },
+    ],
+  },
+
+  // ============ NEW: CEP PATTERN – HEARTBEAT / LIVENESS ============
+  "heartbeat-liveness": {
+    type: "heartbeat-liveness",
+    label: "Heartbeat / Liveness",
+    description:
+      "Alert when no event is received from an entity within a time window",
+    category: "cep-pattern",
+    codeTarget: "sss",
+    icon: "HeartPulse",
+    color: "#8b5cf6",
+    inputs: 1,
+    outputs: 1,
+    configFields: [
+      {
+        key: "entityKey",
+        label: "Entity Key",
+        type: "text",
+        required: true,
+        placeholder: "device_id",
+        helpText:
+          "Column identifying the entity (device, sensor, user)",
+        group: "Liveness",
+      },
+      {
+        key: "expectedInterval",
+        label: "Expected Interval",
+        type: "duration",
+        required: true,
+        defaultValue: { value: 5, unit: "minutes" },
+        helpText: "Maximum expected time between heartbeats",
+        group: "Liveness",
+      },
+      {
+        key: "gracePeriod",
+        label: "Grace Period",
+        type: "duration",
+        required: false,
+        defaultValue: { value: 1, unit: "minutes" },
+        helpText:
+          "Additional buffer before declaring entity as dead",
+        group: "Liveness",
+      },
+      {
+        key: "outputMode",
+        label: "Output Mode",
+        type: "select",
+        required: true,
+        defaultValue: "dead-only",
+        options: [
+          {
+            value: "dead-only",
+            label: "Dead Only — emit when entity goes silent",
+          },
+          {
+            value: "alive-and-dead",
+            label: "Alive & Dead — emit status for all",
+          },
+          {
+            value: "status-change",
+            label: "Status Change — emit on alive↔dead transitions",
+          },
+        ],
+        group: "Liveness",
+      },
+    ],
+    advancedFields: [
+      {
+        key: "groupByKeys",
+        label: "Group By Keys",
+        type: "text",
+        required: false,
+        placeholder: "region, fleet_id",
+        group: "Advanced",
+      },
+      {
+        key: "watermarkDuration",
+        label: "Watermark Duration",
+        type: "duration",
+        required: false,
+        defaultValue: { value: 10, unit: "seconds" },
+        group: "Advanced",
+      },
+    ],
+  },
+
+  // ============ NEW: TRANSFORM – SPLIT / ROUTER ============
+  "split-router": {
+    type: "split-router",
+    label: "Split / Router",
+    description:
+      "Route events to different outputs based on conditions (1 input → multiple outputs)",
+    category: "transform",
+    codeTarget: "sdp-or-sss",
+    icon: "Split",
+    color: "#22c55e",
+    inputs: 1,
+    outputs: 4,
+    configFields: [
+      {
+        key: "routes",
+        label: "Routes",
+        type: "code",
+        required: true,
+        codeLanguage: "json",
+        placeholder:
+          '[{"name": "high_value", "condition": "amount > 1000"}, {"name": "low_value", "condition": "amount <= 1000"}]',
+        helpText:
+          "JSON array of {name, condition} routes. Events matching a condition are sent to that output. Unmatched events go to the default output.",
+        group: "Routing",
+      },
+      {
+        key: "defaultRoute",
+        label: "Default Route Name",
+        type: "text",
+        required: false,
+        defaultValue: "other",
+        placeholder: "other",
+        helpText:
+          "Name for events that don't match any route condition",
+        group: "Routing",
+      },
+    ],
+  },
+
+  // ============ NEW: TRANSFORM – WATERMARK ============
+  watermark: {
+    type: "watermark",
+    label: "Watermark",
+    description:
+      "Configure event-time watermark for late data handling",
+    category: "transform",
+    codeTarget: "sdp-or-sss",
+    icon: "Clock",
+    color: "#22c55e",
+    inputs: 1,
+    outputs: 1,
+    configFields: [
+      {
+        key: "timestampColumn",
+        label: "Timestamp Column",
+        type: "text",
+        required: true,
+        placeholder: "event_time",
+        helpText: "Column containing the event timestamp",
+        group: "Watermark",
+      },
+      {
+        key: "delayThreshold",
+        label: "Delay Threshold",
+        type: "duration",
+        required: true,
+        defaultValue: { value: 10, unit: "seconds" },
+        helpText:
+          "Maximum expected delay — events arriving later than this are dropped",
+        group: "Watermark",
+      },
+    ],
+  },
+
+  // ============ NEW: TRANSFORM – DATA QUALITY ============
+  "data-quality-expectations": {
+    type: "data-quality-expectations",
+    label: "Data Quality",
+    description:
+      "Apply inline DLT expectations (expect, expect_or_drop, expect_or_fail)",
+    category: "transform",
+    codeTarget: "sdp-or-sss",
+    icon: "ShieldCheck",
+    color: "#22c55e",
+    inputs: 1,
+    outputs: 1,
+    configFields: [
+      {
+        key: "expectations",
+        label: "Expectations",
+        type: "code",
+        required: true,
+        codeLanguage: "json",
+        placeholder:
+          '[{"name": "valid_id", "constraint": "id IS NOT NULL", "action": "drop"}, {"name": "positive_amount", "constraint": "amount > 0", "action": "fail"}]',
+        helpText:
+          "JSON array of {name, constraint, action}. Actions: warn (log only), drop (filter out), fail (abort pipeline)",
+        group: "Quality",
+      },
+      {
+        key: "quarantineTable",
+        label: "Quarantine Table",
+        type: "text",
+        required: false,
+        placeholder: "catalog.schema.quarantine_events",
+        helpText:
+          "Optional table to write rejected rows to (for 'drop' actions)",
+        group: "Quality",
+      },
+    ],
+  },
+
+  // ============ NEW: SINK – FEATURE STORE ============
+  "feature-store-sink": {
+    type: "feature-store-sink",
+    label: "Feature Store Sink",
+    description:
+      "Write features to Databricks Feature Store for ML model serving",
+    category: "sink",
+    codeTarget: "sss",
+    icon: "Layers",
+    color: "#f97316",
+    inputs: 1,
+    outputs: 0,
+    configFields: [
+      {
+        key: "featureTableName",
+        label: "Feature Table Name",
+        type: "text",
+        required: true,
+        placeholder: "catalog.schema.user_features",
+        helpText: "Fully qualified Unity Catalog feature table name",
+        group: "Feature Store",
+      },
+      {
+        key: "primaryKeys",
+        label: "Primary Keys",
+        type: "text",
+        required: true,
+        placeholder: "user_id",
+        helpText: "Comma-separated list of primary key columns",
+        group: "Feature Store",
+      },
+      {
+        key: "timestampKey",
+        label: "Timestamp Key",
+        type: "text",
+        required: false,
+        placeholder: "event_time",
+        helpText:
+          "Timestamp column for time-series feature tables (enables point-in-time lookups)",
+        group: "Feature Store",
+      },
+      {
+        key: "description",
+        label: "Table Description",
+        type: "text",
+        required: false,
+        placeholder: "Real-time user features for fraud model",
+        group: "Feature Store",
+      },
+      {
+        key: "writeMode",
+        label: "Write Mode",
+        type: "select",
+        required: true,
+        defaultValue: "merge",
+        options: [
+          { value: "merge", label: "Merge (upsert by primary keys)" },
+          { value: "overwrite", label: "Overwrite" },
+        ],
+        group: "Write",
       },
     ],
   },

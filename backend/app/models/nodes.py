@@ -1,7 +1,7 @@
 """
 Node type enums and metadata for the CEP pipeline builder.
 
-Defines all 38 supported node types with their categories and code targets.
+Defines all 48 supported node types with their categories and code targets.
 """
 
 from enum import Enum
@@ -32,9 +32,9 @@ class NodeMetadata(TypedDict):
     code_target: CodeTarget
 
 
-# All 38 node types with their category and code_target
+# All 48 node types with their category and code_target
 NODE_REGISTRY: dict[str, NodeMetadata] = {
-    # Sources (8)
+    # Sources (10)
     "kafka-topic": {"category": NodeCategory.SOURCE, "code_target": CodeTarget.SDP_OR_SSS},
     "delta-table-source": {"category": NodeCategory.SOURCE, "code_target": CodeTarget.SDP_OR_SSS},
     "auto-loader": {"category": NodeCategory.SOURCE, "code_target": CodeTarget.SDP_OR_SSS},
@@ -44,7 +44,8 @@ NODE_REGISTRY: dict[str, NodeMetadata] = {
     "mqtt": {"category": NodeCategory.SOURCE, "code_target": CodeTarget.SDP_OR_SSS},
     "custom-python-source": {"category": NodeCategory.SOURCE, "code_target": CodeTarget.SSS},
     "stream-simulator": {"category": NodeCategory.SOURCE, "code_target": CodeTarget.SDP_OR_SSS},
-    # CEP Patterns (12)
+    "google-pubsub": {"category": NodeCategory.SOURCE, "code_target": CodeTarget.SDP_OR_SSS},
+    # CEP Patterns (14)
     "sequence-detector": {"category": NodeCategory.CEP_PATTERN, "code_target": CodeTarget.SSS},
     "absence-detector": {"category": NodeCategory.CEP_PATTERN, "code_target": CodeTarget.SSS},
     "count-threshold": {"category": NodeCategory.CEP_PATTERN, "code_target": CodeTarget.SSS},
@@ -57,7 +58,9 @@ NODE_REGISTRY: dict[str, NodeMetadata] = {
     "deduplication": {"category": NodeCategory.CEP_PATTERN, "code_target": CodeTarget.SSS},
     "match-recognize-sql": {"category": NodeCategory.CEP_PATTERN, "code_target": CodeTarget.SSS},
     "custom-stateful-processor": {"category": NodeCategory.CEP_PATTERN, "code_target": CodeTarget.SSS},
-    # Transforms (10)
+    "state-machine": {"category": NodeCategory.CEP_PATTERN, "code_target": CodeTarget.SSS},
+    "heartbeat-liveness": {"category": NodeCategory.CEP_PATTERN, "code_target": CodeTarget.SSS},
+    # Transforms (14)
     "filter": {"category": NodeCategory.TRANSFORM, "code_target": CodeTarget.SDP_OR_SSS},
     "map-select": {"category": NodeCategory.TRANSFORM, "code_target": CodeTarget.SDP_OR_SSS},
     "flatten-explode": {"category": NodeCategory.TRANSFORM, "code_target": CodeTarget.SDP_OR_SSS},
@@ -69,7 +72,10 @@ NODE_REGISTRY: dict[str, NodeMetadata] = {
     "rename-cast": {"category": NodeCategory.TRANSFORM, "code_target": CodeTarget.SDP_OR_SSS},
     "custom-python-udf": {"category": NodeCategory.TRANSFORM, "code_target": CodeTarget.SSS},
     "ml-model-endpoint": {"category": NodeCategory.TRANSFORM, "code_target": CodeTarget.SSS},
-    # Sinks (9)
+    "split-router": {"category": NodeCategory.TRANSFORM, "code_target": CodeTarget.SDP_OR_SSS},
+    "watermark": {"category": NodeCategory.TRANSFORM, "code_target": CodeTarget.SDP_OR_SSS},
+    "data-quality-expectations": {"category": NodeCategory.TRANSFORM, "code_target": CodeTarget.SDP_OR_SSS},
+    # Sinks (10)
     "delta-table-sink": {"category": NodeCategory.SINK, "code_target": CodeTarget.SDP_OR_SSS},
     "kafka-topic-sink": {"category": NodeCategory.SINK, "code_target": CodeTarget.SDP_OR_SSS},
     "rest-webhook-sink": {"category": NodeCategory.SINK, "code_target": CodeTarget.SDP_OR_SSS},
@@ -78,5 +84,6 @@ NODE_REGISTRY: dict[str, NodeMetadata] = {
     "sql-warehouse-sink": {"category": NodeCategory.SINK, "code_target": CodeTarget.SDP_OR_SSS},
     "unity-catalog-table-sink": {"category": NodeCategory.SINK, "code_target": CodeTarget.SDP_OR_SSS},
     "dead-letter-queue": {"category": NodeCategory.SINK, "code_target": CodeTarget.SDP_OR_SSS},
-    "lakehouse-sink": {"category": NodeCategory.SINK, "code_target": CodeTarget.SDP_OR_SSS},
+    "feature-store-sink": {"category": NodeCategory.SINK, "code_target": CodeTarget.SSS},
+    "lakebase-sink": {"category": NodeCategory.SINK, "code_target": CodeTarget.SDP_OR_SSS},
 }

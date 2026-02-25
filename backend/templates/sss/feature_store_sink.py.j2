@@ -1,0 +1,13 @@
+# [node:{{ node_id }}] Feature Store Sink: {{ node_label }}
+from databricks.feature_engineering import FeatureEngineeringClient
+
+fe_client = FeatureEngineeringClient()
+
+# Create or update the feature table
+fe_client.write_table(
+    name="{{ feature_table_name }}",
+    df={{ upstream_var }},
+    mode="{{ write_mode | default('merge') }}",
+{% if timestamp_key %}    timestamp_keys=["{{ timestamp_key }}"],
+{% endif %}
+)
