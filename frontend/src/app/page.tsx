@@ -23,6 +23,7 @@ import {
   Workflow,
   Play,
   Sparkles,
+  Eraser,
 } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import PipelineCanvas from "@/components/canvas/PipelineCanvas";
@@ -340,6 +341,19 @@ export default function Home() {
           >
             <Network className="h-4 w-4" />
             Auto Layout
+          </button>
+          <button
+            className="flex items-center gap-2 rounded-md border border-[#30363d] bg-[#21262d] px-4 py-2 text-sm font-medium text-[#c9d1d9] hover:bg-red-900/30 hover:text-red-400 hover:border-red-500/40 disabled:opacity-60 transition-colors"
+            onClick={() => {
+              resetPipeline();
+              addToast("Canvas cleared", "success");
+            }}
+            disabled={nodes.length === 0}
+            title="Clear all nodes and edges from the canvas"
+            aria-label="Clear canvas"
+          >
+            <Eraser className="h-4 w-4" />
+            Clear
           </button>
           <button
             className="flex items-center gap-2 rounded-md bg-gradient-to-r from-purple-600/80 to-blue-600/80 px-4 py-2 text-sm font-medium text-white hover:from-purple-500 hover:to-blue-500 transition-all"
