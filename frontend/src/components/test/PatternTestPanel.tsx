@@ -1,11 +1,18 @@
 "use client";
 
 import { useState, useCallback, useRef, useMemo } from "react";
-import { X, Play, Loader2, Upload, FileJson, AlertCircle } from "lucide-react";
+import { X, Play, Loader2, Upload, FileJson, AlertCircle, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePipelineStore } from "@/hooks/usePipelineStore";
-import { testPattern, type PatternTestResponse, type PatternTestMatch } from "@/lib/api";
+import {
+  testPattern,
+  generatePatternFromNaturalLanguage,
+  type PatternTestResponse,
+  type PatternTestMatch,
+} from "@/lib/api";
 import { NODE_REGISTRY } from "@/lib/nodeRegistry";
+import { useToastStore } from "@/hooks/useToastStore";
+import type { NodeType } from "@/types/nodes";
 
 const CEP_PATTERN_TYPES = new Set([
   "sequence-detector", "absence-detector", "count-threshold", "velocity-detector",
@@ -61,6 +68,9 @@ export default function PatternTestPanel({ isOpen, onClose }: PatternTestPanelPr
   const groups = usePipelineStore((s) => s.groups);
   const getExpandedNodesAndEdges = usePipelineStore((s) => s.getExpandedNodesAndEdges);
   const selectNode = usePipelineStore((s) => s.selectNode);
+  const addNode = usePipelineStore((s) => s.addNode);
+  const triggerCodeGen = usePipelineStore((s) => s.triggerCodeGen);
+  const addToast = useToastStore((s) => s.addToast);
 
   const { nodes: expandedNodes, edges: expandedEdges } = useMemo(
     () => getExpandedNodesAndEdges(),
@@ -71,6 +81,9 @@ export default function PatternTestPanel({ isOpen, onClose }: PatternTestPanelPr
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<PatternTestResponse | null>(null);
+  const [nlPrompt, setNlPrompt] = useState("");
+  const [nlModel, setNlModel] = useState<"sonnet" | "opus">("sonnet");
+  const [nlLoading, setNlLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const eventCount = useCallback(() => {
@@ -149,6 +162,56 @@ export default function PatternTestPanel({ isOpen, onClose }: PatternTestPanelPr
     selectNode(match.pattern_node_id);
   };
 
+  const handleGeneratePatternNode = async () => {
+    if (!nlPrompt.trim()) {
+      setError("Enter a natural language pattern prompt first.");
+      return;
+    }
+    setNlLoading(true);
+    setError(null);
+    try {
+      const res = await generatePatternFromNaturalLanguage(nlPrompt.trim(), nlModel);
+      const suggestedType = res.suggestion.node_type as NodeType;
+      const def = NODE_REGISTRY[suggestedType];
+      if (!def) {
+        setError(`Unsupported suggested node type: ${res.suggestion.node_type}`);
+        return;
+      }
+      const nodeId = `${suggestedType}-${Date.now()}`;
+      const newNode = {
+        id: nodeId,
+        type: "custom" as const,
+        position: { x: 180 + expandedNodes.length * 40, y: 180 },
+        data: {
+          type: suggestedType,
+          label: res.suggestion.label || def.label,
+          config: res.suggestion.config ?? {},
+          codeTarget: def.codeTarget,
+          configSummary: "",
+        },
+      };
+      addNode(newNode);
+      selectNode(nodeId);
+      triggerCodeGen();
+
+      if (res.warnings.length > 0) {
+        addToast(res.warnings[0], "warning");
+      }
+      addToast(
+        res.fallback_used
+          ? "Pattern generated with fallback mapper"
+          : `Pattern generated via ${res.suggestion.model_used ?? nlModel} endpoint`,
+        "success"
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to generate pattern from prompt"
+      );
+    } finally {
+      setNlLoading(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   const count = eventCount();
@@ -177,6 +240,44 @@ export default function PatternTestPanel({ isOpen, onClose }: PatternTestPanelPr
         </div>
 
         <div className="flex flex-1 flex-col overflow-y-auto p-4">
+          <div className="mb-4 space-y-3 rounded-lg border border-[#30363d] bg-[#21262d]/40 p-3">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-[#c9d1d9]">
+                Natural Language Pattern
+              </label>
+              <select
+                value={nlModel}
+                onChange={(e) => setNlModel(e.target.value as "sonnet" | "opus")}
+                className="rounded border border-[#30363d] bg-[#161b22] px-2 py-1 text-xs text-[#c9d1d9]"
+                aria-label="Preferred LLM model"
+              >
+                <option value="sonnet">Sonnet endpoint</option>
+                <option value="opus">Opus endpoint</option>
+              </select>
+            </div>
+            <textarea
+              value={nlPrompt}
+              onChange={(e) => setNlPrompt(e.target.value)}
+              placeholder="Example: Alert when a truck exceeds 80 km/h for 3 consecutive minutes inside a geofence"
+              className="h-24 w-full resize-y rounded border border-[#30363d] bg-[#161b22] px-3 py-2 text-sm text-[#e8eaed] placeholder-[#484f58] focus:border-purple-500 focus:outline-none"
+              spellCheck={false}
+            />
+            <div className="flex justify-end">
+              <button
+                onClick={handleGeneratePatternNode}
+                disabled={nlLoading}
+                className="flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50"
+              >
+                {nlLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+                Generate Pattern Node
+              </button>
+            </div>
+          </div>
+
           {/* Input section */}
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-2">
@@ -285,6 +386,51 @@ export default function PatternTestPanel({ isOpen, onClose }: PatternTestPanelPr
                         <div className="mt-1 text-xs text-[#484f58]">
                           {match.details}
                         </div>
+                        {(match.timeline?.length ||
+                          match.matched_event_payloads?.length ||
+                          (match.state_snapshot &&
+                            Object.keys(match.state_snapshot).length > 0)) && (
+                          <details className="mt-2 rounded border border-[#30363d] bg-[#161b22]/70 p-2">
+                            <summary className="cursor-pointer text-xs text-[#8b949e]">
+                              Explainability
+                            </summary>
+                            {match.timeline && match.timeline.length > 0 && (
+                              <div className="mt-2">
+                                <div className="text-[11px] font-medium text-[#c9d1d9]">
+                                  Trigger Timeline
+                                </div>
+                                <ul className="mt-1 space-y-1 text-[11px] text-[#8b949e]">
+                                  {match.timeline.map((t, i) => (
+                                    <li key={`${match.pattern_node_id}-tl-${i}`}>
+                                      E{t.event_index} · {t.timestamp}
+                                      {t.event_type ? ` · ${t.event_type}` : ""}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            {match.state_snapshot && Object.keys(match.state_snapshot).length > 0 && (
+                              <div className="mt-2">
+                                <div className="text-[11px] font-medium text-[#c9d1d9]">
+                                  State Snapshot
+                                </div>
+                                <pre className="mt-1 overflow-x-auto rounded bg-[#0d1117] p-2 text-[10px] text-[#8b949e]">
+                                  {JSON.stringify(match.state_snapshot, null, 2)}
+                                </pre>
+                              </div>
+                            )}
+                            {match.matched_event_payloads && match.matched_event_payloads.length > 0 && (
+                              <div className="mt-2">
+                                <div className="text-[11px] font-medium text-[#c9d1d9]">
+                                  Matched Events
+                                </div>
+                                <pre className="mt-1 max-h-32 overflow-auto rounded bg-[#0d1117] p-2 text-[10px] text-[#8b949e]">
+                                  {JSON.stringify(match.matched_event_payloads, null, 2)}
+                                </pre>
+                              </div>
+                            )}
+                          </details>
+                        )}
                       </li>
                     ))}
                   </ul>

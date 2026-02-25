@@ -67,6 +67,7 @@ Deployed as a **Databricks App** — a single FastAPI process serves the React f
 | **14 CEP Patterns** | Sequence, absence, count, velocity, geofence, correlation, trend, outlier, session, dedup, MATCH_RECOGNIZE, custom, state machine, heartbeat/liveness |
 | **TransformWithState** | Spark 4.0 stateful processing for advanced CEP patterns |
 | **Pattern Test Mode** | Upload sample events, simulate CEP matching, see results + event flow |
+| **NL Pattern Generation** | Describe a CEP rule in natural language and generate a pre-configured pattern node (Sonnet/Opus endpoint with fallback) |
 | **Monaco Editor** | Bidirectional sync, diff view vs last deploy, line-level code annotations |
 | **Schema Discovery** | Browse Unity Catalog catalogs/schemas/tables with cascading dropdowns |
 | **Data Preview** | Per-node synthetic preview + flow-through source-to-sink simulation |
@@ -104,6 +105,7 @@ Deployed as a **Databricks App** — a single FastAPI process serves the React f
 | **Accessibility** | ARIA labels, keyboard navigation, skip links, focus rings |
 | **Error Boundaries** | Graceful error handling with retry logic |
 | **Help System** | Node tooltips, keyboard shortcuts, quick start guide |
+| **Explainability History** | Persist pattern test runs with matched payloads, timelines, and state snapshots for audit/replay |
 
 ---
 
@@ -180,6 +182,9 @@ PGSSLMODE=require
 # Databricks (auto-injected by Databricks Apps)
 DATABRICKS_HOST=                 # Workspace URL
 DATABRICKS_TOKEN=                # PAT or OAuth token
+DATABRICKS_LLM_SONNET_ENDPOINT=  # Databricks serving endpoint for Sonnet
+DATABRICKS_LLM_OPUS_ENDPOINT=    # Databricks serving endpoint for Opus
+DATABRICKS_LLM_ENDPOINT=         # Optional generic fallback endpoint
 
 # AI Pipeline Generator (optional — defaults shown)
 AI_MODEL_ENDPOINT=databricks-claude-sonnet-4-6  # Foundation Model serving endpoint
@@ -305,6 +310,7 @@ Powered by **Claude Sonnet on Databricks** Foundation Model APIs. No API keys ne
 | `deploy_history` | Deployment audit trail — job IDs, status, timestamps, errors |
 | `user_preferences` | Per-user settings — default catalog/schema, canvas preferences |
 | `saved_templates` | Built-in (19) + user-created pipeline templates |
+| `pattern_test_history` | Persisted explainability runs from Pattern Test mode (matches, timeline, state snapshot) |
 
 ---
 
@@ -329,6 +335,9 @@ Powered by **Claude Sonnet on Databricks** Foundation Model APIs. No API keys ne
 | `/api/preview/flow` | POST | Flow-through preview (source to sink) |
 | `/api/pattern/test` | POST | Test CEP patterns against sample events |
 | `/api/ai/generate` | POST | AI-powered pipeline generation from natural language (Claude Sonnet) |
+| `/api/pattern/nl-generate` | POST | Generate CEP pattern node config from natural language |
+| `/api/pattern/history` | GET | List persisted pattern explainability runs |
+| `/api/pattern/history/{run_id}` | GET | Get full explainability payload for one run |
 | `/api/templates` | GET, POST | List/create pipeline templates |
 | `/api/templates/{id}` | DELETE | Delete user template |
 | `/api/preferences` | GET, PUT | Get/update user preferences |

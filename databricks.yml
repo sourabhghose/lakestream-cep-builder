@@ -46,3 +46,7 @@ targets:
     default: true
     workspace:
       host: https://e2-demo-west.cloud.databricks.com
+  field_eng:
+    mode: development
+    workspace:
+      host: https://e2-demo-field-eng.cloud.databricks.com
