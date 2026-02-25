@@ -128,9 +128,13 @@ def _call_foundation_model(prompt: str) -> dict:
 
         w = WorkspaceClient()
         host = w.config.host.rstrip("/")
-        header_factory = w.config.authenticate()
         url = f"{host}/serving-endpoints/{AI_MODEL_ENDPOINT}/invocations"
-        auth_headers = header_factory("POST", url)
+
+        auth_result = w.config.authenticate()
+        if callable(auth_result):
+            auth_headers = auth_result("POST", url)
+        else:
+            auth_headers = auth_result
 
         logger.info("Calling model endpoint: %s", url)
         resp = httpx.post(
