@@ -522,7 +522,7 @@ export const PIPELINE_TEMPLATES: PipelineTemplate[] = [
     id: "trucking-iot-analytics",
     name: "Trucking IoT Analytics",
     description:
-      "Monitor a fleet of trucks in real time: join geo-location and speed sensor streams, detect speeding violations (avg speed > 80 mph over 3-min windows), trigger alerts, apply ML predictions, and sink to a lakehouse for BI.",
+      "Monitor a fleet of trucks in real time: join geo-location and speed sensor streams, detect speeding violations (avg speed > 80 mph over 3-min windows), trigger alerts, apply ML predictions, and sink to Lakebase for BI.",
     industry: "Transportation",
     difficulty: "advanced",
     nodes: [
@@ -624,16 +624,613 @@ export const PIPELINE_TEMPLATES: PipelineTemplate[] = [
       createEdge("kafka-speed", "join-drivers"),
       // Join → Filter violations
       createEdge("join-drivers", "filter-violations"),
-      // Violations → ML prediction → lakehouse
       createEdge("filter-violations", "ml-predict"),
-      createEdge("ml-predict", "lakehouse-predictions"),
-      // Violations → lakehouse for BI
-      createEdge("filter-violations", "lakehouse-violations"),
+      createEdge("ml-predict", "lakebase-predictions"),
+      createEdge("filter-violations", "lakebase-violations"),
       // Violations → windowed avg speed → speeding filter → alerts
       createEdge("filter-violations", "avg-speed"),
       createEdge("avg-speed", "filter-speeding"),
       createEdge("filter-speeding", "email-alert"),
       createEdge("filter-speeding", "slack-alert"),
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // NEW ADVANCED TEMPLATES (8)
+  // ═══════════════════════════════════════════════════════════════
+
+  {
+    id: "patient-vitals-monitoring",
+    name: "Patient Vitals Monitoring",
+    description:
+      "Real-time ICU monitoring: detect silent monitors via heartbeat/liveness, track patient state transitions (stable→warning→critical→code blue), trend detection on vitals, ML severity prediction, and multi-channel alerts.",
+    industry: "Healthcare",
+    difficulty: "advanced",
+    nodes: [
+      createNode("mqtt-vitals", "mqtt", 0, 0, {
+        brokerUrl: "tcp://hospital-broker:1883",
+        topicFilter: "icu/+/vitals",
+        qos: "1",
+        clientId: "icu-vitals-consumer",
+      }, "ICU Vitals Stream"),
+      createNode("watermark-vitals", "watermark", 200, 0, {
+        timestampColumn: "event_time",
+        delayThreshold: { value: 5, unit: "seconds" },
+      }, "Watermark (5s)"),
+      createNode("heartbeat-monitor", "heartbeat-liveness", 200, 150, {
+        entityKey: "device_id",
+        expectedInterval: { value: 30, unit: "seconds" },
+        gracePeriod: { value: 10, unit: "seconds" },
+        outputMode: "dead-only",
+      }, "Silent Monitor Alert"),
+      createNode("trend-vitals", "trend-detector", 420, -60, {
+        valueField: "heart_rate",
+        direction: "up",
+        consecutiveCount: 5,
+        tolerancePercent: 10,
+      }, "Heart Rate Trend"),
+      createNode("state-patient", "state-machine", 420, 60, {
+        states: '["stable", "warning", "critical", "code_blue"]',
+        transitions: '[{"from":"stable","to":"warning","condition":"heart_rate > 100 OR spo2 < 92"},{"from":"warning","to":"critical","condition":"heart_rate > 130 OR spo2 < 85"},{"from":"critical","to":"code_blue","condition":"heart_rate > 150 OR spo2 < 75"},{"from":"warning","to":"stable","condition":"heart_rate < 90 AND spo2 > 95"},{"from":"critical","to":"warning","condition":"heart_rate < 120 AND spo2 > 88"}]',
+        keyColumn: "patient_id",
+        emitOn: "transition",
+        terminalStates: "code_blue",
+        stateTimeout: { value: 60, unit: "minutes" },
+      }, "Patient State Machine"),
+      createNode("ml-severity", "ml-model-endpoint", 640, -60, {
+        endpointName: "patient-severity-model",
+        inputColumns: "heart_rate, spo2, blood_pressure, temperature",
+        outputColumn: "severity_score",
+        outputType: "DoubleType()",
+        timeout: 3000,
+        fallbackValue: "-1.0",
+      }, "Severity Prediction"),
+      createNode("split-severity", "split-router", 640, 60, {
+        routes: '[{"name":"critical","condition":"current_state IN (\'critical\',\'code_blue\')"},{"name":"warning","condition":"current_state = \'warning\'"}]',
+        defaultRoute: "routine",
+      }, "Route by Severity"),
+      createNode("pagerduty-critical", "slack-teams-pagerduty", 880, 0, {
+        provider: "pagerduty",
+        webhookUrl: "https://events.pagerduty.com/v2/enqueue",
+        messageTemplate: "CODE BLUE: Patient {{patient_id}} — {{current_state}} — HR: {{heart_rate}}, SpO2: {{spo2}}",
+      }, "PagerDuty (Critical)"),
+      createNode("delta-vitals", "delta-table-sink", 880, 120, {
+        catalog: "main",
+        schema: "healthcare",
+        table: "patient_vitals_events",
+        writeMode: "append",
+      }, "Vitals History"),
+      createNode("delta-silent", "delta-table-sink", 420, 240, {
+        catalog: "main",
+        schema: "healthcare",
+        table: "silent_device_alerts",
+        writeMode: "append",
+      }, "Silent Device Log"),
+    ],
+    edges: [
+      createEdge("mqtt-vitals", "watermark-vitals"),
+      createEdge("mqtt-vitals", "heartbeat-monitor"),
+      createEdge("watermark-vitals", "trend-vitals"),
+      createEdge("watermark-vitals", "state-patient"),
+      createEdge("trend-vitals", "ml-severity"),
+      createEdge("state-patient", "split-severity"),
+      createEdge("ml-severity", "delta-vitals"),
+      createEdge("split-severity", "pagerduty-critical"),
+      createEdge("split-severity", "delta-vitals"),
+      createEdge("heartbeat-monitor", "delta-silent"),
+    ],
+  },
+
+  {
+    id: "telecom-network-anomaly",
+    name: "Network Anomaly Detection",
+    description:
+      "Monitor cell tower KPIs: detect outlier latency, velocity of handoff failures, and absent tower heartbeats. Watermark for out-of-order telemetry. Route critical vs warning alerts.",
+    industry: "Telecom",
+    difficulty: "advanced",
+    nodes: [
+      createNode("kafka-towers", "kafka-topic", 0, 0, {
+        bootstrapServers: "broker:9092",
+        topics: "cell_tower_metrics",
+        consumerGroup: "telecom-anomaly-consumer",
+        startingOffset: "latest",
+        schemaSource: "infer",
+        deserializationFormat: "json",
+      }, "Tower Metrics"),
+      createNode("watermark-towers", "watermark", 200, 0, {
+        timestampColumn: "event_time",
+        delayThreshold: { value: 15, unit: "seconds" },
+      }, "Watermark (15s)"),
+      createNode("outlier-latency", "outlier-anomaly", 420, -80, {
+        valueField: "latency_ms",
+        baselineWindow: { value: 30, unit: "minutes" },
+        thresholdStdDevs: 3,
+        algorithm: "z-score",
+      }, "Latency Outlier"),
+      createNode("velocity-handoff", "velocity-detector", 420, 40, {
+        eventFilter: "event_type = 'handoff_failure'",
+        rateThreshold: 10,
+        rateUnit: "per_min",
+        windowDuration: { value: 5, unit: "minutes" },
+      }, "Handoff Failure Spike"),
+      createNode("heartbeat-towers", "heartbeat-liveness", 420, 160, {
+        entityKey: "tower_id",
+        expectedInterval: { value: 2, unit: "minutes" },
+        gracePeriod: { value: 30, unit: "seconds" },
+        outputMode: "dead-only",
+      }, "Tower Heartbeat"),
+      createNode("union-telecom", "union-merge", 640, 40, {}),
+      createNode("split-telecom", "split-router", 820, 40, {
+        routes: '[{"name":"critical","condition":"severity = \'critical\' OR is_alive = false"},{"name":"warning","condition":"severity = \'warning\'"}]',
+        defaultRoute: "info",
+      }, "Route by Severity"),
+      createNode("delta-telecom", "delta-table-sink", 1020, 0, {
+        catalog: "main",
+        schema: "telecom",
+        table: "network_anomalies",
+        writeMode: "append",
+      }, "Anomaly History"),
+      createNode("pagerduty-telecom", "slack-teams-pagerduty", 1020, 100, {
+        provider: "pagerduty",
+        webhookUrl: "https://events.pagerduty.com/v2/enqueue",
+        messageTemplate: "Network Alert: Tower {{tower_id}} — {{alert_type}}",
+      }, "NOC Alert"),
+    ],
+    edges: [
+      createEdge("kafka-towers", "watermark-towers"),
+      createEdge("watermark-towers", "outlier-latency"),
+      createEdge("watermark-towers", "velocity-handoff"),
+      createEdge("kafka-towers", "heartbeat-towers"),
+      createEdge("outlier-latency", "union-telecom"),
+      createEdge("velocity-handoff", "union-telecom"),
+      createEdge("heartbeat-towers", "union-telecom"),
+      createEdge("union-telecom", "split-telecom"),
+      createEdge("split-telecom", "delta-telecom"),
+      createEdge("split-telecom", "pagerduty-telecom"),
+    ],
+  },
+
+  {
+    id: "energy-grid-monitoring",
+    name: "Energy Grid Monitoring",
+    description:
+      "Smart meter analytics: aggregate demand per zone in 15-min windows, detect consumption trends, alert on meter outages, data quality validation on readings, route alerts by priority.",
+    industry: "Energy / Utilities",
+    difficulty: "advanced",
+    nodes: [
+      createNode("mqtt-meters", "mqtt", 0, 0, {
+        brokerUrl: "tcp://utility-broker:1883",
+        topicFilter: "meters/+/readings",
+        qos: "1",
+        clientId: "grid-monitor-consumer",
+      }, "Smart Meter Readings"),
+      createNode("dq-meters", "data-quality-expectations", 200, 0, {
+        expectations: '[{"name":"valid_reading","constraint":"kwh >= 0 AND kwh < 10000","action":"drop"},{"name":"has_meter_id","constraint":"meter_id IS NOT NULL","action":"drop"}]',
+        quarantineTable: "main.energy.quarantine_readings",
+      }, "Data Quality Check"),
+      createNode("window-demand", "window-aggregate", 420, -80, {
+        windowType: "tumbling",
+        windowDuration: { value: 15, unit: "minutes" },
+        groupByColumns: "zone_id",
+        aggregations: [
+          { column: "kwh", function: "sum", alias: "total_kwh" },
+          { column: "meter_id", function: "count", alias: "active_meters" },
+        ],
+      }, "Zone Demand (15min)"),
+      createNode("trend-demand", "trend-detector", 640, -80, {
+        valueField: "total_kwh",
+        direction: "up",
+        consecutiveCount: 4,
+        tolerancePercent: 15,
+      }, "Demand Surge Trend"),
+      createNode("heartbeat-meters", "heartbeat-liveness", 420, 80, {
+        entityKey: "meter_id",
+        expectedInterval: { value: 15, unit: "minutes" },
+        gracePeriod: { value: 5, unit: "minutes" },
+        outputMode: "dead-only",
+      }, "Meter Outage Detect"),
+      createNode("union-grid", "union-merge", 820, 0, {}),
+      createNode("split-grid", "split-router", 1000, 0, {
+        routes: '[{"name":"emergency","condition":"alert_type = \'surge\' AND total_kwh > 50000"},{"name":"outage","condition":"is_alive = false"}]',
+        defaultRoute: "routine",
+      }, "Priority Router"),
+      createNode("delta-grid", "delta-table-sink", 1200, -40, {
+        catalog: "main",
+        schema: "energy",
+        table: "grid_events",
+        writeMode: "append",
+      }, "Grid Events"),
+      createNode("slack-grid", "slack-teams-pagerduty", 1200, 60, {
+        provider: "slack",
+        webhookUrl: "https://hooks.slack.com/services/xxx",
+        messageTemplate: "Grid Alert: Zone {{zone_id}} — {{alert_type}}: {{message}}",
+      }, "Ops Alert"),
+    ],
+    edges: [
+      createEdge("mqtt-meters", "dq-meters"),
+      createEdge("dq-meters", "window-demand"),
+      createEdge("dq-meters", "heartbeat-meters"),
+      createEdge("window-demand", "trend-demand"),
+      createEdge("trend-demand", "union-grid"),
+      createEdge("heartbeat-meters", "union-grid"),
+      createEdge("union-grid", "split-grid"),
+      createEdge("split-grid", "delta-grid"),
+      createEdge("split-grid", "slack-grid"),
+    ],
+  },
+
+  {
+    id: "player-behavior-analytics",
+    name: "Player Behavior Analytics",
+    description:
+      "Gaming analytics: session detection, achievement sequence tracking (tutorial→first_kill→first_win), cheat detection (>50 kills in 1 min), real-time feature store for ML matchmaking.",
+    industry: "Gaming",
+    difficulty: "advanced",
+    nodes: [
+      createNode("kafka-game", "kafka-topic", 0, 0, {
+        bootstrapServers: "broker:9092",
+        topics: "game_events",
+        consumerGroup: "game-analytics-consumer",
+        startingOffset: "latest",
+        schemaSource: "infer",
+        deserializationFormat: "json",
+      }, "Game Events"),
+      createNode("dedup-game", "deduplication", 200, 0, {
+        deduplicationKey: "event_id",
+        watermarkDuration: { value: 5, unit: "minutes" },
+      }, "Dedup Events"),
+      createNode("session-game", "session-detector", 400, -100, {
+        sessionKey: "player_id",
+        gapDuration: { value: 15, unit: "minutes" },
+      }, "Play Sessions"),
+      createNode("seq-achieve", "sequence-detector", 400, 20, {
+        steps: [
+          { name: "tutorial", filter: "event_type = 'tutorial_complete'" },
+          { name: "first_kill", filter: "event_type = 'first_kill'" },
+          { name: "first_win", filter: "event_type = 'first_win'" },
+        ],
+        contiguityMode: "relaxed",
+        withinDuration: { value: 24, unit: "hours" },
+      }, "Achievement Sequence"),
+      createNode("count-cheat", "count-threshold", 400, 150, {
+        eventFilter: "event_type = 'kill'",
+        thresholdCount: 50,
+        windowDuration: { value: 1, unit: "minutes" },
+      }, "Cheat Detection"),
+      createNode("window-session", "window-aggregate", 620, -100, {
+        windowType: "session",
+        duration: { value: 15, unit: "minutes" },
+        groupByKeys: "player_id",
+        aggregations: [
+          { column: "event_id", function: "count", alias: "events_per_session" },
+          { column: "xp_gained", function: "sum", alias: "total_xp" },
+        ],
+      }, "Session Metrics"),
+      createNode("feature-store-game", "feature-store-sink", 840, -100, {
+        featureTableName: "main.gaming.player_features",
+        primaryKeys: "player_id",
+        timestampKey: "session_end_time",
+        description: "Real-time player features for matchmaking model",
+        writeMode: "merge",
+      }, "Player Feature Store"),
+      createNode("delta-game", "delta-table-sink", 840, 20, {
+        catalog: "main",
+        schema: "gaming",
+        table: "player_achievements",
+        writeMode: "append",
+      }, "Achievements Log"),
+      createNode("slack-cheat", "slack-teams-pagerduty", 620, 250, {
+        provider: "slack",
+        webhookUrl: "https://hooks.slack.com/services/xxx",
+        messageTemplate: "Cheat Alert: Player {{player_id}} — {{kill_count}} kills in 1 min",
+      }, "Anti-Cheat Alert"),
+      createNode("delta-cheat", "delta-table-sink", 840, 150, {
+        catalog: "main",
+        schema: "gaming",
+        table: "cheat_detections",
+        writeMode: "append",
+      }, "Cheat Log"),
+    ],
+    edges: [
+      createEdge("kafka-game", "dedup-game"),
+      createEdge("dedup-game", "session-game"),
+      createEdge("dedup-game", "seq-achieve"),
+      createEdge("dedup-game", "count-cheat"),
+      createEdge("session-game", "window-session"),
+      createEdge("window-session", "feature-store-game"),
+      createEdge("seq-achieve", "delta-game"),
+      createEdge("count-cheat", "slack-cheat"),
+      createEdge("count-cheat", "delta-cheat"),
+    ],
+  },
+
+  {
+    id: "insurance-claims-triage",
+    name: "Insurance Claims Triage",
+    description:
+      "Claims processing: CDC from claims DB, state machine (filed→review→approved/denied/escalated), data quality on claim amounts, split/route by severity, SLA breach detection for stale claims.",
+    industry: "Insurance",
+    difficulty: "advanced",
+    nodes: [
+      createNode("cdc-claims", "cdc-stream", 0, 0, {
+        kafkaTopic: "db.claims.events",
+        cdcFormat: "debezium",
+        primaryKeys: "claim_id",
+      }, "Claims CDC"),
+      createNode("dq-claims", "data-quality-expectations", 200, 0, {
+        expectations: '[{"name":"valid_amount","constraint":"claim_amount > 0 AND claim_amount < 10000000","action":"drop"},{"name":"has_policy","constraint":"policy_id IS NOT NULL","action":"fail"},{"name":"valid_type","constraint":"claim_type IN (\'auto\',\'home\',\'life\',\'health\')","action":"warn"}]',
+      }, "Claims DQ"),
+      createNode("state-claims", "state-machine", 420, -40, {
+        states: '["filed", "under_review", "approved", "denied", "escalated", "paid"]',
+        transitions: '[{"from":"filed","to":"under_review","condition":"event_type = \'assign_adjuster\'"},{"from":"under_review","to":"approved","condition":"decision = \'approve\'"},{"from":"under_review","to":"denied","condition":"decision = \'deny\'"},{"from":"under_review","to":"escalated","condition":"claim_amount > 100000"},{"from":"approved","to":"paid","condition":"event_type = \'payment_issued\'"},{"from":"denied","to":"filed","condition":"event_type = \'appeal\'"}]',
+        keyColumn: "claim_id",
+        emitOn: "transition",
+        terminalStates: "paid, denied",
+        stateTimeout: { value: 30, unit: "days" },
+      }, "Claims State Machine"),
+      createNode("absence-sla", "absence-detector", 420, 120, {
+        triggerEventFilter: "current_state = 'filed'",
+        expectedEventFilter: "current_state = 'under_review'",
+        timeoutDuration: { value: 48, unit: "hours" },
+        withinDuration: { value: 72, unit: "hours" },
+      }, "SLA: Review in 48h"),
+      createNode("split-claims", "split-router", 660, -40, {
+        routes: '[{"name":"high_value","condition":"claim_amount > 50000"},{"name":"escalated","condition":"current_state = \'escalated\'"},{"name":"denied","condition":"current_state = \'denied\'"}]',
+        defaultRoute: "standard",
+      }, "Route by Priority"),
+      createNode("delta-claims", "delta-table-sink", 880, -80, {
+        catalog: "main",
+        schema: "insurance",
+        table: "claims_lifecycle",
+        writeMode: "append",
+      }, "Claims History"),
+      createNode("email-escalation", "email-sink", 880, 30, {
+        smtpProvider: "sendgrid",
+        to: "claims-escalation@insurer.com",
+        subjectTemplate: "Escalated Claim: {{claim_id}} (${{claim_amount}})",
+        bodyTemplate: "Claim {{claim_id}} escalated — amount: ${{claim_amount}}, type: {{claim_type}}",
+      }, "Escalation Email"),
+      createNode("delta-sla", "delta-table-sink", 660, 200, {
+        catalog: "main",
+        schema: "insurance",
+        table: "sla_breaches",
+        writeMode: "append",
+      }, "SLA Breach Log"),
+    ],
+    edges: [
+      createEdge("cdc-claims", "dq-claims"),
+      createEdge("dq-claims", "state-claims"),
+      createEdge("dq-claims", "absence-sla"),
+      createEdge("state-claims", "split-claims"),
+      createEdge("split-claims", "delta-claims"),
+      createEdge("split-claims", "email-escalation"),
+      createEdge("absence-sla", "delta-sla"),
+    ],
+  },
+
+  {
+    id: "ad-impression-attribution",
+    name: "Ad Impression Attribution",
+    description:
+      "Multi-touch attribution: Google Pub/Sub ad impressions, deduplicate, correlate impression→click→conversion within 7 days, aggregate CTR per campaign per hour, write to Unity Catalog.",
+    industry: "Media / Advertising",
+    difficulty: "advanced",
+    nodes: [
+      createNode("pubsub-impressions", "google-pubsub", 0, 0, {
+        projectId: "ad-platform-prod",
+        subscriptionId: "impressions-sub",
+        deserializationFormat: "json",
+      }, "Ad Impressions (Pub/Sub)"),
+      createNode("pubsub-clicks", "google-pubsub", 0, 150, {
+        projectId: "ad-platform-prod",
+        subscriptionId: "clicks-sub",
+        deserializationFormat: "json",
+      }, "Ad Clicks (Pub/Sub)"),
+      createNode("dedup-impressions", "deduplication", 220, 0, {
+        deduplicationKey: "impression_id",
+        watermarkDuration: { value: 1, unit: "hours" },
+      }, "Dedup Impressions"),
+      createNode("temporal-attr", "temporal-correlation", 440, 60, {
+        streamAFilter: "event_type = 'impression'",
+        streamBFilter: "event_type = 'click'",
+        correlationKey: "ad_id",
+        maxTimeGap: { value: 30, unit: "minutes" },
+      }, "Impression → Click"),
+      createNode("seq-conversion", "sequence-detector", 660, 60, {
+        steps: [
+          { name: "impression", filter: "event_type = 'impression'" },
+          { name: "click", filter: "event_type = 'click'" },
+          { name: "conversion", filter: "event_type = 'conversion'" },
+        ],
+        contiguityMode: "relaxed",
+        withinDuration: { value: 7, unit: "days" },
+      }, "Full Conversion Path"),
+      createNode("window-ctr", "window-aggregate", 440, -80, {
+        windowType: "tumbling",
+        windowDuration: { value: 1, unit: "hours" },
+        groupByColumns: "campaign_id, ad_group_id",
+        aggregations: [
+          { column: "impression_id", function: "count", alias: "impressions" },
+          { column: "click_id", function: "count", alias: "clicks" },
+        ],
+      }, "Hourly CTR Metrics"),
+      createNode("uc-attribution", "unity-catalog-table-sink", 880, 60, {
+        catalog: "main",
+        schema: "advertising",
+        table: "attribution_events",
+        writeMode: "append",
+      }, "Attribution Table"),
+      createNode("uc-ctr", "unity-catalog-table-sink", 660, -80, {
+        catalog: "main",
+        schema: "advertising",
+        table: "hourly_campaign_metrics",
+        writeMode: "append",
+      }, "Campaign Metrics"),
+    ],
+    edges: [
+      createEdge("pubsub-impressions", "dedup-impressions"),
+      createEdge("dedup-impressions", "temporal-attr"),
+      createEdge("dedup-impressions", "window-ctr"),
+      createEdge("pubsub-clicks", "temporal-attr"),
+      createEdge("temporal-attr", "seq-conversion"),
+      createEdge("seq-conversion", "uc-attribution"),
+      createEdge("window-ctr", "uc-ctr"),
+    ],
+  },
+
+  {
+    id: "smart-building-management",
+    name: "Smart Building Management",
+    description:
+      "PropTech IoT: monitor HVAC/lighting/occupancy sensors, detect device outages via heartbeat, HVAC state machine (idle→heating→cooling→emergency), zone-level aggregates, watermark for late sensor data.",
+    industry: "Real Estate / PropTech",
+    difficulty: "advanced",
+    nodes: [
+      createNode("mqtt-building", "mqtt", 0, 0, {
+        brokerUrl: "tcp://building-iot:1883",
+        topicFilter: "building/+/+/data",
+        qos: "1",
+        clientId: "building-mgmt-consumer",
+      }, "Building Sensors"),
+      createNode("watermark-bldg", "watermark", 200, 0, {
+        timestampColumn: "event_time",
+        delayThreshold: { value: 10, unit: "seconds" },
+      }, "Watermark (10s)"),
+      createNode("heartbeat-devices", "heartbeat-liveness", 200, 150, {
+        entityKey: "sensor_id",
+        expectedInterval: { value: 5, unit: "minutes" },
+        gracePeriod: { value: 2, unit: "minutes" },
+        outputMode: "status-change",
+      }, "Device Health"),
+      createNode("state-hvac", "state-machine", 440, -40, {
+        states: '["idle", "heating", "cooling", "ventilating", "emergency_shutdown"]',
+        transitions: '[{"from":"idle","to":"heating","condition":"zone_temp < setpoint - 2"},{"from":"idle","to":"cooling","condition":"zone_temp > setpoint + 2"},{"from":"heating","to":"idle","condition":"zone_temp >= setpoint"},{"from":"cooling","to":"idle","condition":"zone_temp <= setpoint"},{"from":"heating","to":"emergency_shutdown","condition":"zone_temp > 40"},{"from":"cooling","to":"emergency_shutdown","condition":"zone_temp < 5"}]',
+        keyColumn: "zone_id",
+        emitOn: "transition",
+        terminalStates: "emergency_shutdown",
+        stateTimeout: { value: 4, unit: "hours" },
+      }, "HVAC State Machine"),
+      createNode("window-zone", "window-aggregate", 440, 120, {
+        windowType: "tumbling",
+        windowDuration: { value: 5, unit: "minutes" },
+        groupByColumns: "zone_id, floor",
+        aggregations: [
+          { column: "temperature", function: "avg", alias: "avg_temp" },
+          { column: "humidity", function: "avg", alias: "avg_humidity" },
+          { column: "occupancy", function: "max", alias: "peak_occupancy" },
+        ],
+      }, "Zone Metrics (5min)"),
+      createNode("delta-building", "delta-table-sink", 700, 0, {
+        catalog: "main",
+        schema: "proptech",
+        table: "building_events",
+        writeMode: "append",
+      }, "Building Events"),
+      createNode("delta-zones", "delta-table-sink", 700, 120, {
+        catalog: "main",
+        schema: "proptech",
+        table: "zone_metrics",
+        writeMode: "append",
+      }, "Zone Metrics Table"),
+      createNode("slack-building", "slack-teams-pagerduty", 700, 240, {
+        provider: "slack",
+        webhookUrl: "https://hooks.slack.com/services/xxx",
+        messageTemplate: "Building Alert: {{alert_type}} — Zone {{zone_id}}, Floor {{floor}}",
+      }, "Facilities Alert"),
+    ],
+    edges: [
+      createEdge("mqtt-building", "watermark-bldg"),
+      createEdge("mqtt-building", "heartbeat-devices"),
+      createEdge("watermark-bldg", "state-hvac"),
+      createEdge("watermark-bldg", "window-zone"),
+      createEdge("state-hvac", "delta-building"),
+      createEdge("window-zone", "delta-zones"),
+      createEdge("heartbeat-devices", "slack-building"),
+    ],
+  },
+
+  {
+    id: "aml-transaction-monitoring",
+    name: "Anti-Money Laundering (AML)",
+    description:
+      "Banking compliance: monitor transactions for structuring (>5 txns under $10K in 1 day), cross-account temporal correlation, data quality on KYC fields, ML risk scoring, feature store for model retraining.",
+    industry: "Banking / Compliance",
+    difficulty: "advanced",
+    nodes: [
+      createNode("kafka-txn", "kafka-topic", 0, 0, {
+        bootstrapServers: "broker:9092",
+        topics: "bank_transactions",
+        consumerGroup: "aml-monitor-consumer",
+        startingOffset: "latest",
+        schemaSource: "schema-registry",
+        deserializationFormat: "avro",
+      }, "Transactions Stream"),
+      createNode("dq-kyc", "data-quality-expectations", 220, 0, {
+        expectations: '[{"name":"valid_amount","constraint":"amount > 0","action":"drop"},{"name":"has_account","constraint":"account_id IS NOT NULL","action":"fail"},{"name":"kyc_complete","constraint":"kyc_status = \'verified\'","action":"warn"}]',
+      }, "KYC Data Quality"),
+      createNode("count-structuring", "count-threshold", 440, -80, {
+        eventFilter: "amount < 10000 AND amount > 5000",
+        thresholdCount: 5,
+        windowDuration: { value: 24, unit: "hours" },
+      }, "Structuring Detection"),
+      createNode("temporal-cross", "temporal-correlation", 440, 40, {
+        streamAFilter: "txn_type = 'outgoing'",
+        streamBFilter: "txn_type = 'incoming'",
+        correlationKey: "counterparty_id",
+        maxTimeGap: { value: 30, unit: "minutes" },
+      }, "Cross-Account Correlation"),
+      createNode("velocity-txn", "velocity-detector", 440, 160, {
+        eventFilter: "txn_type = 'wire_transfer'",
+        rateThreshold: 3,
+        rateUnit: "per_hour",
+        windowDuration: { value: 1, unit: "hours" },
+      }, "Wire Transfer Velocity"),
+      createNode("union-aml", "union-merge", 660, 40, {}),
+      createNode("ml-risk", "ml-model-endpoint", 860, -40, {
+        endpointName: "aml-risk-scoring-model",
+        inputColumns: "account_id, amount, txn_type, counterparty_id, country_code",
+        outputColumn: "aml_risk_score",
+        outputType: "DoubleType()",
+        timeout: 5000,
+        fallbackValue: "0.0",
+      }, "AML Risk Score"),
+      createNode("feature-aml", "feature-store-sink", 860, 60, {
+        featureTableName: "main.compliance.account_risk_features",
+        primaryKeys: "account_id",
+        timestampKey: "event_time",
+        description: "Real-time account risk features for AML model retraining",
+        writeMode: "merge",
+      }, "Risk Feature Store"),
+      createNode("split-risk", "split-router", 1060, -40, {
+        routes: '[{"name":"high_risk","condition":"aml_risk_score > 0.8"},{"name":"medium_risk","condition":"aml_risk_score > 0.5"}]',
+        defaultRoute: "low_risk",
+      }, "Risk Router"),
+      createNode("delta-sar", "delta-table-sink", 1260, -80, {
+        catalog: "main",
+        schema: "compliance",
+        table: "suspicious_activity_reports",
+        writeMode: "append",
+      }, "SAR Table"),
+      createNode("email-compliance", "email-sink", 1260, 20, {
+        smtpProvider: "sendgrid",
+        to: "compliance-team@bank.com",
+        subjectTemplate: "SAR Alert: Account {{account_id}} — Risk Score {{aml_risk_score}}",
+        bodyTemplate: "Suspicious activity detected for account {{account_id}}. Risk score: {{aml_risk_score}}. Amount: ${{amount}}. Review required within 24 hours.",
+      }, "Compliance Alert"),
+    ],
+    edges: [
+      createEdge("kafka-txn", "dq-kyc"),
+      createEdge("dq-kyc", "count-structuring"),
+      createEdge("dq-kyc", "temporal-cross"),
+      createEdge("dq-kyc", "velocity-txn"),
+      createEdge("count-structuring", "union-aml"),
+      createEdge("temporal-cross", "union-aml"),
+      createEdge("velocity-txn", "union-aml"),
+      createEdge("union-aml", "ml-risk"),
+      createEdge("union-aml", "feature-aml"),
+      createEdge("ml-risk", "split-risk"),
+      createEdge("split-risk", "delta-sar"),
+      createEdge("split-risk", "email-compliance"),
     ],
   },
 ];

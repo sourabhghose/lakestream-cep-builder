@@ -122,7 +122,7 @@ Per-user settings.
 | updated_at | TIMESTAMPTZ | Last update |
 
 ### saved_templates
-Built-in (11 pre-loaded) and user-created templates.
+Built-in (19 pre-loaded) and user-created templates.
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -131,7 +131,7 @@ Built-in (11 pre-loaded) and user-created templates.
 | description | TEXT | What the template does |
 | industry | VARCHAR(100) | FinServ, E-commerce, IoT, etc. |
 | canvas_json | JSONB | Pre-configured pipeline |
-| is_builtin | BOOLEAN | True for the 10 default templates |
+| is_builtin | BOOLEAN | True for the 19 default templates |
 | created_by | VARCHAR(255) | User who created it |
 | created_at | TIMESTAMPTZ | Creation timestamp |
 

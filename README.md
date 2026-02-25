@@ -73,7 +73,7 @@ Deployed as a **Databricks App** — a single FastAPI process serves the React f
 | **Live Auto-Refresh** | Preview data auto-refreshes every 3 seconds with consistent seeding across connected nodes |
 | **Inline Node Preview** | Expandable data tables directly on canvas nodes |
 | **Pattern Timeline** | SVG visualization of event sequences in design and test modes |
-| **11 Templates** | Pre-built pipelines (incl. Trucking IoT Analytics) + save your own |
+| **19 Templates** | Pre-built pipelines across 16 industries (Healthcare, Gaming, Banking, Telecom, etc.) + save your own |
 | **Deploy Dialog** | Full config: compute, schedule, checkpoint, connection validation |
 | **Job Notifications** | Real-time polling of deployed job status with badges |
 | **Deploy History** | Audit trail with status, code view, and Databricks links |
@@ -209,7 +209,7 @@ lakestream-cep-builder/
 │   │   │   ├── dialogs/        # SaveDialog
 │   │   │   └── ui/             # Toast
 │   │   ├── hooks/              # usePipelineStore, useToastStore, useKeyboardShortcuts
-│   │   ├── lib/                # api, nodeRegistry (48 nodes), edgeValidator, autoLayout, templates (11)
+│   │   ├── lib/                # api, nodeRegistry (48 nodes), edgeValidator, autoLayout, templates (19)
 │   │   └── types/              # nodes.ts, pipeline.ts
 │   └── package.json
 ├── backend/                     # FastAPI backend
@@ -304,7 +304,7 @@ Powered by **Claude Sonnet on Databricks** Foundation Model APIs. No API keys ne
 | `pipelines` | Pipeline definitions — canvas JSON, generated code, version, status |
 | `deploy_history` | Deployment audit trail — job IDs, status, timestamps, errors |
 | `user_preferences` | Per-user settings — default catalog/schema, canvas preferences |
-| `saved_templates` | Built-in (11) + user-created pipeline templates |
+| `saved_templates` | Built-in (19) + user-created pipeline templates |
 
 ---
 

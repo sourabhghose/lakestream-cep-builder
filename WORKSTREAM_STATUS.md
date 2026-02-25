@@ -3,7 +3,7 @@
 ## Overview
 LakeStream CEP Builder — Visual CEP Pipeline Builder for Databricks
 
-## Completed (55 workstreams across 12 rounds + post-deployment)
+## Completed (56 workstreams across 12 rounds + post-deployment)
 
 ### Round 1 (2026-02-22)
 **WS1: Frontend scaffold** — Next.js 14, React Flow canvas, 38-node palette, custom nodes/edges, config panel, code preview, Zustand store
@@ -83,6 +83,7 @@ LakeStream CEP Builder — Visual CEP Pipeline Builder for Databricks
 **WS53: Gap fill — 8 new node types** — Google Pub/Sub source, State Machine CEP pattern (FSM with named transitions), Heartbeat/Liveness CEP (silent entity detection), Split/Router transform (1→N conditional routing), Watermark transform, Data Quality/Expectations transform (inline DLT expectations), Feature Store sink (Databricks Feature Engineering), renamed Lakehouse sink → Lakebase sink. Total: 48 nodes (10 sources, 14 CEP, 14 transforms, 10 sinks), 65 Jinja2 templates
 **WS54: Resizable panels** — Drag-to-resize left sidebar (180–450px), right config panel (280–600px), and bottom code dock (100–500px). useResizable hook with localStorage persistence, blue highlight on hover
 **WS55: AI Pipeline Generator** — Natural language → pipeline generation using Claude Sonnet on Databricks Foundation Model APIs. /api/ai/generate endpoint with 48-node catalog as LLM context, validates output against NODE_REGISTRY, auto-adds source/sink if missing. Frontend: AI Assist button with gradient styling, prompt textarea, example prompts, loading states, error handling. Loads generated pipeline directly onto canvas via loadPipeline()
+**WS56: Advanced industry templates** — 8 new multi-node templates across 8 industries: Patient Vitals Monitoring (Healthcare), Network Anomaly Detection (Telecom), Energy Grid Monitoring (Utilities), Player Behavior Analytics (Gaming), Insurance Claims Triage (Insurance), Ad Impression Attribution (Media/Advertising), Smart Building Management (PropTech), Anti-Money Laundering (Banking/Compliance). Total: 19 built-in templates spanning 16 industries. Showcases new node types: state machine, heartbeat/liveness, split/router, watermark, data quality, feature store, Google Pub/Sub
 
 ## Final State
 
@@ -96,7 +97,7 @@ LakeStream CEP Builder — Visual CEP Pipeline Builder for Databricks
 | **CEP Patterns** | All 14 implemented (TransformWithState) |
 | **Code Annotations** | Line-level node-to-code mapping in Monaco |
 | **Monaco Editor** | Bidirectional sync, diff view, gutter annotations |
-| **Templates** | 11 built-in + user-created via API |
+| **Templates** | 19 built-in (16 industries) + user-created via API |
 | **Pattern Test** | Event replay with simulated CEP matching |
 | **Deploy** | Full dialog with compute/schedule/checkpoint config |
 | **Deploy History** | Audit trail with code view and job URLs |
@@ -176,6 +177,7 @@ LakeStream CEP Builder — Visual CEP Pipeline Builder for Databricks
 | Post | Deploy + Lakebase | New nodes, live preview, dark theme, Lakebase integration |
 | Post | Gap fill | 8 new nodes (48 total), lakehouse→lakebase rename, 14 new Jinja2 templates |
 | Post | AI + UX | AI Pipeline Generator (Claude Sonnet), resizable panels |
+| Post | Industry templates | 8 new advanced templates (19 total, 16 industries) |
 
 ---
-*Updated: 2026-02-25 after AI Pipeline Generator (WS55)*
+*Updated: 2026-02-25 after Industry Templates (WS56)*

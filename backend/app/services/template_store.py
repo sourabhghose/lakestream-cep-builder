@@ -27,6 +27,14 @@ BUILTIN_TEMPLATES = [
     {"id": "security-threat-detection", "name": "Security Threat Detection", "description": "Detect brute force and credential stuffing.", "industry": "Cybersecurity"},
     {"id": "order-to-cash-tracking", "name": "Order-to-Cash Tracking", "description": "Track order lifecycle.", "industry": "Supply Chain"},
     {"id": "trucking-iot-analytics", "name": "Trucking IoT Analytics", "description": "Monitor truck fleet: join geo + speed streams, detect speeding, ML predictions.", "industry": "Transportation"},
+    {"id": "patient-vitals-monitoring", "name": "Patient Vitals Monitoring", "description": "ICU monitoring: heartbeat/liveness, patient state machine, vitals trending, ML severity prediction.", "industry": "Healthcare"},
+    {"id": "telecom-network-anomaly", "name": "Network Anomaly Detection", "description": "Cell tower KPI monitoring: outlier detection, handoff failure velocity, tower heartbeats.", "industry": "Telecom"},
+    {"id": "energy-grid-monitoring", "name": "Energy Grid Monitoring", "description": "Smart meter analytics: demand aggregation, consumption trends, meter outage detection, data quality.", "industry": "Energy / Utilities"},
+    {"id": "player-behavior-analytics", "name": "Player Behavior Analytics", "description": "Gaming: sessions, achievement sequences, cheat detection, real-time feature store for matchmaking.", "industry": "Gaming"},
+    {"id": "insurance-claims-triage", "name": "Insurance Claims Triage", "description": "Claims lifecycle: state machine, data quality, severity routing, SLA breach detection.", "industry": "Insurance"},
+    {"id": "ad-impression-attribution", "name": "Ad Impression Attribution", "description": "Multi-touch attribution: Pub/Sub ingest, impression→click→conversion correlation, hourly CTR.", "industry": "Media / Advertising"},
+    {"id": "smart-building-management", "name": "Smart Building Management", "description": "PropTech IoT: HVAC state machine, device heartbeat, zone-level aggregates, watermark.", "industry": "Real Estate / PropTech"},
+    {"id": "aml-transaction-monitoring", "name": "Anti-Money Laundering (AML)", "description": "Banking compliance: structuring detection, cross-account correlation, ML risk scoring, feature store.", "industry": "Banking / Compliance"},
 ]
 
 
