@@ -22,6 +22,7 @@ import {
   GitBranch,
   Workflow,
   Play,
+  Sparkles,
 } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import PipelineCanvas from "@/components/canvas/PipelineCanvas";
@@ -39,6 +40,7 @@ import TemplateGallery from "@/components/templates/TemplateGallery";
 import SaveDialog from "@/components/dialogs/SaveDialog";
 import SaveTemplateDialog from "@/components/dialogs/SaveTemplateDialog";
 import DeployDialog from "@/components/dialogs/DeployDialog";
+import AIAssistDialog from "@/components/dialogs/AIAssistDialog";
 import JobStatusNotification from "@/components/notifications/JobStatusNotification";
 import Toast from "@/components/ui/Toast";
 import { SkipLink } from "@/components/ui/SkipLink";
@@ -74,6 +76,7 @@ export default function Home() {
   const [codePreviewCollapsed, setCodePreviewCollapsed] = useState(true);
   const [codeDockHeight, setCodeDockHeight] = useState(48);
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [aiAssistOpen, setAiAssistOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [pipelineListOpen, setPipelineListOpen] = useState(false);
   const [deployHistoryOpen, setDeployHistoryOpen] = useState(false);
@@ -339,6 +342,14 @@ export default function Home() {
             Auto Layout
           </button>
           <button
+            className="flex items-center gap-2 rounded-md bg-gradient-to-r from-purple-600/80 to-blue-600/80 px-4 py-2 text-sm font-medium text-white hover:from-purple-500 hover:to-blue-500 transition-all"
+            onClick={() => setAiAssistOpen(true)}
+            aria-label="Generate pipeline with AI"
+          >
+            <Sparkles className="h-4 w-4" />
+            AI Assist
+          </button>
+          <button
             className="flex items-center gap-2 rounded-md border border-[#30363d] bg-[#21262d] px-4 py-2 text-sm font-medium text-[#c9d1d9] hover:bg-[#30363d] hover:text-[#e8eaed]"
             onClick={() => setTemplatesOpen(true)}
             aria-label="Open templates gallery"
@@ -535,6 +546,12 @@ export default function Home() {
           <Toast embedded />
         </div>
       )}
+
+      {/* AI Assist Dialog */}
+      <AIAssistDialog
+        isOpen={aiAssistOpen}
+        onClose={() => setAiAssistOpen(false)}
+      />
 
       {/* Templates modal */}
       {templatesOpen && (

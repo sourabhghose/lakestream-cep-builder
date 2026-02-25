@@ -229,6 +229,7 @@ Single store (`usePipelineStore`) manages:
 | `deploy` | `/api/deploy` | Deploy to Databricks, validate, catalogs, history |
 | `schema_discovery` | `/api/schema` | Unity Catalog browsing |
 | `preview` | `/api/preview` | Synthetic data preview |
+| `ai_generate` | `/api/ai` | AI pipeline generation (Claude Sonnet via Foundation Model API) |
 
 ### Services
 

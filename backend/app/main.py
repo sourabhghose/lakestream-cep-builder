@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.api import codegen, codeparse, deploy, flow_preview, job_status, pattern_test, pipelines, preferences, preview, schema_discovery, templates
+from app.api import ai_generate, codegen, codeparse, deploy, flow_preview, job_status, pattern_test, pipelines, preferences, preview, schema_discovery, templates
 from app.db import init_db
 
 
@@ -57,6 +57,7 @@ app.include_router(flow_preview.router, prefix="/api/preview", tags=["preview"])
 app.include_router(schema_discovery.router, prefix="/api/schema", tags=["schema"])
 app.include_router(templates.router, prefix="/api/templates", tags=["templates"])
 app.include_router(pattern_test.router, prefix="/api/pattern", tags=["pattern"])
+app.include_router(ai_generate.router, prefix="/api/ai", tags=["ai"])
 
 
 @app.get("/health")

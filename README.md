@@ -61,6 +61,7 @@ Deployed as a **Databricks App** — a single FastAPI process serves the React f
 
 | Feature | Description |
 |---------|-------------|
+| **AI Pipeline Generator** | Describe a pipeline in natural language → AI generates the full graph using Claude Sonnet on Databricks |
 | **48 Node Types** | 10 sources, 14 CEP patterns, 14 transforms, 10 sinks |
 | **Dual Code Generation** | Lakeflow Declarative Pipelines (SDP) + Spark Structured Streaming |
 | **14 CEP Patterns** | Sequence, absence, count, velocity, geofence, correlation, trend, outlier, session, dedup, MATCH_RECOGNIZE, custom, state machine, heartbeat/liveness |
@@ -90,6 +91,7 @@ Deployed as a **Databricks App** — a single FastAPI process serves the React f
 | **Lakebase Sink** | Write to Databricks Lakebase (serverless PostgreSQL) with streaming tables |
 | **Union / Merge Node** | Combine up to 8 streams (union-all or union-distinct) |
 | **Single-Input Enforcement** | Transform/sink nodes enforce single input; Union node for multi-stream |
+| **Resizable Panels** | Drag-to-resize sidebar, config panel, and code dock with localStorage persistence |
 | **Validation Panel** | 12+ pre-deploy checks with clickable fix navigation |
 | **Node Grouping** | Collapse multiple nodes into subgraphs |
 | **Pipeline Search** | Ctrl+F with node highlighting and auto-pan |
@@ -270,6 +272,28 @@ lakestream-cep-builder/
 
 ---
 
+## AI Capabilities
+
+### Natural Language → Pipeline (shipped)
+Click **AI Assist** in the toolbar, describe your streaming pipeline in plain English, and the AI generates a complete pipeline graph — nodes, edges, and configuration — loaded directly onto the canvas.
+
+Powered by **Claude Sonnet on Databricks** Foundation Model APIs. No API keys needed — uses the same OAuth identity as the Databricks App.
+
+**Example prompts:**
+- *"Build a fraud detection pipeline that reads credit card transactions from Kafka, detects >3 transactions from the same card within 5 minutes, and alerts via email"*
+- *"IoT monitoring: simulate sensor data, filter temperature > 80, detect absence of readings for 10 minutes, send PagerDuty alerts"*
+- *"Clickstream analytics: Kafka click events, session detection with 30-min gap, aggregate page views per session, write to Delta Lake"*
+
+### Roadmap
+| Feature | Description | Status |
+|---------|-------------|--------|
+| **NL → Pipeline** | Describe a pipeline in English, AI generates the graph | Shipped |
+| **AI Config Assist** | NL descriptions auto-fill CEP pattern configuration fields | Planned |
+| **Code Explanation** | "Explain this code" button on generated SDP/SSS code | Planned |
+| **Smart Validation** | AI-powered pipeline review with optimization suggestions | Planned |
+
+---
+
 ## Database Schema (Lakebase)
 
 | Table | Purpose |
@@ -301,6 +325,7 @@ lakestream-cep-builder/
 | `/api/preview/sample` | POST | Get synthetic data preview for a node |
 | `/api/preview/flow` | POST | Flow-through preview (source to sink) |
 | `/api/pattern/test` | POST | Test CEP patterns against sample events |
+| `/api/ai/generate` | POST | AI-powered pipeline generation from natural language (Claude Sonnet) |
 | `/api/templates` | GET, POST | List/create pipeline templates |
 | `/api/templates/{id}` | DELETE | Delete user template |
 | `/api/preferences` | GET, PUT | Get/update user preferences |

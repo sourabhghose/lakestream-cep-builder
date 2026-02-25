@@ -3,7 +3,7 @@
 ## Overview
 LakeStream CEP Builder — Visual CEP Pipeline Builder for Databricks
 
-## Completed (53 workstreams across 12 rounds + post-deployment)
+## Completed (55 workstreams across 12 rounds + post-deployment)
 
 ### Round 1 (2026-02-22)
 **WS1: Frontend scaffold** — Next.js 14, React Flow canvas, 38-node palette, custom nodes/edges, config panel, code preview, Zustand store
@@ -81,13 +81,16 @@ LakeStream CEP Builder — Visual CEP Pipeline Builder for Databricks
 **WS51: Databricks favicon** — Custom SVG favicon with Databricks diamond logo
 **WS52: Lakebase integration** — Created Lakebase database instance (lakestream-cep), attached as App resource, OAuth token auth via Databricks SDK, graceful fallback to LocalFileStore, all stores use centralized `is_postgres_available()` check
 **WS53: Gap fill — 8 new node types** — Google Pub/Sub source, State Machine CEP pattern (FSM with named transitions), Heartbeat/Liveness CEP (silent entity detection), Split/Router transform (1→N conditional routing), Watermark transform, Data Quality/Expectations transform (inline DLT expectations), Feature Store sink (Databricks Feature Engineering), renamed Lakehouse sink → Lakebase sink. Total: 48 nodes (10 sources, 14 CEP, 14 transforms, 10 sinks), 65 Jinja2 templates
+**WS54: Resizable panels** — Drag-to-resize left sidebar (180–450px), right config panel (280–600px), and bottom code dock (100–500px). useResizable hook with localStorage persistence, blue highlight on hover
+**WS55: AI Pipeline Generator** — Natural language → pipeline generation using Claude Sonnet on Databricks Foundation Model APIs. /api/ai/generate endpoint with 48-node catalog as LLM context, validates output against NODE_REGISTRY, auto-adds source/sink if missing. Frontend: AI Assist button with gradient styling, prompt textarea, example prompts, loading states, error handling. Loads generated pipeline directly onto canvas via loadPipeline()
 
 ## Final State
 
 | Component | Status |
 | --- | --- |
 | **Frontend** | 30+ components, Databricks dark theme, accessibility, error boundaries |
-| **Backend API** | 20+ endpoints across 8 routers |
+| **AI Generation** | NL → Pipeline via Claude Sonnet (Databricks Foundation Model APIs) |
+| **Backend API** | 20+ endpoints across 9 routers |
 | **SDP Code Gen** | 29 Jinja2 SQL templates — all 48 node types |
 | **SSS Code Gen** | 36 Jinja2 Python templates — all 48 node types |
 | **CEP Patterns** | All 14 implemented (TransformWithState) |
@@ -172,6 +175,7 @@ LakeStream CEP Builder — Visual CEP Pipeline Builder for Databricks
 | 12 | Test + a11y | Pattern test, accessibility, error boundaries |
 | Post | Deploy + Lakebase | New nodes, live preview, dark theme, Lakebase integration |
 | Post | Gap fill | 8 new nodes (48 total), lakehouse→lakebase rename, 14 new Jinja2 templates |
+| Post | AI + UX | AI Pipeline Generator (Claude Sonnet), resizable panels |
 
 ---
-*Updated: 2026-02-25 after gap fill (48 nodes, 65 templates)*
+*Updated: 2026-02-25 after AI Pipeline Generator (WS55)*

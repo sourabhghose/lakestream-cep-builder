@@ -486,4 +486,22 @@ export async function testPattern(
   return res.data;
 }
 
+// --- AI Pipeline Generation ---
+
+export interface AIGenerateRequest {
+  prompt: string;
+}
+
+export interface AIGenerateResponse {
+  name: string;
+  description: string;
+  nodes: { id: string; type: string; x: number; y: number; label: string; config: Record<string, unknown> }[];
+  edges: { source: string; target: string }[];
+}
+
+export async function aiGeneratePipeline(prompt: string): Promise<AIGenerateResponse> {
+  const res = await api.post("/api/ai/generate", { prompt });
+  return res.data;
+}
+
 export default api;
