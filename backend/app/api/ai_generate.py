@@ -119,25 +119,37 @@ def _call_foundation_model(prompt: str) -> dict:
     """Call Databricks Foundation Model API to generate a pipeline.
 
     Uses the serving endpoint specified by AI_MODEL_ENDPOINT env var
-    (default: databricks-claude-sonnet-4-6). Works with any workspace
-    that has the endpoint enabled — no host or token hardcoded.
+    (default: databricks-claude-sonnet-4-6). Calls the REST API directly
+    via httpx with SDK-managed auth to avoid SDK serialization issues.
     """
     try:
+        import httpx
         from databricks.sdk import WorkspaceClient
 
         w = WorkspaceClient()
-        logger.info("Calling model endpoint: %s", AI_MODEL_ENDPOINT)
-        response = w.serving_endpoints.query(
-            name=AI_MODEL_ENDPOINT,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": prompt},
-            ],
-            max_tokens=4096,
-            temperature=0.3,
-        )
+        host = w.config.host.rstrip("/")
+        header_factory = w.config.authenticate()
+        url = f"{host}/serving-endpoints/{AI_MODEL_ENDPOINT}/invocations"
+        auth_headers = header_factory("POST", url)
 
-        content = response.choices[0].message.content
+        logger.info("Calling model endpoint: %s", url)
+        resp = httpx.post(
+            url,
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={
+                "messages": [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt},
+                ],
+                "max_tokens": 4096,
+                "temperature": 0.3,
+            },
+            timeout=120.0,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        content = data["choices"][0]["message"]["content"]
         content = content.strip()
         if content.startswith("```"):
             content = content.split("\n", 1)[1] if "\n" in content else content[3:]
@@ -158,15 +170,21 @@ def _call_foundation_model(prompt: str) -> dict:
             status_code=502,
             detail="AI model returned invalid JSON. Please try rephrasing your prompt.",
         )
+    except httpx.HTTPStatusError as e:
+        logger.error("Model endpoint HTTP error %s: %s", e.response.status_code, e.response.text[:300])
+        if e.response.status_code == 404:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Model endpoint '{AI_MODEL_ENDPOINT}' not found in this workspace. "
+                       f"Set AI_MODEL_ENDPOINT env var or enable the endpoint under AI/BI > Foundation Models.",
+            )
+        raise HTTPException(
+            status_code=502,
+            detail=f"AI generation failed (HTTP {e.response.status_code}): {e.response.text[:200]}",
+        )
     except Exception as e:
         error_msg = str(e)
         logger.error("Foundation Model API call failed: %s", error_msg)
-        if "RESOURCE_DOES_NOT_EXIST" in error_msg or "NOT_FOUND" in error_msg:
-            raise HTTPException(
-                status_code=503,
-                detail=f"Model endpoint '{AI_MODEL_ENDPOINT}' not available in this workspace. "
-                       f"Set AI_MODEL_ENDPOINT env var or enable the endpoint under AI/BI > Foundation Models.",
-            )
         raise HTTPException(
             status_code=502,
             detail=f"AI generation failed: {error_msg[:200]}",
