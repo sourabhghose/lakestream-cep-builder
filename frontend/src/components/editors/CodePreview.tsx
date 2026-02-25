@@ -13,6 +13,7 @@ import {
   ChevronDown,
   GitCompare,
 } from "lucide-react";
+import { useResizableReverse } from "@/hooks/useResizable";
 import { cn } from "@/lib/utils";
 import { usePipelineStore } from "@/hooks/usePipelineStore";
 import * as api from "@/lib/api";
@@ -21,6 +22,7 @@ import type { CodeAnnotation } from "@/lib/api";
 interface CodePreviewProps {
   collapsed?: boolean;
   onToggleCollapse?: () => void;
+  onHeightChange?: (totalHeight: number) => void;
   className?: string;
 }
 
@@ -29,8 +31,16 @@ const PLACEHOLDER = "// Pipeline code will be generated here...";
 export default function CodePreview({
   collapsed = false,
   onToggleCollapse,
+  onHeightChange,
   className,
 }: CodePreviewProps) {
+  const { size: editorHeight, onMouseDown: onResizeStart } = useResizableReverse({
+    direction: "vertical",
+    initialSize: 180,
+    minSize: 100,
+    maxSize: 500,
+    storageKey: "lakestream-codedock-height",
+  });
   const {
     generatedSdpCode,
     generatedSssCode,
@@ -43,6 +53,12 @@ export default function CodePreview({
     isGenerating,
     pipelineId,
   } = usePipelineStore();
+
+  useEffect(() => {
+    const totalHeight = collapsed ? 48 : 48 + editorHeight;
+    onHeightChange?.(totalHeight);
+  }, [editorHeight, collapsed, onHeightChange]);
+
   const [activeTab, setActiveTab] = useState<"sdp" | "sss">("sdp");
   const [isEditing, setIsEditing] = useState(false);
   const [diffMode, setDiffMode] = useState(false);
@@ -311,7 +327,17 @@ export default function CodePreview({
         </div>
       </div>
       {!collapsed && (
-        <div className="h-[180px] overflow-hidden" aria-label="Generated code editor">
+        <div
+          className="absolute left-0 right-0 top-0 z-10 h-1 cursor-row-resize hover:bg-[#1f6feb] active:bg-[#1f6feb] transition-colors"
+          onMouseDown={onResizeStart}
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="Resize code preview"
+          title="Drag to resize"
+        />
+      )}
+      {!collapsed && (
+        <div className="overflow-hidden" style={{ height: editorHeight }} aria-label="Generated code editor">
           {diffMode ? (
             diffLoading ? (
               <div className="flex h-full items-center justify-center text-[#8b949e]">
@@ -324,7 +350,7 @@ export default function CodePreview({
               </div>
             ) : (
               <DiffEditor
-                height="180px"
+                height={`${editorHeight}px`}
                 original={lastDeployedCode ?? ""}
                 modified={displayCode}
                 language={language}
@@ -339,7 +365,7 @@ export default function CodePreview({
             )
           ) : (
             <Editor
-              height="180px"
+              height={`${editorHeight}px`}
               defaultLanguage={language}
               value={displayCode}
               theme="vs-dark"

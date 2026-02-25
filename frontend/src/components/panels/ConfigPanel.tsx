@@ -9,6 +9,7 @@ import { getNodeIcon } from "@/lib/iconRegistry";
 import DynamicConfigForm from "@/components/panels/DynamicConfigForm";
 import DataPreview from "@/components/preview/DataPreview";
 import { getNodePreview } from "@/lib/api";
+import { useResizableReverse } from "@/hooks/useResizable";
 import type { NodeType } from "@/types/nodes";
 
 interface ConfigPanelProps {
@@ -17,6 +18,13 @@ interface ConfigPanelProps {
 }
 
 export default function ConfigPanel({ isOpen, className }: ConfigPanelProps) {
+  const { size: panelWidth, onMouseDown: onResizeStart } = useResizableReverse({
+    direction: "horizontal",
+    initialSize: 350,
+    minSize: 280,
+    maxSize: 600,
+    storageKey: "lakestream-config-width",
+  });
   const {
     selectedNodeId,
     nodes,
@@ -53,10 +61,19 @@ export default function ConfigPanel({ isOpen, className }: ConfigPanelProps) {
     return (
       <div
         className={cn(
-          "flex w-[350px] flex-col border-l border-[#30363d] bg-[#161b22]",
+          "relative flex flex-col border-l border-[#30363d] bg-[#161b22]",
           className
         )}
+        style={{ width: panelWidth }}
       >
+        <div
+          className="absolute left-0 top-0 z-10 h-full w-1 cursor-col-resize hover:bg-[#1f6feb] active:bg-[#1f6feb] transition-colors"
+          onMouseDown={onResizeStart}
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize config panel"
+          title="Drag to resize"
+        />
         <div className="flex items-center justify-between border-b border-[#30363d] px-4 py-3">
           <h3 className="font-medium text-[#e8eaed]">Node Config</h3>
           <button
@@ -80,10 +97,19 @@ export default function ConfigPanel({ isOpen, className }: ConfigPanelProps) {
   return (
     <div
       className={cn(
-        "flex w-[350px] flex-col border-l border-[#30363d] bg-[#161b22]",
+        "relative flex flex-col border-l border-[#30363d] bg-[#161b22]",
         className
       )}
+      style={{ width: panelWidth }}
     >
+      <div
+        className="absolute left-0 top-0 z-10 h-full w-1 cursor-col-resize hover:bg-[#1f6feb] active:bg-[#1f6feb] transition-colors"
+        onMouseDown={onResizeStart}
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize config panel"
+        title="Drag to resize"
+      />
       <div className="flex items-center justify-between gap-3 border-b border-[#30363d] px-4 py-3">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#30363d]">

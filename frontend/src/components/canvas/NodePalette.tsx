@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useMemo, useCallback, useRef } from "react";
-import { PanelLeftOpen, PanelLeftClose, ChevronDown, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
+import { PanelLeftOpen, PanelLeftClose, ChevronDown, ChevronsDownUp, ChevronsUpDown, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NODE_CATEGORIES, NODE_REGISTRY } from "@/lib/nodeRegistry";
 import { getNodeIcon } from "@/lib/iconRegistry";
 import { usePipelineStore } from "@/hooks/usePipelineStore";
+import { useResizable } from "@/hooks/useResizable";
 import type { Node } from "@xyflow/react";
 import type { NodeDefinition } from "@/types/nodes";
 
@@ -44,6 +45,13 @@ export default function NodePalette({
   collapsed = false,
   onToggleCollapse,
 }: NodePaletteProps) {
+  const { size: paletteWidth, onMouseDown: onResizeStart } = useResizable({
+    direction: "horizontal",
+    initialSize: 250,
+    minSize: 180,
+    maxSize: 450,
+    storageKey: "lakestream-palette-width",
+  });
   const addNode = usePipelineStore((s) => s.addNode);
   const nodes = usePipelineStore((s) => s.nodes);
   const triggerCodeGen = usePipelineStore((s) => s.triggerCodeGen);
@@ -174,7 +182,15 @@ export default function NodePalette({
   }
 
   return (
-    <div className="flex h-full w-[250px] flex-col overflow-hidden border-r border-[#30363d] bg-[#161b22]">
+    <div className="relative flex h-full flex-col overflow-hidden border-r border-[#30363d] bg-[#161b22]" style={{ width: paletteWidth }}>
+      <div
+        className="absolute right-0 top-0 z-10 h-full w-1 cursor-col-resize hover:bg-[#1f6feb] active:bg-[#1f6feb] transition-colors"
+        onMouseDown={onResizeStart}
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize node palette"
+        title="Drag to resize"
+      />
       <div className="flex h-12 items-center justify-between border-b border-[#30363d] px-4">
         <span className="font-medium text-[#e8eaed]">Node Palette</span>
         <div className="flex items-center gap-1">

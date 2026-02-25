@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Menu,
   ChevronDown,
@@ -72,6 +72,7 @@ function formatLastSaved(iso: string | null): string {
 export default function Home() {
   const [paletteCollapsed, setPaletteCollapsed] = useState(false);
   const [codePreviewCollapsed, setCodePreviewCollapsed] = useState(true);
+  const [codeDockHeight, setCodeDockHeight] = useState(48);
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [pipelineListOpen, setPipelineListOpen] = useState(false);
@@ -414,8 +415,8 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Main content — pb-12 reserves space for the fixed code dock */}
-      <div className={cn("flex flex-1 min-h-0", codePreviewCollapsed ? "pb-12" : "pb-[228px]")}>
+      {/* Main content — bottom padding reserves space for the fixed code dock */}
+      <div className="flex flex-1 min-h-0" style={{ paddingBottom: codeDockHeight }}>
         {/* Left sidebar: Node Palette */}
         <nav role="navigation" aria-label="Node palette" className="h-full overflow-hidden">
         <ErrorBoundary
@@ -507,6 +508,7 @@ export default function Home() {
         <CodePreview
           collapsed={codePreviewCollapsed}
           onToggleCollapse={() => setCodePreviewCollapsed(!codePreviewCollapsed)}
+          onHeightChange={setCodeDockHeight}
         />
       </ErrorBoundary>
 
