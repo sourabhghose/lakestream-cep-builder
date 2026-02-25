@@ -7,12 +7,17 @@ Accepts a natural language prompt and returns a pipeline graph
 
 import json
 import logging
+import os
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app.models.nodes import NODE_REGISTRY, NodeCategory
+
+AI_MODEL_ENDPOINT = os.environ.get(
+    "AI_MODEL_ENDPOINT", "databricks-claude-sonnet-4-6"
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -111,13 +116,19 @@ class GenerateResponse(BaseModel):
 
 
 def _call_foundation_model(prompt: str) -> dict:
-    """Call Databricks Foundation Model API (Claude Sonnet) to generate a pipeline."""
+    """Call Databricks Foundation Model API to generate a pipeline.
+
+    Uses the serving endpoint specified by AI_MODEL_ENDPOINT env var
+    (default: databricks-claude-sonnet-4-6). Works with any workspace
+    that has the endpoint enabled — no host or token hardcoded.
+    """
     try:
         from databricks.sdk import WorkspaceClient
 
         w = WorkspaceClient()
+        logger.info("Calling model endpoint: %s", AI_MODEL_ENDPOINT)
         response = w.serving_endpoints.query(
-            name="databricks-claude-sonnet-4",
+            name=AI_MODEL_ENDPOINT,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": prompt},
@@ -153,8 +164,8 @@ def _call_foundation_model(prompt: str) -> dict:
         if "RESOURCE_DOES_NOT_EXIST" in error_msg or "NOT_FOUND" in error_msg:
             raise HTTPException(
                 status_code=503,
-                detail="Claude Sonnet model endpoint not available in this workspace. "
-                       "Ensure 'databricks-claude-sonnet-4' is enabled under AI/BI > Foundation Models.",
+                detail=f"Model endpoint '{AI_MODEL_ENDPOINT}' not available in this workspace. "
+                       f"Set AI_MODEL_ENDPOINT env var or enable the endpoint under AI/BI > Foundation Models.",
             )
         raise HTTPException(
             status_code=502,

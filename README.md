@@ -181,6 +181,9 @@ PGSSLMODE=require
 DATABRICKS_HOST=                 # Workspace URL
 DATABRICKS_TOKEN=                # PAT or OAuth token
 
+# AI Pipeline Generator (optional — defaults shown)
+AI_MODEL_ENDPOINT=databricks-claude-sonnet-4-6  # Foundation Model serving endpoint
+
 # Local development only
 ENVIRONMENT=development
 NEXT_PUBLIC_API_URL=http://localhost:8000
