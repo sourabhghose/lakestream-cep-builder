@@ -67,6 +67,19 @@ function SchemaSelectInput({
 }) {
   const [options, setOptions] = useState<{ value: string; label: string }[]>([]);
   const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState("");
+  const wrapperRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (!node) return;
+      const handler = (e: MouseEvent) => {
+        if (!node.contains(e.target as Node)) setOpen(false);
+      };
+      document.addEventListener("mousedown", handler);
+      return () => document.removeEventListener("mousedown", handler);
+    },
+    []
+  );
 
   useEffect(() => {
     if (fieldKey === "catalog") {
@@ -110,35 +123,69 @@ function SchemaSelectInput({
     setOptions([]);
   }, [fieldKey, config.catalog, config.schema]);
 
-  const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLSelectElement>) => {
-      onChange(e.target.value);
-    },
-    [onChange]
-  );
+  const filtered = useMemo(() => {
+    if (!filter) return options;
+    const lower = filter.toLowerCase();
+    return options.filter((o) => o.label.toLowerCase().includes(lower));
+  }, [options, filter]);
+
+  const placeholder =
+    fieldKey === "catalog"
+      ? "Select or type catalog..."
+      : fieldKey === "schema"
+        ? "Select or type schema..."
+        : "Select or type table name...";
 
   return (
-    <select
-      id={id}
-      value={value ?? ""}
-      onChange={handleChange}
-      disabled={loading}
-      aria-label={fieldLabel}
-      aria-required={required}
-      aria-invalid={invalid}
-      className={cn(
-        "w-full rounded-md border bg-[#21262d80] px-3 py-2 text-sm text-[#f0f6fc] placeholder:text-[#484f58] focus:border-[#58a6ff] focus:outline-none focus:ring-1 focus:ring-[#58a6ff]",
-        "border-[#30363d]",
-        className
+    <div ref={wrapperRef} className="relative">
+      <input
+        id={id}
+        type="text"
+        value={value ?? ""}
+        onChange={(e) => {
+          onChange(e.target.value);
+          setFilter(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        placeholder={loading ? "Loading..." : placeholder}
+        disabled={loading}
+        aria-label={fieldLabel}
+        aria-required={required}
+        aria-invalid={invalid}
+        autoComplete="off"
+        className={cn(
+          "w-full rounded-md border bg-[#21262d80] px-3 py-2 text-sm text-[#f0f6fc] placeholder:text-[#484f58] focus:border-[#58a6ff] focus:outline-none focus:ring-1 focus:ring-[#58a6ff]",
+          "border-[#30363d]",
+          className
+        )}
+      />
+      {open && filtered.length > 0 && (
+        <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-[#30363d] bg-[#1c2128] shadow-lg">
+          {filtered.map((opt) => (
+            <li key={opt.value}>
+              <button
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  onChange(opt.value);
+                  setFilter("");
+                  setOpen(false);
+                }}
+                className={cn(
+                  "w-full px-3 py-1.5 text-left text-sm hover:bg-[#30363d]",
+                  opt.value === value
+                    ? "bg-[#30363d] text-[#58a6ff]"
+                    : "text-[#c9d1d9]"
+                )}
+              >
+                {opt.label}
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
-    >
-      <option value="">Select...</option>
-      {options.map((opt) => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-        </option>
-      ))}
-    </select>
+    </div>
   );
 }
 
