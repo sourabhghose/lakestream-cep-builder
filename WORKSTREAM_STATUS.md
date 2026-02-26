@@ -3,7 +3,7 @@
 ## Overview
 LakeStream CEP Builder — Visual CEP Pipeline Builder for Databricks
 
-## Completed (57 workstreams across 12 rounds + post-deployment)
+## Completed (60 workstreams across 12 rounds + post-deployment)
 
 ### Round 1 (2026-02-22)
 **WS1: Frontend scaffold** — Next.js 14, React Flow canvas, 38-node palette, custom nodes/edges, config panel, code preview, Zustand store
@@ -85,13 +85,16 @@ LakeStream CEP Builder — Visual CEP Pipeline Builder for Databricks
 **WS55: AI Pipeline Generator** — Natural language → pipeline generation using Claude Sonnet on Databricks Foundation Model APIs. /api/ai/generate endpoint with 48-node catalog as LLM context, validates output against NODE_REGISTRY, auto-adds source/sink if missing. Frontend: AI Assist button with gradient styling, prompt textarea, example prompts, loading states, error handling. Loads generated pipeline directly onto canvas via loadPipeline()
 **WS56: Advanced industry templates** — 8 new multi-node templates across 8 industries: Patient Vitals Monitoring (Healthcare), Network Anomaly Detection (Telecom), Energy Grid Monitoring (Utilities), Player Behavior Analytics (Gaming), Insurance Claims Triage (Insurance), Ad Impression Attribution (Media/Advertising), Smart Building Management (PropTech), Anti-Money Laundering (Banking/Compliance). Total: 19 built-in templates spanning 16 industries. Showcases new node types: state machine, heartbeat/liveness, split/router, watermark, data quality, feature store, Google Pub/Sub
 **WS57: AI Config Assist** — Natural language descriptions auto-fill CEP pattern configuration fields. /api/ai/config-assist endpoint with config reference for all 48 node types, calls Claude Sonnet via reusable _call_model_json() helper. Frontend: "AI Config Assist" button in DynamicConfigForm with inline textarea, ⌘+Enter shortcut, gradient "Fill Config" button, loading/error states. Merges AI-generated config into existing node config
+**WS58: Code Explanation** — "Explain this code" button on generated SDP/SSS code. /api/ai/explain-code endpoint with Claude Sonnet via _call_model_text() helper. Frontend: Sparkle "Explain" button in CodePreview toolbar, sliding overlay panel with markdown-rendered explanations, loading/error states
+**WS59: Smart Validation** — AI-powered pipeline review with optimization suggestions. /api/ai/smart-validate endpoint returns score (1-10), summary, and categorized suggestions (performance, reliability, best practices, architecture). Frontend: "AI Review" button in ValidationPanel with color-coded score display, severity icons, and "Go to node" deep links
+**WS60: Hybrid Deploy + Serverless** — Deploy dialog upgraded with Hybrid (SDP+SSS) code target as recommended default, creating multi-task Databricks Jobs (DLT pipeline task → SSS streaming task with dependency). Serverless compute option added (DLT serverless=True, Jobs environment_key="serverless"). Backend: deploy_hybrid() method, _is_serverless() helper, updated _deploy_sdp/_deploy_sss for serverless. Frontend: 3-option code target selector with descriptions and recommended badge, serverless-first compute dropdown with info panel
 
 ## Final State
 
 | Component | Status |
 | --- | --- |
 | **Frontend** | 30+ components, Databricks dark theme, accessibility, error boundaries |
-| **AI Generation** | NL → Pipeline + AI Config Assist via Claude Sonnet (Databricks Foundation Model APIs) |
+| **AI Generation** | NL → Pipeline + AI Config Assist + Code Explanation + Smart Validation via Claude Sonnet |
 | **Backend API** | 20+ endpoints across 9 routers |
 | **SDP Code Gen** | 29 Jinja2 SQL templates — all 48 node types |
 | **SSS Code Gen** | 36 Jinja2 Python templates — all 48 node types |
@@ -100,7 +103,7 @@ LakeStream CEP Builder — Visual CEP Pipeline Builder for Databricks
 | **Monaco Editor** | Bidirectional sync, diff view, gutter annotations |
 | **Templates** | 19 built-in (16 industries) + user-created via API |
 | **Pattern Test** | Event replay with simulated CEP matching |
-| **Deploy** | Full dialog with compute/schedule/checkpoint config |
+| **Deploy** | Hybrid (SDP+SSS) + Serverless + classic compute, schedule/checkpoint config |
 | **Deploy History** | Audit trail with code view and job URLs |
 | **Job Notifications** | Real-time status polling with badges |
 | **Pipeline Storage** | Lakebase PostgreSQL + local file fallback |
@@ -179,6 +182,8 @@ LakeStream CEP Builder — Visual CEP Pipeline Builder for Databricks
 | Post | Gap fill | 8 new nodes (48 total), lakehouse→lakebase rename, 14 new Jinja2 templates |
 | Post | AI + UX | AI Pipeline Generator (Claude Sonnet), resizable panels |
 | Post | Industry templates | 8 new advanced templates (19 total, 16 industries) |
+| Post | AI features | AI Config Assist, Code Explanation, Smart Validation |
+| Post | Hybrid + Serverless | Hybrid deploy (SDP+SSS multi-task), Serverless compute |
 
 ---
-*Updated: 2026-02-26 after AI Config Assist (WS57)*
+*Updated: 2026-02-26 after Hybrid Deploy + Serverless (WS60)*

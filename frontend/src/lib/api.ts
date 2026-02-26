@@ -207,7 +207,7 @@ export interface DeployRequest {
   pipeline_id: string;
   job_name: string;
   cluster_config?: Record<string, unknown>;
-  code_target?: "sdp" | "sss";
+  code_target?: "sdp" | "sss" | "hybrid";
   schedule?: string;
   max_retries?: number;
   checkpoint_location?: string;
@@ -512,6 +512,45 @@ export interface AIConfigAssistResponse {
 
 export async function aiConfigAssist(nodeType: string, description: string): Promise<AIConfigAssistResponse> {
   const res = await api.post("/api/ai/config-assist", { node_type: nodeType, description });
+  return res.data;
+}
+
+// --- AI Code Explanation ---
+
+export interface AICodeExplainResponse {
+  explanation: string;
+}
+
+export async function aiExplainCode(code: string, codeTarget: string = "sdp"): Promise<AICodeExplainResponse> {
+  const res = await api.post("/api/ai/explain-code", { code, code_target: codeTarget });
+  return res.data;
+}
+
+// --- AI Smart Validation ---
+
+export interface SmartValidateSuggestion {
+  category: string;
+  severity: string;
+  node_id: string | null;
+  title: string;
+  description: string;
+}
+
+export interface AISmartValidateResponse {
+  summary: string;
+  score: number;
+  suggestions: SmartValidateSuggestion[];
+}
+
+export async function aiSmartValidate(
+  pipeline: { nodes: any[]; edges: any[] },
+  pipelineName: string = ""
+): Promise<AISmartValidateResponse> {
+  const res = await api.post("/api/ai/smart-validate", {
+    nodes: nodesToApi(pipeline.nodes),
+    edges: edgesToApi(pipeline.edges),
+    pipeline_name: pipelineName,
+  });
   return res.data;
 }
 

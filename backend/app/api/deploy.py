@@ -45,6 +45,48 @@ async def deploy_pipeline(
         ct = codegen_result.code_target
         code_target = "sdp" if ct in ("sdp", "hybrid") else "sss"
 
+    # Hybrid: deploy both SDP and SSS as a multi-task job
+    if code_target == "hybrid":
+        sdp_code = codegen_result.sdp_code
+        sss_code = codegen_result.sss_code
+        if not sdp_code or not sss_code:
+            raise HTTPException(
+                status_code=400,
+                detail="Hybrid deploy requires both SDP and SSS code. Check pipeline nodes.",
+            )
+        try:
+            result = deploy_service.deploy_hybrid(
+                pipeline_id=request.pipeline_id,
+                job_name=request.job_name,
+                cluster_config=request.cluster_config,
+                schedule=request.schedule,
+                sdp_code=sdp_code,
+                sss_code=sss_code,
+                pipeline_name=pipeline.name,
+                catalog=request.catalog,
+                schema=request.target_schema,
+            )
+            record_deploy(
+                pipeline_id=request.pipeline_id,
+                version=pipeline.version,
+                code_target="hybrid",
+                job_id=result["job_id"],
+                job_url=result["job_url"],
+                status=result["status"],
+                code=f"-- SDP --\n{sdp_code}\n\n# --- SSS ---\n{sss_code}",
+                cluster_config=request.cluster_config,
+                deployment_type=result.get("deployment_type", "job"),
+                deployed_by=user.email,
+            )
+            return DeployResponse(
+                job_id=result["job_id"],
+                job_url=result["job_url"],
+                status=result["status"],
+                deployment_type=result.get("deployment_type", "job"),
+            )
+        except DatabricksDeployError as e:
+            raise HTTPException(status_code=502, detail=str(e)) from e
+
     # Select code to deploy
     if code_target == "sdp":
         code = codegen_result.sdp_code

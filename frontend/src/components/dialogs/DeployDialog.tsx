@@ -51,8 +51,8 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
   const addJob = useJobStatusStore((s) => s.addJob);
 
   const [jobName, setJobName] = useState("");
-  const [codeTargetChoice, setCodeTargetChoice] = useState<"sdp" | "sss">("sdp");
-  const [clusterMode, setClusterMode] = useState<"new" | "existing">("new");
+  const [codeTargetChoice, setCodeTargetChoice] = useState<"sdp" | "sss" | "hybrid">("hybrid");
+  const [clusterMode, setClusterMode] = useState<"new" | "existing" | "serverless">("serverless");
   const [workerCount, setWorkerCount] = useState(2);
   const [nodeType, setNodeType] = useState("i3.xlarge");
   const [sparkVersion, setSparkVersion] = useState("14.3.x-scala2.12");
@@ -85,7 +85,7 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
       setConnectionValid(null);
       setDeploySuccess(null);
       if (isHybrid) {
-        setCodeTargetChoice("sdp");
+        setCodeTargetChoice("hybrid");
       } else if (codeTarget === "sss") {
         setCodeTargetChoice("sss");
       } else {
@@ -143,19 +143,21 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
       }
 
       const cluster_config: Record<string, unknown> =
-        clusterMode === "existing"
-          ? { existing_cluster_id: existingClusterId }
-          : autoscale
-            ? {
-                node_type_id: nodeType,
-                spark_version: sparkVersion,
-                autoscale: { min_workers: minWorkers, max_workers: maxWorkers },
-              }
-            : {
-                num_workers: workerCount,
-                node_type_id: nodeType,
-                spark_version: sparkVersion,
-              };
+        clusterMode === "serverless"
+          ? { serverless: true }
+          : clusterMode === "existing"
+            ? { existing_cluster_id: existingClusterId }
+            : autoscale
+              ? {
+                  node_type_id: nodeType,
+                  spark_version: sparkVersion,
+                  autoscale: { min_workers: minWorkers, max_workers: maxWorkers },
+                }
+              : {
+                  num_workers: workerCount,
+                  node_type_id: nodeType,
+                  spark_version: sparkVersion,
+                };
 
       const schedule =
         continuous || clusterMode === "existing"
@@ -259,7 +261,27 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
               <div>
                 <label className="mb-2 block text-xs text-[#484f58]">Code target</label>
                 <div className="space-y-2">
-                  <label className="flex cursor-pointer items-center gap-2">
+                  <label className="flex cursor-pointer items-center gap-2 rounded-md border border-transparent px-2 py-1.5 transition-colors hover:bg-[#21262d]">
+                    <input
+                      type="radio"
+                      name="code_target"
+                      checked={codeTargetChoice === "hybrid"}
+                      onChange={() => setCodeTargetChoice("hybrid")}
+                      className="text-[#1f6feb]"
+                    />
+                    <div>
+                      <span className="text-sm text-[#c9d1d9]">
+                        Hybrid (SDP + SSS)
+                      </span>
+                      <span className="ml-2 rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">
+                        Recommended
+                      </span>
+                      <p className="text-xs text-[#484f58]">
+                        Multi-task job: SDP pipeline then SSS streaming
+                      </p>
+                    </div>
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2 rounded-md border border-transparent px-2 py-1.5 transition-colors hover:bg-[#21262d]">
                     <input
                       type="radio"
                       name="code_target"
@@ -267,11 +289,16 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
                       onChange={() => setCodeTargetChoice("sdp")}
                       className="text-[#1f6feb]"
                     />
-                    <span className="text-sm text-[#c9d1d9]">
-                      Lakeflow Declarative Pipelines (SDP)
-                    </span>
+                    <div>
+                      <span className="text-sm text-[#c9d1d9]">
+                        Lakeflow Declarative Pipelines (SDP)
+                      </span>
+                      <p className="text-xs text-[#484f58]">
+                        DLT pipeline for batch and streaming tables
+                      </p>
+                    </div>
                   </label>
-                  <label className="flex cursor-pointer items-center gap-2">
+                  <label className="flex cursor-pointer items-center gap-2 rounded-md border border-transparent px-2 py-1.5 transition-colors hover:bg-[#21262d]">
                     <input
                       type="radio"
                       name="code_target"
@@ -279,17 +306,16 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
                       onChange={() => setCodeTargetChoice("sss")}
                       className="text-[#1f6feb]"
                     />
-                    <span className="text-sm text-[#c9d1d9]">
-                      Spark Structured Streaming
-                    </span>
+                    <div>
+                      <span className="text-sm text-[#c9d1d9]">
+                        Spark Structured Streaming
+                      </span>
+                      <p className="text-xs text-[#484f58]">
+                        Standalone streaming job with manual checkpointing
+                      </p>
+                    </div>
                   </label>
                 </div>
-                {isHybrid && (
-                  <p className="mt-1 text-xs text-[#484f58]">
-                    Hybrid pipeline: both SDP and SSS code exist. Choose one for this job.
-                    Multi-task jobs may be supported in future.
-                  </p>
-                )}
               </div>
             </div>
           </div>
@@ -302,14 +328,24 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
                 <label className="mb-1 block text-xs text-[#484f58]">Cluster mode</label>
                 <select
                   value={clusterMode}
-                  onChange={(e) => setClusterMode(e.target.value as "new" | "existing")}
+                  onChange={(e) => setClusterMode(e.target.value as "new" | "existing" | "serverless")}
                   className="w-full rounded border border-[#30363d] bg-[#21262d] px-3 py-2 text-sm text-[#e8eaed] focus:border-[#58a6ff] focus:outline-none focus:ring-1 focus:ring-[#58a6ff]"
                 >
+                  <option value="serverless">Serverless</option>
                   <option value="new">New Job Cluster</option>
                   <option value="existing">Existing Cluster</option>
                 </select>
               </div>
-              {clusterMode === "new" ? (
+              {clusterMode === "serverless" && (
+                <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-3">
+                  <p className="text-xs text-emerald-400 font-medium">Serverless Compute</p>
+                  <p className="mt-1 text-xs text-[#8b949e]">
+                    Databricks manages infrastructure automatically. No cluster
+                    configuration needed — instant startup with pay-per-use pricing.
+                  </p>
+                </div>
+              )}
+              {clusterMode === "new" && (
                 <>
                   <div>
                     <label className="mb-1 block text-xs text-[#484f58]">Worker count</label>
@@ -378,7 +414,8 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
                     </div>
                   )}
                 </>
-              ) : (
+              )}
+              {clusterMode === "existing" && (
                 <div>
                   <label className="mb-1 block text-xs text-[#484f58]">Cluster ID</label>
                   <input

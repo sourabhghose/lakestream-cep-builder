@@ -135,7 +135,7 @@ interface PipelineState {
     pipeline_id: string;
     job_name: string;
     cluster_config?: Record<string, unknown>;
-    code_target?: "sdp" | "sss";
+    code_target?: "sdp" | "sss" | "hybrid";
     schedule?: string;
     max_retries?: number;
     checkpoint_location?: string;

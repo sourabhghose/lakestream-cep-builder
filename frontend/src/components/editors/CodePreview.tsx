@@ -12,6 +12,8 @@ import {
   Pencil,
   ChevronDown,
   GitCompare,
+  Sparkles,
+  X,
 } from "lucide-react";
 import { useResizableReverse } from "@/hooks/useResizable";
 import { cn } from "@/lib/utils";
@@ -64,6 +66,10 @@ export default function CodePreview({
   const [diffMode, setDiffMode] = useState(false);
   const [lastDeployedCode, setLastDeployedCode] = useState<string | null>(null);
   const [diffLoading, setDiffLoading] = useState(false);
+  const [explainOpen, setExplainOpen] = useState(false);
+  const [explainLoading, setExplainLoading] = useState(false);
+  const [explanation, setExplanation] = useState<string | null>(null);
+  const [explainError, setExplainError] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<"synced" | "warnings" | "parsing" | "error" | null>(null);
   const [syncMessage, setSyncMessage] = useState<string>("");
   const parseTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
@@ -203,6 +209,27 @@ export default function CodePreview({
   const hasLastDeployed = lastDeployedCode !== null && lastDeployedCode !== undefined;
   const language = activeTab === "sdp" ? "sql" : "python";
 
+  const handleExplain = async () => {
+    const src = activeTab === "sdp" ? generatedSdpCode : generatedSssCode;
+    if (!src || src.length < 20) return;
+    setExplainOpen(true);
+    setExplainLoading(true);
+    setExplainError(null);
+    setExplanation(null);
+    try {
+      const result = await api.aiExplainCode(src, activeTab);
+      setExplanation(result.explanation);
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === "object" && "userMessage" in err
+          ? String((err as { userMessage?: string }).userMessage)
+          : err instanceof Error ? err.message : "Failed to explain code";
+      setExplainError(msg);
+    } finally {
+      setExplainLoading(false);
+    }
+  };
+
   return (
     <div
       className={cn(
@@ -284,6 +311,21 @@ export default function CodePreview({
           )}
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleExplain}
+            disabled={!code || code.length < 20}
+            aria-label="Explain this code with AI"
+            className={cn(
+              "flex items-center gap-1.5 rounded px-2 py-1.5 text-sm",
+              explainOpen
+                ? "bg-purple-500/20 text-purple-400"
+                : "text-[#8b949e] hover:bg-[#30363d] hover:text-[#e8eaed] disabled:opacity-40 disabled:cursor-not-allowed"
+            )}
+            title="Explain this code with AI"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            Explain
+          </button>
           <button
             onClick={() => setDiffMode(!diffMode)}
             aria-label={diffMode ? "Exit diff view" : "Compare with last deployed"}
@@ -379,6 +421,39 @@ export default function CodePreview({
               }}
             />
           )}
+        </div>
+      )}
+
+      {explainOpen && (
+        <div className="absolute bottom-full left-0 right-0 z-50 max-h-[300px] border-t border-purple-500/30 bg-[#0d1117] shadow-lg">
+          <div className="flex items-center justify-between border-b border-[#30363d] px-4 py-2">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-purple-400" />
+              <span className="text-sm font-medium text-[#e8eaed]">Code Explanation</span>
+              <span className="text-xs text-[#8b949e]">Powered by AI</span>
+            </div>
+            <button
+              onClick={() => setExplainOpen(false)}
+              className="rounded p-1 text-[#8b949e] hover:bg-[#30363d] hover:text-[#e8eaed]"
+              aria-label="Close explanation"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="overflow-y-auto p-4" style={{ maxHeight: "250px" }}>
+            {explainLoading && (
+              <div className="flex items-center gap-2 text-sm text-[#8b949e]">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Analyzing code...
+              </div>
+            )}
+            {explainError && <p className="text-sm text-red-400">{explainError}</p>}
+            {explanation && (
+              <div className="prose prose-invert prose-sm max-w-none text-sm text-[#c9d1d9] leading-relaxed whitespace-pre-wrap">
+                {explanation}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

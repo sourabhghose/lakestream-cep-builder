@@ -404,3 +404,167 @@ async def config_assist(req: ConfigAssistRequest) -> ConfigAssistResponse:
     if not isinstance(raw, dict):
         raise HTTPException(status_code=502, detail="AI returned non-object config.")
     return ConfigAssistResponse(config=raw)
+
+
+# ---------------------------------------------------------------------------
+# Code Explanation
+# ---------------------------------------------------------------------------
+
+CODE_EXPLAIN_PROMPT = """You are an expert at explaining Databricks streaming pipeline code.
+
+Given generated code (Lakeflow SDP SQL/Python or Spark Structured Streaming PySpark), provide a clear, concise explanation.
+
+Guidelines:
+- Start with a one-sentence summary of what the pipeline does
+- Explain each major stage in order
+- Highlight CEP patterns, windowing, stateful processing, data quality checks
+- Note Databricks-specific features (DLT expectations, TransformWithState, Unity Catalog)
+- Use bullet points for clarity
+- Keep under 500 words
+- Do NOT include code — just explain in plain English
+- Mention potential issues or improvements briefly at the end
+
+Return plain text. Markdown formatting (headers, bullets, bold) is fine."""
+
+
+class CodeExplainRequest(BaseModel):
+    code: str
+    code_target: str = "sdp"
+
+
+class CodeExplainResponse(BaseModel):
+    explanation: str
+
+
+def _call_model_text(system_prompt: str, user_prompt: str) -> str:
+    """Call Foundation Model API expecting plain text back."""
+    try:
+        import httpx
+        from databricks.sdk import WorkspaceClient
+
+        w = WorkspaceClient()
+        host = w.config.host.rstrip("/")
+        url = f"{host}/serving-endpoints/{AI_MODEL_ENDPOINT}/invocations"
+
+        auth_result = w.config.authenticate()
+        auth_headers = auth_result("POST", url) if callable(auth_result) else auth_result
+
+        resp = httpx.post(
+            url,
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                "max_tokens": 2048,
+                "temperature": 0.3,
+            },
+            timeout=120.0,
+        )
+        resp.raise_for_status()
+        return resp.json()["choices"][0]["message"]["content"].strip()
+
+    except ImportError:
+        raise HTTPException(status_code=503, detail="Databricks SDK not available.")
+    except Exception as e:
+        logger.error("AI text call failed: %s", str(e))
+        raise HTTPException(status_code=502, detail=f"AI request failed: {str(e)[:200]}")
+
+
+@router.post("/explain-code")
+async def explain_code(req: CodeExplainRequest) -> CodeExplainResponse:
+    """Explain generated pipeline code using AI."""
+    if not req.code or len(req.code.strip()) < 20:
+        raise HTTPException(status_code=400, detail="Code must be at least 20 characters.")
+
+    lang = "SDP (Lakeflow Declarative Pipelines SQL/Python)" if req.code_target == "sdp" else "Spark Structured Streaming (PySpark)"
+    user_prompt = f"Code target: {lang}\n\n```\n{req.code.strip()}\n```\n\nExplain this pipeline code."
+    logger.info("AI code explanation requested (%s, %d chars)", req.code_target, len(req.code))
+
+    explanation = _call_model_text(CODE_EXPLAIN_PROMPT, user_prompt)
+    return CodeExplainResponse(explanation=explanation)
+
+
+# ---------------------------------------------------------------------------
+# Smart Validation
+# ---------------------------------------------------------------------------
+
+SMART_VALIDATE_PROMPT = """You are an expert Databricks streaming pipeline architect reviewing a CEP pipeline for production readiness.
+
+Given a pipeline definition (nodes + edges as JSON), provide actionable suggestions.
+
+Review categories:
+- **performance**: window sizes, missing watermarks, unnecessary shuffles, nodes that could be combined
+- **reliability**: missing error handling sinks, CEP patterns without alert sinks, missing deduplication
+- **best_practice**: naming conventions, Delta sink write modes, checkpoint alignment
+- **architecture**: linear chains that could fan out, overly complex graphs, missing monitoring sinks
+
+Output ONLY valid JSON (no markdown):
+{{
+  "summary": "One-sentence overall assessment",
+  "score": <1-10 integer>,
+  "suggestions": [
+    {{
+      "category": "performance|reliability|best_practice|architecture",
+      "severity": "error|warning|info",
+      "node_id": "<affected node ID or null>",
+      "title": "Short title",
+      "description": "Detailed recommendation"
+    }}
+  ]
+}}
+
+Generate 3-8 suggestions. Reference actual node IDs and config values.
+Even for well-designed pipelines, provide at least 2 improvement suggestions."""
+
+
+class SmartValidateRequest(BaseModel):
+    nodes: list[dict[str, Any]]
+    edges: list[dict[str, Any]]
+    pipeline_name: str = ""
+
+
+class SmartValidateSuggestion(BaseModel):
+    category: str
+    severity: str
+    node_id: str | None = None
+    title: str
+    description: str
+
+
+class SmartValidateResponse(BaseModel):
+    summary: str
+    score: int
+    suggestions: list[SmartValidateSuggestion]
+
+
+@router.post("/smart-validate")
+async def smart_validate(req: SmartValidateRequest) -> SmartValidateResponse:
+    """AI-powered pipeline review with optimization suggestions."""
+    if not req.nodes:
+        raise HTTPException(status_code=400, detail="Pipeline has no nodes to review.")
+
+    pipeline_json = json.dumps({"name": req.pipeline_name, "nodes": req.nodes, "edges": req.edges}, indent=2)
+    user_prompt = f"Review this pipeline:\n\n{pipeline_json}"
+    logger.info("AI smart validation for '%s' (%d nodes)", req.pipeline_name, len(req.nodes))
+
+    raw = _call_model_json(SMART_VALIDATE_PROMPT, user_prompt)
+
+    summary = raw.get("summary", "Pipeline reviewed.")
+    score = raw.get("score", 5)
+    if not isinstance(score, int) or score < 1 or score > 10:
+        score = 5
+
+    suggestions = []
+    for s in raw.get("suggestions", []):
+        if isinstance(s, dict):
+            suggestions.append(SmartValidateSuggestion(
+                category=s.get("category", "best_practice"),
+                severity=s.get("severity", "info"),
+                node_id=s.get("node_id"),
+                title=s.get("title", "Suggestion"),
+                description=s.get("description", ""),
+            ))
+
+    return SmartValidateResponse(summary=summary, score=score, suggestions=suggestions)

@@ -292,8 +292,10 @@ Powered by **Claude Sonnet on Databricks** Foundation Model APIs. No API keys ne
 |---------|-------------|--------|
 | **NL → Pipeline** | Describe a pipeline in English, AI generates the graph | Shipped |
 | **AI Config Assist** | NL descriptions auto-fill CEP pattern configuration fields | Shipped |
-| **Code Explanation** | "Explain this code" button on generated SDP/SSS code | Planned |
-| **Smart Validation** | AI-powered pipeline review with optimization suggestions | Planned |
+| **Code Explanation** | "Explain this code" button on generated SDP/SSS code | Shipped |
+| **Smart Validation** | AI-powered pipeline review with optimization suggestions | Shipped |
+| **Hybrid Deploy** | Multi-task job (SDP pipeline + SSS streaming) as recommended default | Shipped |
+| **Serverless Compute** | Zero-config serverless option for DLT pipelines and Jobs | Shipped |
 
 ---
 
@@ -330,6 +332,8 @@ Powered by **Claude Sonnet on Databricks** Foundation Model APIs. No API keys ne
 | `/api/pattern/test` | POST | Test CEP patterns against sample events |
 | `/api/ai/generate` | POST | AI-powered pipeline generation from natural language (Claude Sonnet) |
 | `/api/ai/config-assist` | POST | AI-powered node config generation from natural language |
+| `/api/ai/explain-code` | POST | AI-powered code explanation for SDP/SSS code |
+| `/api/ai/smart-validate` | POST | AI-powered pipeline review with score and suggestions |
 | `/api/templates` | GET, POST | List/create pipeline templates |
 | `/api/templates/{id}` | DELETE | Delete user template |
 | `/api/preferences` | GET, PUT | Get/update user preferences |

@@ -8,12 +8,17 @@ import {
   AlertTriangle,
   Info,
   CheckCircle2,
+  Sparkles,
+  Loader2,
+  Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePipelineStore } from "@/hooks/usePipelineStore";
 import { validatePipeline } from "@/lib/pipelineValidator";
 import { NODE_REGISTRY } from "@/lib/nodeRegistry";
+import { aiSmartValidate } from "@/lib/api";
 import type { ValidationIssue } from "@/lib/pipelineValidator";
+import type { SmartValidateSuggestion } from "@/lib/api";
 
 interface ValidationPanelProps {
   isOpen: boolean;
@@ -27,9 +32,15 @@ function getNodeLabel(nodes: { id: string; data?: { label?: string } }[], nodeId
 
 export default function ValidationPanel({ isOpen, onClose }: ValidationPanelProps) {
   const [refreshKey, setRefreshKey] = useState(0);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [aiScore, setAiScore] = useState<number | null>(null);
+  const [aiSuggestions, setAiSuggestions] = useState<SmartValidateSuggestion[]>([]);
+  const [aiError, setAiError] = useState<string | null>(null);
   const nodes = usePipelineStore((s) => s.nodes);
   const edges = usePipelineStore((s) => s.edges);
   const groups = usePipelineStore((s) => s.groups);
+  const pipelineName = usePipelineStore((s) => s.pipelineName);
   const getExpandedNodesAndEdges = usePipelineStore((s) => s.getExpandedNodesAndEdges);
   const requestPanToNode = usePipelineStore((s) => s.requestPanToNode);
 
@@ -53,6 +64,28 @@ export default function ValidationPanel({ isOpen, onClose }: ValidationPanelProp
     }
   }, [isOpen]);
 
+  const handleAiReview = async () => {
+    setAiLoading(true);
+    setAiError(null);
+    setAiSummary(null);
+    setAiScore(null);
+    setAiSuggestions([]);
+    try {
+      const result = await aiSmartValidate({ nodes: expandedNodes, edges: expandedEdges }, pipelineName);
+      setAiSummary(result.summary);
+      setAiScore(result.score);
+      setAiSuggestions(result.suggestions);
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === "object" && "userMessage" in err
+          ? String((err as { userMessage?: string }).userMessage)
+          : err instanceof Error ? err.message : "AI review failed";
+      setAiError(msg);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -72,6 +105,21 @@ export default function ValidationPanel({ isOpen, onClose }: ValidationPanelProp
             Pipeline Validation
           </h2>
           <div className="flex items-center gap-1">
+            <button
+              onClick={handleAiReview}
+              disabled={aiLoading || expandedNodes.length === 0}
+              className={cn(
+                "flex items-center gap-1.5 rounded px-2.5 py-1.5 text-sm font-medium transition-colors",
+                aiLoading
+                  ? "bg-purple-600/30 text-purple-300 cursor-wait"
+                  : "bg-gradient-to-r from-purple-600/80 to-blue-600/80 text-white hover:from-purple-500 hover:to-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
+              )}
+              title="AI-powered pipeline review"
+              aria-label="AI Smart Review"
+            >
+              {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+              AI Review
+            </button>
             <button
               onClick={() => setRefreshKey((k) => k + 1)}
               className="rounded p-2 text-[#8b949e] hover:bg-[#21262d] hover:text-[#e8eaed]"
@@ -114,6 +162,64 @@ export default function ValidationPanel({ isOpen, onClose }: ValidationPanelProp
               </span>
             )}
           </div>
+
+          {/* AI Smart Review Results */}
+          {(aiSummary || aiLoading || aiError) && (
+            <div className="border-b border-[#30363d] p-3 space-y-3">
+              {aiLoading && (
+                <div className="flex items-center gap-2 text-sm text-[#8b949e]">
+                  <Loader2 className="h-4 w-4 animate-spin text-purple-400" />
+                  Running AI review...
+                </div>
+              )}
+              {aiError && <p className="text-sm text-red-400">{aiError}</p>}
+              {aiSummary && !aiLoading && (
+                <>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles className="h-4 w-4 text-purple-400" />
+                      <span className="text-xs font-semibold text-purple-300">AI Review</span>
+                    </div>
+                    {aiScore !== null && (
+                      <div className="ml-auto flex items-center gap-1">
+                        <Star className={cn("h-3.5 w-3.5", aiScore >= 7 ? "text-emerald-400" : aiScore >= 4 ? "text-amber-400" : "text-red-400")} />
+                        <span className={cn("text-sm font-bold", aiScore >= 7 ? "text-emerald-400" : aiScore >= 4 ? "text-amber-400" : "text-red-400")}>
+                          {aiScore}/10
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-sm text-[#c9d1d9]">{aiSummary}</p>
+                  {aiSuggestions.length > 0 && (
+                    <ul className="space-y-2">
+                      {aiSuggestions.map((s, i) => (
+                        <li key={i} className="rounded-lg border border-purple-500/20 bg-purple-500/5 p-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            {s.severity === "error" ? <AlertCircle className="h-3.5 w-3.5 text-red-400" /> :
+                             s.severity === "warning" ? <AlertTriangle className="h-3.5 w-3.5 text-amber-400" /> :
+                             <Info className="h-3.5 w-3.5 text-[#58a6ff]" />}
+                            <span className="text-xs font-medium text-[#e8eaed]">{s.title}</span>
+                            <span className="ml-auto rounded-full bg-[#30363d] px-2 py-0.5 text-[10px] text-[#8b949e]">
+                              {s.category.replace("_", " ")}
+                            </span>
+                          </div>
+                          <p className="text-xs text-[#8b949e] leading-relaxed">{s.description}</p>
+                          {s.node_id && (
+                            <button
+                              onClick={() => requestPanToNode(s.node_id!)}
+                              className="mt-1 text-[10px] text-[#58a6ff] hover:underline"
+                            >
+                              Go to node
+                            </button>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )}
+            </div>
+          )}
 
           <div
             className="flex-1 overflow-y-auto p-4"

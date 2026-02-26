@@ -154,9 +154,9 @@ class DeployRequest(BaseModel):
         default=None,
         description="Unity Catalog schema for SDP pipeline target",
     )
-    code_target: Literal["sdp", "sss"] | None = Field(
+    code_target: Literal["sdp", "sss", "hybrid"] | None = Field(
         default=None,
-        description="Which code to deploy (sdp or sss). If hybrid, must be specified.",
+        description="Which code to deploy. 'hybrid' creates a multi-task job (SDP + SSS).",
     )
 
 

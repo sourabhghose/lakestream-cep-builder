@@ -132,6 +132,111 @@ class DeployService:
         base = host.rstrip("/")
         return f"{base}/#joblist/pipelines/{pipeline_id}"
 
+    def deploy_hybrid(
+        self,
+        pipeline_id: str,
+        job_name: str,
+        cluster_config: dict[str, Any],
+        schedule: str | None,
+        sdp_code: str,
+        sss_code: str,
+        pipeline_name: str = "pipeline",
+        catalog: str | None = None,
+        schema: str | None = None,
+    ) -> dict[str, str]:
+        """
+        Deploy hybrid pipeline: multi-task Databricks Job with an SDP (DLT)
+        pipeline task followed by an SSS streaming task.
+        """
+        if not self._config.is_configured:
+            return self._deploy_mock(job_name)
+
+        w = self._get_client()
+
+        sdp_path = self._upload_notebook(w, sdp_code, pipeline_name, pipeline_id, "sdp")
+        sss_path = self._upload_notebook(w, sss_code, pipeline_name, pipeline_id, "sss")
+
+        serverless = self._is_serverless(cluster_config)
+
+        lib = pipelines.PipelineLibrary(
+            notebook=pipelines.NotebookLibrary(path=sdp_path)
+        )
+        dlt_kw: dict[str, Any] = {
+            "libraries": [lib],
+            "continuous": False,
+            "serverless": serverless,
+        }
+        if serverless:
+            dlt_kw["clusters"] = []
+        else:
+            dlt_kw["clusters"] = self._build_pipeline_clusters(cluster_config)
+        if catalog:
+            dlt_kw["catalog"] = catalog
+        if schema:
+            dlt_kw["schema"] = schema
+        created_pipeline = w.pipelines.create(name=f"{job_name}_sdp", **dlt_kw)
+
+        sdp_task = jobs.Task(
+            task_key="sdp_pipeline",
+            pipeline_task=jobs.PipelineTask(
+                pipeline_id=created_pipeline.pipeline_id,
+                full_refresh=False,
+            ),
+        )
+
+        if serverless:
+            sss_task = jobs.Task(
+                task_key="sss_streaming",
+                depends_on=[jobs.TaskDependency(task_key="sdp_pipeline")],
+                notebook_task=jobs.NotebookTask(
+                    notebook_path=sss_path,
+                    source=jobs.Source.WORKSPACE,
+                ),
+                environment_key="serverless",
+            )
+            environments = [
+                jobs.JobEnvironment(
+                    environment_key="serverless",
+                    spec={"client": "1"},
+                )
+            ]
+            job_clusters: list[jobs.JobCluster] = []
+        else:
+            sss_task = jobs.Task(
+                task_key="sss_streaming",
+                depends_on=[jobs.TaskDependency(task_key="sdp_pipeline")],
+                notebook_task=jobs.NotebookTask(
+                    notebook_path=sss_path,
+                    source=jobs.Source.WORKSPACE,
+                ),
+                job_cluster_key="main_cluster",
+            )
+            environments = None
+            job_clusters = self._build_job_clusters(cluster_config)
+
+        schedule_spec = (
+            jobs.CronSchedule(quartz_cron_expression=schedule, timezone_id="UTC")
+            if schedule
+            else None
+        )
+        create_kw: dict[str, Any] = {
+            "name": job_name,
+            "tasks": [sdp_task, sss_task],
+            "schedule": schedule_spec,
+        }
+        if serverless:
+            create_kw["environments"] = environments
+        else:
+            create_kw["job_clusters"] = job_clusters
+        created_job = w.jobs.create(**create_kw)
+        url = self._job_url(str(w.config.host), created_job.job_id)
+        return {
+            "job_id": str(created_job.job_id),
+            "job_url": url,
+            "status": "created",
+            "deployment_type": "hybrid_job",
+        }
+
     def deploy(
         self,
         pipeline_id: str,
@@ -167,6 +272,10 @@ class DeployService:
             w, job_name, notebook_path, cluster_config, schedule
         )
 
+    def _is_serverless(self, cluster_config: dict[str, Any]) -> bool:
+        """Check if cluster_config requests serverless compute."""
+        return (cluster_config or {}).get("serverless", False) is True
+
     def _deploy_sdp(
         self,
         w: WorkspaceClient,
@@ -181,9 +290,8 @@ class DeployService:
         lib = pipelines.PipelineLibrary(
             notebook=pipelines.NotebookLibrary(path=notebook_path)
         )
-        pipeline_clusters = self._build_pipeline_clusters(cluster_config)
+        serverless = self._is_serverless(cluster_config)
 
-        # Check for existing pipeline by name
         existing_id: str | None = None
         for p in w.pipelines.list_pipelines():
             if p.name and p.name.strip().lower() == job_name.strip().lower():
@@ -192,9 +300,13 @@ class DeployService:
 
         update_kw: dict[str, Any] = {
             "libraries": [lib],
-            "clusters": pipeline_clusters,
             "continuous": False,
+            "serverless": serverless,
         }
+        if serverless:
+            update_kw["clusters"] = []
+        else:
+            update_kw["clusters"] = self._build_pipeline_clusters(cluster_config)
         if catalog:
             update_kw["catalog"] = catalog
         if schema:
@@ -214,14 +326,7 @@ class DeployService:
                 "deployment_type": "pipeline",
             }
 
-        created = w.pipelines.create(
-            name=job_name,
-            libraries=[lib],
-            clusters=pipeline_clusters,
-            continuous=False,
-            catalog=catalog or None,
-            schema=schema or None,
-        )
+        created = w.pipelines.create(name=job_name, **update_kw)
         url = self._pipeline_url(str(w.config.host), created.pipeline_id)
         return {
             "job_id": created.pipeline_id,
@@ -239,15 +344,35 @@ class DeployService:
         schedule: str | None,
     ) -> dict[str, str]:
         """Create or update Job with streaming notebook task for SSS code."""
-        job_clusters = self._build_job_clusters(cluster_config)
-        task = jobs.Task(
-            task_key="streaming_main",
-            notebook_task=jobs.NotebookTask(
-                notebook_path=notebook_path,
-                source=jobs.Source.WORKSPACE,
-            ),
-            job_cluster_key="main_cluster",
-        )
+        serverless = self._is_serverless(cluster_config)
+
+        if serverless:
+            task = jobs.Task(
+                task_key="streaming_main",
+                notebook_task=jobs.NotebookTask(
+                    notebook_path=notebook_path,
+                    source=jobs.Source.WORKSPACE,
+                ),
+                environment_key="serverless",
+            )
+            environments = [
+                jobs.JobEnvironment(
+                    environment_key="serverless",
+                    spec={"client": "1"},
+                )
+            ]
+            job_clusters: list[jobs.JobCluster] = []
+        else:
+            task = jobs.Task(
+                task_key="streaming_main",
+                notebook_task=jobs.NotebookTask(
+                    notebook_path=notebook_path,
+                    source=jobs.Source.WORKSPACE,
+                ),
+                job_cluster_key="main_cluster",
+            )
+            environments = None
+            job_clusters = self._build_job_clusters(cluster_config)
 
         schedule_spec = (
             jobs.CronSchedule(quartz_cron_expression=schedule, timezone_id="UTC")
@@ -255,21 +380,25 @@ class DeployService:
             else None
         )
 
-        # Check for existing job by name
         existing_job: jobs.Job | None = None
         for j in w.jobs.list(name=job_name):
             existing_job = j
             break
 
+        settings_kw: dict[str, Any] = {
+            "name": job_name,
+            "tasks": [task],
+            "schedule": schedule_spec,
+        }
+        if serverless:
+            settings_kw["environments"] = environments
+        else:
+            settings_kw["job_clusters"] = job_clusters
+
         if existing_job and getattr(existing_job, "job_id", None):
             w.jobs.reset(
                 job_id=existing_job.job_id,
-                new_settings=jobs.JobSettings(
-                    name=job_name,
-                    tasks=[task],
-                    job_clusters=job_clusters,
-                    schedule=schedule_spec,
-                ),
+                new_settings=jobs.JobSettings(**settings_kw),
             )
             url = self._job_url(str(w.config.host), existing_job.job_id)
             return {
@@ -279,12 +408,7 @@ class DeployService:
                 "deployment_type": "job",
             }
 
-        created = w.jobs.create(
-            name=job_name,
-            tasks=[task],
-            job_clusters=job_clusters,
-            schedule=schedule_spec,
-        )
+        created = w.jobs.create(**settings_kw)
         url = self._job_url(str(w.config.host), created.job_id)
         return {
             "job_id": str(created.job_id),
