@@ -3,7 +3,7 @@
 ## Overview
 LakeStream CEP Builder — Visual CEP Pipeline Builder for Databricks
 
-## Completed (56 workstreams across 12 rounds + post-deployment)
+## Completed (57 workstreams across 12 rounds + post-deployment)
 
 ### Round 1 (2026-02-22)
 **WS1: Frontend scaffold** — Next.js 14, React Flow canvas, 38-node palette, custom nodes/edges, config panel, code preview, Zustand store
@@ -84,13 +84,14 @@ LakeStream CEP Builder — Visual CEP Pipeline Builder for Databricks
 **WS54: Resizable panels** — Drag-to-resize left sidebar (180–450px), right config panel (280–600px), and bottom code dock (100–500px). useResizable hook with localStorage persistence, blue highlight on hover
 **WS55: AI Pipeline Generator** — Natural language → pipeline generation using Claude Sonnet on Databricks Foundation Model APIs. /api/ai/generate endpoint with 48-node catalog as LLM context, validates output against NODE_REGISTRY, auto-adds source/sink if missing. Frontend: AI Assist button with gradient styling, prompt textarea, example prompts, loading states, error handling. Loads generated pipeline directly onto canvas via loadPipeline()
 **WS56: Advanced industry templates** — 8 new multi-node templates across 8 industries: Patient Vitals Monitoring (Healthcare), Network Anomaly Detection (Telecom), Energy Grid Monitoring (Utilities), Player Behavior Analytics (Gaming), Insurance Claims Triage (Insurance), Ad Impression Attribution (Media/Advertising), Smart Building Management (PropTech), Anti-Money Laundering (Banking/Compliance). Total: 19 built-in templates spanning 16 industries. Showcases new node types: state machine, heartbeat/liveness, split/router, watermark, data quality, feature store, Google Pub/Sub
+**WS57: AI Config Assist** — Natural language descriptions auto-fill CEP pattern configuration fields. /api/ai/config-assist endpoint with config reference for all 48 node types, calls Claude Sonnet via reusable _call_model_json() helper. Frontend: "AI Config Assist" button in DynamicConfigForm with inline textarea, ⌘+Enter shortcut, gradient "Fill Config" button, loading/error states. Merges AI-generated config into existing node config
 
 ## Final State
 
 | Component | Status |
 | --- | --- |
 | **Frontend** | 30+ components, Databricks dark theme, accessibility, error boundaries |
-| **AI Generation** | NL → Pipeline via Claude Sonnet (Databricks Foundation Model APIs) |
+| **AI Generation** | NL → Pipeline + AI Config Assist via Claude Sonnet (Databricks Foundation Model APIs) |
 | **Backend API** | 20+ endpoints across 9 routers |
 | **SDP Code Gen** | 29 Jinja2 SQL templates — all 48 node types |
 | **SSS Code Gen** | 36 Jinja2 Python templates — all 48 node types |
@@ -180,4 +181,4 @@ LakeStream CEP Builder — Visual CEP Pipeline Builder for Databricks
 | Post | Industry templates | 8 new advanced templates (19 total, 16 industries) |
 
 ---
-*Updated: 2026-02-25 after Industry Templates (WS56)*
+*Updated: 2026-02-26 after AI Config Assist (WS57)*

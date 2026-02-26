@@ -292,3 +292,115 @@ async def generate_pipeline(req: GenerateRequest) -> GenerateResponse:
     result = _validate_and_normalize(raw)
     logger.info("AI generated pipeline '%s' with %d nodes, %d edges", result.name, len(result.nodes), len(result.edges))
     return result
+
+
+# ---------------------------------------------------------------------------
+# AI Config Assist
+# ---------------------------------------------------------------------------
+
+CONFIG_ASSIST_PROMPT = """You are an expert at configuring Complex Event Processing (CEP) streaming pipeline nodes for Databricks.
+
+Given a node type and a natural language description, generate the configuration JSON for that node.
+
+Return ONLY valid JSON (no markdown, no explanation) — a flat object of config key-value pairs.
+
+Durations use {{"value": <number>, "unit": "<seconds|minutes|hours|days>"}} format.
+
+Config reference by node type:
+- sequence-detector: steps (JSON array of {{"name","filter"}}), contiguityMode ("strict"|"relaxed"|"non-deterministic"), withinDuration, keyColumn
+- absence-detector: triggerEventFilter (SQL WHERE), expectedEventFilter (SQL WHERE), timeoutDuration, keyColumn
+- count-threshold: countColumn, threshold (int), windowDuration, groupByColumns
+- velocity-detector: metricColumn, maxRate (int), windowDuration, keyColumn
+- geofence-detector: latColumn, lonColumn, polygonWkt, eventTypes ("enter"|"exit"|"dwell"|"enter,exit"), dwellDuration
+- temporal-correlation: leftStreamFilter (SQL WHERE), rightStreamFilter (SQL WHERE), withinDuration, correlationKey
+- trend-detector: metricColumn, direction ("increasing"|"decreasing"|"both"), consecutiveCount (int), keyColumn
+- outlier-detector: metricColumn, method ("zscore"|"iqr"|"mad"), threshold (float), baselineWindow
+- session-detector: sessionGap, sessionKeyColumn
+- deduplication: deduplicationColumn, watermarkDuration
+- state-machine: states (JSON array), transitions (JSON array of {{"from","to","event","name"}}), initialState, entityKeyColumn, timeoutDuration
+- heartbeat-liveness: entityKeyColumn, expectedInterval, alertOnMissed (int)
+- filter: condition (SQL WHERE)
+- window-aggregate: windowType ("tumbling"|"sliding"|"session"), windowDuration, slideDuration, groupByColumns, aggregations (JSON array of {{"column","function","alias"}})
+- map-select: selectExpression (SQL SELECT)
+- join-lookup: lookupTable ("catalog.schema.table"), joinKey, joinType ("inner"|"left"|"right")
+- split-router: routes (JSON array of {{"name","condition"}}), defaultRoute
+- watermark: eventTimeColumn, watermarkDelay
+- data-quality: expectations (JSON array of {{"name","expression","action"}})
+- kafka-topic: bootstrapServers, topics, consumerGroup, startingOffset ("latest"|"earliest"), deserializationFormat
+- stream-simulator: dataProfile ("iot-sensors"|"clickstream"|"financial-transactions"|"ecommerce-orders"), eventsPerSecond
+- delta-table-sink: catalog, schema, table, writeMode ("append"|"complete"|"update")
+- email-sink: smtpProvider, to, subjectTemplate, bodyTemplate
+- slack-teams-pagerduty: webhookUrl, channel, messageTemplate
+
+For any other node type, infer reasonable config keys. Always provide realistic values."""
+
+
+class ConfigAssistRequest(BaseModel):
+    node_type: str
+    description: str
+
+
+class ConfigAssistResponse(BaseModel):
+    config: dict[str, Any]
+
+
+def _call_model_json(system_prompt: str, user_prompt: str) -> dict:
+    """Call Foundation Model API with a custom system prompt, expecting JSON back."""
+    try:
+        import httpx
+        from databricks.sdk import WorkspaceClient
+
+        w = WorkspaceClient()
+        host = w.config.host.rstrip("/")
+        url = f"{host}/serving-endpoints/{AI_MODEL_ENDPOINT}/invocations"
+
+        auth_result = w.config.authenticate()
+        auth_headers = auth_result("POST", url) if callable(auth_result) else auth_result
+
+        resp = httpx.post(
+            url,
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                "max_tokens": 4096,
+                "temperature": 0.3,
+            },
+            timeout=120.0,
+        )
+        resp.raise_for_status()
+        content = resp.json()["choices"][0]["message"]["content"].strip()
+        if content.startswith("```"):
+            content = content.split("\n", 1)[1] if "\n" in content else content[3:]
+            if content.endswith("```"):
+                content = content[:-3]
+            content = content.strip()
+        return json.loads(content)
+
+    except ImportError:
+        raise HTTPException(status_code=503, detail="Databricks SDK not available.")
+    except json.JSONDecodeError as e:
+        logger.error("Config assist JSON parse failed: %s", e)
+        raise HTTPException(status_code=502, detail="AI returned invalid JSON. Please try again.")
+    except Exception as e:
+        logger.error("Config assist call failed: %s", str(e))
+        raise HTTPException(status_code=502, detail=f"AI config assist failed: {str(e)[:200]}")
+
+
+@router.post("/config-assist")
+async def config_assist(req: ConfigAssistRequest) -> ConfigAssistResponse:
+    """Generate node configuration from a natural language description."""
+    if not req.description or len(req.description.strip()) < 5:
+        raise HTTPException(status_code=400, detail="Description must be at least 5 characters.")
+    if req.node_type not in NODE_REGISTRY:
+        raise HTTPException(status_code=400, detail=f"Unknown node type: {req.node_type}")
+
+    user_prompt = f"Node type: {req.node_type}\nDescription: {req.description}\n\nGenerate the config JSON."
+    logger.info("AI config assist for %s: %s", req.node_type, req.description[:80])
+    raw = _call_model_json(CONFIG_ASSIST_PROMPT, user_prompt)
+
+    if not isinstance(raw, dict):
+        raise HTTPException(status_code=502, detail="AI returned non-object config.")
+    return ConfigAssistResponse(config=raw)

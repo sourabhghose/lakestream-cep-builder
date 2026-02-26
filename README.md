@@ -291,7 +291,7 @@ Powered by **Claude Sonnet on Databricks** Foundation Model APIs. No API keys ne
 | Feature | Description | Status |
 |---------|-------------|--------|
 | **NL → Pipeline** | Describe a pipeline in English, AI generates the graph | Shipped |
-| **AI Config Assist** | NL descriptions auto-fill CEP pattern configuration fields | Planned |
+| **AI Config Assist** | NL descriptions auto-fill CEP pattern configuration fields | Shipped |
 | **Code Explanation** | "Explain this code" button on generated SDP/SSS code | Planned |
 | **Smart Validation** | AI-powered pipeline review with optimization suggestions | Planned |
 
@@ -329,6 +329,7 @@ Powered by **Claude Sonnet on Databricks** Foundation Model APIs. No API keys ne
 | `/api/preview/flow` | POST | Flow-through preview (source to sink) |
 | `/api/pattern/test` | POST | Test CEP patterns against sample events |
 | `/api/ai/generate` | POST | AI-powered pipeline generation from natural language (Claude Sonnet) |
+| `/api/ai/config-assist` | POST | AI-powered node config generation from natural language |
 | `/api/templates` | GET, POST | List/create pipeline templates |
 | `/api/templates/{id}` | DELETE | Delete user template |
 | `/api/preferences` | GET, PUT | Get/update user preferences |

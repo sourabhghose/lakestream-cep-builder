@@ -504,4 +504,15 @@ export async function aiGeneratePipeline(prompt: string): Promise<AIGenerateResp
   return res.data;
 }
 
+// --- AI Config Assist ---
+
+export interface AIConfigAssistResponse {
+  config: Record<string, unknown>;
+}
+
+export async function aiConfigAssist(nodeType: string, description: string): Promise<AIConfigAssistResponse> {
+  const res = await api.post("/api/ai/config-assist", { node_type: nodeType, description });
+  return res.data;
+}
+
 export default api;

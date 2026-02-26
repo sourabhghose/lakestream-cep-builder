@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Editor from "@monaco-editor/react";
-import { Search } from "lucide-react";
+import { Search, Sparkles, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { listCatalogs, listSchemas, listTables } from "@/lib/api";
+import { listCatalogs, listSchemas, listTables, aiConfigAssist } from "@/lib/api";
 import SchemaBrowser from "@/components/schema/SchemaBrowser";
 import type {
   NodeDefinition,
@@ -603,6 +603,10 @@ export function DynamicConfigForm({
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [schemaBrowserOpen, setSchemaBrowserOpen] = useState(false);
   const [touched, setTouched] = useState<Set<string>>(new Set());
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const hasSchemaFields = useMemo(
     () =>
@@ -737,21 +741,99 @@ export function DynamicConfigForm({
     [config, onChange]
   );
 
+  const handleAiAssist = async () => {
+    if (!aiPrompt.trim() || aiPrompt.trim().length < 5) {
+      setAiError("Describe what you want in at least 5 characters.");
+      return;
+    }
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const result = await aiConfigAssist(definition.type, aiPrompt.trim());
+      onChange({ ...config, ...result.config });
+      setAiOpen(false);
+      setAiPrompt("");
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === "object" && "userMessage" in err
+          ? String((err as { userMessage?: string }).userMessage)
+          : err instanceof Error ? err.message : "Failed to generate config";
+      setAiError(msg);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   return (
     <div className={cn("space-y-6", className)}>
-      {hasSchemaFields && (
-        <div>
+      <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          onClick={() => setSchemaBrowserOpen(true)}
-          className="flex items-center gap-2 rounded-md border border-[#30363d] bg-[#21262d80] px-3 py-2 text-sm font-medium text-[#c9d1d9] hover:border-[#484f58] hover:bg-[#21262d] hover:text-[#e8eaed]"
-          aria-label="Browse schema to select catalog, schema, and table"
+          onClick={() => { setAiOpen((o) => !o); setAiError(null); }}
+          className={cn(
+            "flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors",
+            aiOpen
+              ? "border-purple-500/50 bg-purple-500/10 text-purple-300"
+              : "border-[#30363d] bg-[#21262d80] text-[#c9d1d9] hover:border-[#484f58] hover:bg-[#21262d] hover:text-[#e8eaed]"
+          )}
+          aria-label="AI Config Assist"
+          aria-expanded={aiOpen}
         >
+          <Sparkles className="h-4 w-4" />
+          AI Config Assist
+        </button>
+        {hasSchemaFields && (
+          <button
+            type="button"
+            onClick={() => setSchemaBrowserOpen(true)}
+            className="flex items-center gap-2 rounded-md border border-[#30363d] bg-[#21262d80] px-3 py-2 text-sm font-medium text-[#c9d1d9] hover:border-[#484f58] hover:bg-[#21262d] hover:text-[#e8eaed]"
+            aria-label="Browse schema to select catalog, schema, and table"
+          >
             <Search className="h-4 w-4" />
             Browse schema
           </button>
+        )}
+      </div>
+
+      {aiOpen && (
+        <div className="rounded-lg border border-purple-500/30 bg-purple-500/5 p-3 space-y-2">
+          <textarea
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+            placeholder={`Describe how to configure this ${definition.label ?? definition.type}...`}
+            className="w-full rounded-md border border-[#30363d] bg-[#0d1117] px-3 py-2 text-sm text-[#e8eaed] placeholder-[#484f58] focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 resize-none"
+            rows={2}
+            disabled={aiLoading}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                handleAiAssist();
+              }
+            }}
+          />
+          {aiError && <p className="text-xs text-red-400">{aiError}</p>}
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] text-[#484f58]">
+              <kbd className="rounded border border-[#30363d] bg-[#21262d] px-1 py-0.5">⌘</kbd>+<kbd className="rounded border border-[#30363d] bg-[#21262d] px-1 py-0.5">Enter</kbd>
+            </p>
+            <button
+              type="button"
+              onClick={handleAiAssist}
+              disabled={aiLoading || !aiPrompt.trim()}
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all",
+                aiLoading
+                  ? "bg-purple-600/50 text-purple-200 cursor-wait"
+                  : "bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-500 hover:to-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              )}
+            >
+              {aiLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+              {aiLoading ? "Generating..." : "Fill Config"}
+            </button>
+          </div>
         </div>
       )}
+
       {renderFieldGroup(allFields.main)}
 
       {allFields.adv.length > 0 && (
