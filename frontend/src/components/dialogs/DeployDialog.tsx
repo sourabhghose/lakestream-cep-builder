@@ -43,6 +43,8 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
     nodes,
     edges,
     codeTarget,
+    generatedSdpCode,
+    generatedSssCode,
     validatePipeline,
     savePipeline,
     deployPipeline,
@@ -51,7 +53,7 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
   const addJob = useJobStatusStore((s) => s.addJob);
 
   const [jobName, setJobName] = useState("");
-  const [codeTargetChoice, setCodeTargetChoice] = useState<"sdp" | "sss" | "hybrid">("hybrid");
+  const [codeTargetChoice, setCodeTargetChoice] = useState<"sdp" | "sss" | "hybrid">("sdp");
   const [clusterMode, setClusterMode] = useState<"new" | "existing" | "serverless">("serverless");
   const [workerCount, setWorkerCount] = useState(2);
   const [nodeType, setNodeType] = useState("i3.xlarge");
@@ -77,22 +79,24 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
 
   const validation = validatePipeline();
   const hasValidationErrors = !validation.valid;
-  const isHybrid = codeTarget === "hybrid";
+  const hasSdp = !!generatedSdpCode;
+  const hasSss = !!generatedSssCode;
+  const canHybrid = hasSdp && hasSss;
 
   useEffect(() => {
     if (isOpen) {
       setJobName(pipelineName.replace(/\s+/g, "-") || "default-job");
       setConnectionValid(null);
       setDeploySuccess(null);
-      if (isHybrid) {
+      if (canHybrid) {
         setCodeTargetChoice("hybrid");
-      } else if (codeTarget === "sss") {
+      } else if (hasSss && !hasSdp) {
         setCodeTargetChoice("sss");
       } else {
         setCodeTargetChoice("sdp");
       }
     }
-  }, [isOpen, pipelineName, codeTarget, isHybrid]);
+  }, [isOpen, pipelineName, canHybrid, hasSdp, hasSss]);
 
   useEffect(() => {
     if (autoGenerateCheckpoint && pipelineName) {
@@ -261,32 +265,38 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
               <div>
                 <label className="mb-2 block text-xs text-[#484f58]">Code target</label>
                 <div className="space-y-2">
-                  <label className="flex cursor-pointer items-center gap-2 rounded-md border border-transparent px-2 py-1.5 transition-colors hover:bg-[#21262d]">
+                  <label className={`flex items-center gap-2 rounded-md border border-transparent px-2 py-1.5 transition-colors ${canHybrid ? "cursor-pointer hover:bg-[#21262d]" : "cursor-not-allowed opacity-50"}`}>
                     <input
                       type="radio"
                       name="code_target"
                       checked={codeTargetChoice === "hybrid"}
                       onChange={() => setCodeTargetChoice("hybrid")}
+                      disabled={!canHybrid}
                       className="text-[#1f6feb]"
                     />
                     <div>
                       <span className="text-sm text-[#c9d1d9]">
                         Hybrid (SDP + SSS)
                       </span>
-                      <span className="ml-2 rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">
-                        Recommended
-                      </span>
+                      {canHybrid && (
+                        <span className="ml-2 rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">
+                          Recommended
+                        </span>
+                      )}
                       <p className="text-xs text-[#484f58]">
-                        Multi-task job: SDP pipeline then SSS streaming
+                        {canHybrid
+                          ? "Multi-task job: SDP pipeline then SSS streaming"
+                          : "Requires both SDP and SSS code — generate code first"}
                       </p>
                     </div>
                   </label>
-                  <label className="flex cursor-pointer items-center gap-2 rounded-md border border-transparent px-2 py-1.5 transition-colors hover:bg-[#21262d]">
+                  <label className={`flex items-center gap-2 rounded-md border border-transparent px-2 py-1.5 transition-colors ${hasSdp ? "cursor-pointer hover:bg-[#21262d]" : "cursor-not-allowed opacity-50"}`}>
                     <input
                       type="radio"
                       name="code_target"
                       checked={codeTargetChoice === "sdp"}
                       onChange={() => setCodeTargetChoice("sdp")}
+                      disabled={!hasSdp}
                       className="text-[#1f6feb]"
                     />
                     <div>
@@ -298,12 +308,13 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
                       </p>
                     </div>
                   </label>
-                  <label className="flex cursor-pointer items-center gap-2 rounded-md border border-transparent px-2 py-1.5 transition-colors hover:bg-[#21262d]">
+                  <label className={`flex items-center gap-2 rounded-md border border-transparent px-2 py-1.5 transition-colors ${hasSss ? "cursor-pointer hover:bg-[#21262d]" : "cursor-not-allowed opacity-50"}`}>
                     <input
                       type="radio"
                       name="code_target"
                       checked={codeTargetChoice === "sss"}
                       onChange={() => setCodeTargetChoice("sss")}
+                      disabled={!hasSss}
                       className="text-[#1f6feb]"
                     />
                     <div>
