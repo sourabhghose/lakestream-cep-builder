@@ -287,6 +287,7 @@ export interface PreviewSampleResponse {
   columns: string[];
   rows: (string | number | boolean | null)[][];
   row_count: number;
+  source?: "live" | "synthetic";
 }
 
 export async function getNodePreview(

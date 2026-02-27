@@ -5,7 +5,13 @@ dp.create_sink(
     format="kafka",
     options={
         "kafka.bootstrap.servers": "{{ bootstrap_servers }}",
-        "topic": "{{ topic }}"
+        "topic": "{{ topic }}"{% if security_protocol and security_protocol != 'PLAINTEXT' %},
+        "kafka.security.protocol": "{{ security_protocol }}"{% endif %}{% if sasl_mechanism %},
+        "kafka.sasl.mechanism": "{{ sasl_mechanism }}"{% endif %}{% if sasl_jaas_config %},
+        "kafka.sasl.jaas.config": "{{ sasl_jaas_config }}"{% endif %}{% if ssl_truststore_type %},
+        "kafka.ssl.truststore.type": "{{ ssl_truststore_type }}"{% endif %}{% if ssl_truststore_location %},
+        "kafka.ssl.truststore.location": "{{ ssl_truststore_location }}"{% endif %}
+
     }
 )
 

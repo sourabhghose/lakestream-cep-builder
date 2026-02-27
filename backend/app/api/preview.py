@@ -1,18 +1,22 @@
 """
 Data preview API router.
 
-Returns synthetic sample data for a given node in a pipeline.
-When connected to Databricks, could query actual data (future enhancement).
+Returns live data from connected sources (e.g. Kafka) when connection
+parameters are provided, falling back to synthetic sample data otherwise.
 """
 
 import json
+import logging
 import random
+import re
 import string
 from datetime import datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -34,6 +38,7 @@ class PreviewResponse(BaseModel):
     columns: list[str] = Field(..., description="Column names")
     rows: list[list[Any]] = Field(..., description="Row data as arrays")
     row_count: int = Field(..., description="Number of rows")
+    source: str = Field(default="synthetic", description="'live' or 'synthetic'")
 
 
 def _random_string(length: int = 8) -> str:
@@ -57,6 +62,244 @@ def _get_node_by_id(pipeline: dict, node_id: str) -> dict | None:
 def _get_upstream_node_ids(pipeline: dict, node_id: str) -> list[str]:
     edges = pipeline.get("edges", [])
     return [e["source"] for e in edges if e.get("target") == node_id]
+
+
+def _decode_message_value(raw: bytes) -> str:
+    """Best-effort decode of a Kafka message value.
+
+    Handles plain JSON/text, and Confluent Schema Registry wire format
+    (magic byte 0x00 + 4-byte schema ID + Avro payload) by stripping the
+    5-byte header and returning the printable portion.
+    """
+    if not raw:
+        return ""
+    # Try plain JSON / UTF-8 first
+    try:
+        text = raw.decode("utf-8")
+        json.loads(text)
+        return text
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        pass
+
+    # Confluent Schema Registry wire format: strip 5-byte header
+    if len(raw) > 5 and raw[0] == 0:
+        payload = raw[5:]
+        # Filter to printable ASCII + common whitespace
+        chars = []
+        for b in payload:
+            if 32 <= b < 127 or b in (9, 10, 13):
+                chars.append(chr(b))
+            elif chars and chars[-1] != " ":
+                chars.append(" ")
+        cleaned = " ".join("".join(chars).split())
+        if cleaned:
+            return cleaned
+
+    return raw.decode("utf-8", errors="replace")
+
+
+def _extract_human_readable_logistics_event(text: str, ts_ms: int | None = None) -> str | None:
+    """Best-effort parser for logistics-style Kafka payload text.
+
+    Example input:
+      "g TRAMS346376Your order is being picked. DHL BRed Belt ( XL ) AMS Received"
+    """
+    cleaned = " ".join(text.split())
+    if not cleaned:
+        return None
+
+    tracking_match = re.search(r"(TR[A-Z]{3}\d+)", cleaned)
+    if not tracking_match:
+        return None
+
+    carriers = ("DHL", "USPS", "CDM", "COR", "UPS", "FEDEX", "AMZL")
+    carrier_match = re.search(r"\b(" + "|".join(carriers) + r")\b", cleaned)
+    state_match = re.search(r"\b(Received|Processing|Shipped|Delivered|InTransit|Cancelled)\s*$", cleaned)
+    next_hop_match = re.search(r"\b([A-Z]{3})\s+(Received|Processing|Shipped|Delivered|InTransit|Cancelled)\s*$", cleaned)
+
+    tracking_id = tracking_match.group(1)
+    event: dict[str, Any] = {"tracking_id": tracking_id}
+
+    if carrier_match:
+        event["carrier"] = carrier_match.group(1)
+    if next_hop_match:
+        event["next_hop_location"] = next_hop_match.group(1)
+    if state_match:
+        event["state"] = state_match.group(1)
+    if ts_ms and ts_ms > 0:
+        event["time_utc"] = int(ts_ms / 1000)
+
+    msg_start = tracking_match.end()
+    msg_end = carrier_match.start() if carrier_match else len(cleaned)
+    message = cleaned[msg_start:msg_end].strip(" -:")
+    if message:
+        event["message"] = message
+
+    if carrier_match:
+        manifest_start = carrier_match.end()
+        manifest_end = next_hop_match.start() if next_hop_match else len(cleaned)
+        manifest = cleaned[manifest_start:manifest_end].strip(" -:")
+        if manifest:
+            event["manifest"] = manifest
+
+    # Require at least tracking_id + one useful attribute
+    if len(event) < 2:
+        return None
+    return json.dumps(event, ensure_ascii=False)
+
+
+def _build_kafka_connection_info(config: dict) -> tuple[str, str]:
+    """Extract bootstrap and topic from config with tolerant key variants."""
+    bootstrap = (
+        config.get("bootstrapServers")
+        or config.get("bootstrap_servers")
+        or config.get("serviceUri")
+        or config.get("service_uri")
+        or config.get("kafkaBootstrapServers")
+        or ""
+    )
+    topic = (
+        config.get("topics")
+        or config.get("topic")
+        or config.get("topicName")
+        or config.get("topic_name")
+        or ""
+    )
+
+    host = config.get("host") or config.get("hostname")
+    port = config.get("port")
+    if (not bootstrap) and host and port:
+        bootstrap = f"{host}:{port}"
+
+    if isinstance(topic, str) and "," in topic:
+        topic = topic.split(",")[0].strip()
+
+    return str(bootstrap).strip(), str(topic).strip()
+
+
+def _try_live_kafka(config: dict) -> tuple[list[str], list[list[Any]]] | None:
+    """Attempt to read live messages from Kafka. Returns None on failure."""
+    bootstrap, topic = _build_kafka_connection_info(config)
+    if not bootstrap or not topic:
+        return None
+
+    try:
+        from confluent_kafka import Consumer, KafkaError
+    except ImportError:
+        logger.debug("confluent-kafka not installed, skipping live preview")
+        return None
+
+    consumer_conf: dict[str, Any] = {
+        "bootstrap.servers": bootstrap,
+        "group.id": f"lakestream-preview-{random.randint(1000, 9999)}",
+        "auto.offset.reset": "earliest",
+        "session.timeout.ms": 10000,
+        "socket.timeout.ms": 5000,
+    }
+
+    security_protocol = config.get("securityProtocol", config.get("security_protocol", "PLAINTEXT"))
+    if security_protocol and security_protocol != "PLAINTEXT":
+        consumer_conf["security.protocol"] = security_protocol
+
+    sasl_mechanism = config.get("saslMechanism", config.get("sasl_mechanism", ""))
+    sasl_username = config.get("saslUsername", config.get("sasl_username", ""))
+    sasl_password = config.get("saslPassword", config.get("sasl_password", ""))
+
+    if security_protocol in ("SASL_SSL", "SASL_PLAINTEXT") and sasl_username:
+        consumer_conf["sasl.mechanism"] = sasl_mechanism or "PLAIN"
+        consumer_conf["sasl.username"] = sasl_username
+        consumer_conf["sasl.password"] = sasl_password
+
+    ssl_truststore_location = config.get("sslTruststoreLocation", config.get("ssl_truststore_location", ""))
+    if "SSL" in security_protocol:
+        if ssl_truststore_location:
+            consumer_conf["ssl.ca.location"] = ssl_truststore_location
+        else:
+            # Managed services (Aiven, Confluent Cloud) use public CAs or
+            # need verification disabled when no CA cert is provided.
+            consumer_conf["enable.ssl.certificate.verification"] = False
+
+    consumer = None
+    try:
+        from confluent_kafka import OFFSET_BEGINNING, TopicPartition
+        from confluent_kafka.admin import AdminClient, NewTopic
+
+        admin_conf = {k: v for k, v in consumer_conf.items() if not k.startswith("group.id")}
+        admin = AdminClient(admin_conf)
+
+        # Create topic when missing (best effort)
+        md = admin.list_topics(timeout=5)
+        topic_md = md.topics.get(topic)
+        topic_missing = topic_md is None or topic_md.error is not None
+        if topic_missing:
+            logger.info("Live Kafka preview: topic '%s' not found, creating it", topic)
+            partitions = int(config.get("numPartitions", config.get("num_partitions", 1)) or 1)
+            replication = int(config.get("replicationFactor", config.get("replication_factor", 1)) or 1)
+            futures = admin.create_topics([NewTopic(topic, num_partitions=partitions, replication_factor=replication)])
+            try:
+                futures[topic].result(timeout=10)
+                logger.info("Live Kafka preview: created topic '%s'", topic)
+            except Exception as exc:
+                # If another actor created it concurrently, proceed anyway.
+                logger.warning("Live Kafka preview: topic create attempt for '%s' returned: %s", topic, exc)
+
+        consumer = Consumer(consumer_conf)
+
+        # Fetch topic metadata through the same consumer connection and assign
+        # all partitions directly (no consumer-group subscribe/rebalance).
+        md = consumer.list_topics(topic=topic, timeout=5.0)
+        topic_md = md.topics.get(topic)
+        if topic_md is None or topic_md.error is not None:
+            logger.warning("Live Kafka preview failed: topic metadata unavailable for '%s'", topic)
+            return None
+        partition_ids = sorted(topic_md.partitions.keys())
+        if not partition_ids:
+            logger.info("Live Kafka preview: topic '%s' has no partitions", topic)
+            return None
+
+        assignments = [TopicPartition(topic, pid, OFFSET_BEGINNING) for pid in partition_ids]
+        consumer.assign(assignments)
+
+        columns = ["key", "value", "topic", "partition", "offset", "timestamp"]
+        rows: list[list[Any]] = []
+        empty_polls = 0
+        max_empty = 3
+
+        while len(rows) < 10 and empty_polls < max_empty:
+            msg = consumer.poll(timeout=2.0)
+            if msg is None:
+                empty_polls += 1
+                continue
+            if msg.error():
+                if msg.error().code() == KafkaError._PARTITION_EOF:
+                    empty_polls += 1
+                    continue
+                logger.warning("Kafka poll error: %s", msg.error())
+                break
+            empty_polls = 0
+            key_str = msg.key().decode("utf-8", errors="replace") if msg.key() else ""
+            ts_type, ts_val = msg.timestamp()
+            raw_val = _decode_message_value(msg.value()) if msg.value() else ""
+            val_str = _extract_human_readable_logistics_event(raw_val, ts_val) or raw_val
+            ts_type, ts_val = msg.timestamp()
+            ts_str = datetime.utcfromtimestamp(ts_val / 1000).isoformat() + "Z" if ts_val > 0 else ""
+            rows.append([key_str, val_str, msg.topic(), msg.partition(), msg.offset(), ts_str])
+
+        if rows:
+            logger.info("Live Kafka preview: got %d messages from topic '%s'", len(rows), topic)
+            return columns, rows
+        logger.info("Live Kafka preview: no messages in topic '%s'", topic)
+        return columns, []
+
+    except Exception as exc:
+        logger.warning("Live Kafka preview failed: %s", exc)
+        return None
+    finally:
+        if consumer:
+            try:
+                consumer.close()
+            except Exception:
+                pass
 
 
 def _generate_source_sample(node_type: str, config: dict) -> tuple[list[str], list[list[Any]]]:
@@ -291,14 +534,19 @@ def _get_node_category(node_type: str) -> str:
     return "transform"
 
 
-def _get_upstream_sample(pipeline: dict, node_id: str, visited: set[str], seed: int | None = None) -> tuple[list[str], list[list[Any]]]:
-    """Recursively get sample from upstream nodes."""
+def _get_upstream_sample(
+    pipeline: dict, node_id: str, visited: set[str], seed: int | None = None,
+) -> tuple[list[str], list[list[Any]], str]:
+    """Recursively get sample from upstream nodes.
+
+    Returns (columns, rows, source) where source is 'live' or 'synthetic'.
+    """
     if node_id in visited:
-        return ["id", "value"], [["circular", 0]]
+        return ["id", "value"], [["circular", 0]], "synthetic"
     visited.add(node_id)
     node = _get_node_by_id(pipeline, node_id)
     if not node:
-        return ["id", "value"], [["unknown", 0]]
+        return ["id", "value"], [["unknown", 0]], "synthetic"
 
     node_type = node.get("type", "map-select")
     config = node.get("config", {})
@@ -307,22 +555,22 @@ def _get_upstream_sample(pipeline: dict, node_id: str, visited: set[str], seed: 
     if upstream_ids:
         category = _get_node_category(node_type)
 
-        # Union / Merge: combine rows from all upstream sources
         if node_type == "union-merge" and len(upstream_ids) >= 2:
             all_cols: list[str] = []
             all_rows: list[list[Any]] = []
+            src = "synthetic"
             for uid in upstream_ids:
-                ucols, urows = _get_upstream_sample(pipeline, uid, set(visited), seed=seed)
+                ucols, urows, usrc = _get_upstream_sample(pipeline, uid, set(visited), seed=seed)
+                if usrc == "live":
+                    src = "live"
                 if not all_cols:
                     all_cols = ucols
                     all_rows = urows
                 else:
-                    # UNION ALL: pad columns to superset
                     merged_cols = list(all_cols)
                     for c in ucols:
                         if c not in merged_cols:
                             merged_cols.append(c)
-                    # Re-index existing rows
                     col_idx_old = {c: i for i, c in enumerate(all_cols)}
                     col_idx_new = {c: i for i, c in enumerate(ucols)}
                     padded_existing = []
@@ -341,56 +589,69 @@ def _get_upstream_sample(pipeline: dict, node_id: str, visited: set[str], seed: 
                         padded_new.append(new_row)
                     all_cols = merged_cols
                     all_rows = padded_existing + padded_new
-            return all_cols, all_rows[:5]
+            return all_cols, all_rows[:5], src
 
-        cols, rows = _get_upstream_sample(pipeline, upstream_ids[0], visited, seed=seed)
+        cols, rows, src = _get_upstream_sample(pipeline, upstream_ids[0], visited, seed=seed)
 
         if category == "transform" and node_type == "filter":
             cond = config.get("condition", "")
-            # Re-seed so the upstream source produces the same base rows,
-            # then generate extra rounds for better filter match rates
-            upstream_node = _get_node_by_id(pipeline, upstream_ids[0])
-            if upstream_node:
-                up_type = upstream_node.get("type", "")
-                up_config = upstream_node.get("config", {})
-                if seed is not None:
-                    random.seed(seed)
-                extra_cols, extra_rows = _generate_source_sample(up_type, up_config)
-                for _ in range(9):
-                    _, more = _generate_source_sample(up_type, up_config)
-                    extra_rows.extend(more)
-                rows = extra_rows
+            if src != "live":
+                upstream_node = _get_node_by_id(pipeline, upstream_ids[0])
+                if upstream_node:
+                    up_type = upstream_node.get("type", "")
+                    up_config = upstream_node.get("config", {})
+                    if seed is not None:
+                        random.seed(seed)
+                    extra_cols, extra_rows = _generate_source_sample(up_type, up_config)
+                    for _ in range(9):
+                        _, more = _generate_source_sample(up_type, up_config)
+                        extra_rows.extend(more)
+                    rows = extra_rows
             rows = _apply_filter_best_effort(cols, rows, cond)
-            return cols, rows
+            return cols, rows, src
 
         if category == "transform" and node_type == "window-aggregate":
-            return _generate_aggregate_sample(cols, rows, config)
+            c, r = _generate_aggregate_sample(cols, rows, config)
+            return c, r, src
 
         if category in ("cep-pattern", "pattern"):
-            return _generate_cep_pattern_sample(cols, rows, node_type)
+            c, r = _generate_cep_pattern_sample(cols, rows, node_type)
+            return c, r, src
+
+        if category == "sink" and node_type == "kafka-topic-sink":
+            live_result = _try_live_kafka(config)
+            if live_result is not None:
+                return live_result[0], live_result[1], "live"
+            c, r = _generate_delta_sink_schema_sample(cols, rows)
+            return c, r, src
 
         if category == "sink":
-            return _generate_delta_sink_schema_sample(cols, rows)
+            c, r = _generate_delta_sink_schema_sample(cols, rows)
+            return c, r, src
 
-        return cols, rows[:5]
+        return cols, rows[:5], src
 
-    # Source node
-    return _generate_source_sample(node_type, config)
+    # Source node — try live connection first for Kafka-like types
+    if node_type in ("kafka-topic", "kafka-topic-sink", "cdc-stream", "event-hub-kinesis"):
+        live_result = _try_live_kafka(config)
+        if live_result is not None:
+            return live_result[0], live_result[1], "live"
+
+    cols, rows = _generate_source_sample(node_type, config)
+    return cols, rows, "synthetic"
 
 
 @router.post("/sample", response_model=PreviewResponse)
 async def preview_sample(request: PreviewRequest) -> PreviewResponse:
-    """
-    Return synthetic sample data for the given node in the pipeline.
+    """Return sample data for the given node.
 
-    For now generates synthetic data based on node type.
-    TODO: When connected to Databricks, query actual data from sources/tables.
+    Attempts a live connection for source nodes that have connection
+    parameters configured (e.g. Kafka bootstrapServers). Falls back to
+    synthetic data when live access is unavailable or not configured.
     """
     pipeline = request.pipeline
     node_id = request.node_id
 
-    # Seed random for deterministic data within a refresh cycle.
-    # Connected nodes using the same seed will generate consistent upstream data.
     if request.seed is not None:
         random.seed(request.seed)
 
@@ -404,12 +665,13 @@ async def preview_sample(request: PreviewRequest) -> PreviewResponse:
         pipeline["edges"] = pipeline.get("edges", [])
 
     try:
-        columns, rows = _get_upstream_sample(pipeline, node_id, set(), seed=request.seed)
+        columns, rows, source = _get_upstream_sample(pipeline, node_id, set(), seed=request.seed)
         rows = rows[:10]
         return PreviewResponse(
             columns=columns,
             rows=rows,
             row_count=len(rows),
+            source=source,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Preview generation failed: {str(e)}") from e

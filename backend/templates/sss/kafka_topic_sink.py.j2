@@ -6,6 +6,21 @@
     .format("kafka")
     .option("kafka.bootstrap.servers", "{{ bootstrap_servers }}")
     .option("topic", "{{ topic }}")
+{% if security_protocol and security_protocol != 'PLAINTEXT' %}
+    .option("kafka.security.protocol", "{{ security_protocol }}")
+{% endif %}
+{% if sasl_mechanism %}
+    .option("kafka.sasl.mechanism", "{{ sasl_mechanism }}")
+{% endif %}
+{% if sasl_jaas_config %}
+    .option("kafka.sasl.jaas.config", "{{ sasl_jaas_config }}")
+{% endif %}
+{% if ssl_truststore_type %}
+    .option("kafka.ssl.truststore.type", "{{ ssl_truststore_type }}")
+{% endif %}
+{% if ssl_truststore_location %}
+    .option("kafka.ssl.truststore.location", "{{ ssl_truststore_location }}")
+{% endif %}
     .option("checkpointLocation", "{{ checkpoint_location }}")
     .start()
 )

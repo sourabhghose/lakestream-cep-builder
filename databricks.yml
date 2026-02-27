@@ -11,6 +11,9 @@ sync:
   exclude:
     - "**/__pycache__/**"
     - "**/*.pyc"
+    - ".databricks/**"
+    - "**/.venv/**"
+    - "**/node_modules/**"
     - frontend/src/**
     - frontend/node_modules/**
     - frontend/package.json
@@ -29,18 +32,9 @@ sync:
     - Makefile
     - .env.example
 
-resources:
-  apps:
-    lakestream_cep_builder:
-      name: lakestream-cep-builder
-      source_code_path: .
-      description: Visual CEP Pipeline Builder for Databricks - generates Lakeflow SDP and Spark Structured Streaming code
-      permissions:
-        - level: CAN_USE
-          group_name: users
-      # Lakebase database resource (instance: lakestream-cep, db: postgres)
-      # is managed via the Apps API since the Terraform provider doesn't
-      # support the database resource type yet.
+# App is managed via the Databricks Apps CLI (not Terraform) because
+# the Terraform provider cannot reconcile the Lakebase database resource.
+# Use `make deploy` to: sync files -> attach Lakebase -> deploy app.
 
 targets:
   dev:

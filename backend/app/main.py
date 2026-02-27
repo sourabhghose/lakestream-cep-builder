@@ -63,7 +63,13 @@ app.include_router(ai_generate.router, prefix="/api/ai", tags=["ai"])
 @app.get("/health")
 async def health_check() -> dict[str, str]:
     """Health check endpoint for load balancers and monitoring."""
-    return {"status": "healthy", "service": "LakeStream CEP Builder API"}
+    from app.services.pipeline_store import get_pipeline_store
+    store = get_pipeline_store()
+    return {
+        "status": "healthy",
+        "service": "LakeStream CEP Builder API",
+        "store": type(store).__name__,
+    }
 
 # 2. Static files: Next.js build output (frontend/out/)
 # Path: backend/app/main.py -> backend/app -> backend -> frontend/out

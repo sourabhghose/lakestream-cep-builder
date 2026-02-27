@@ -37,6 +37,7 @@ export default function ConfigPanel({ isOpen, className }: ConfigPanelProps) {
     columns: string[];
     rows: (string | number | boolean | null)[][];
     row_count: number;
+    source?: "live" | "synthetic";
   } | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const lastSavedConfigRef = useRef<Record<string, unknown>>({});
@@ -170,6 +171,7 @@ export default function ConfigPanel({ isOpen, className }: ConfigPanelProps) {
               columns={previewData.columns}
               rows={previewData.rows}
               rowCount={previewData.row_count}
+              source={previewData.source}
             />
           </div>
         )}

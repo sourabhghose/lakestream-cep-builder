@@ -1,6 +1,35 @@
 -- Kafka source: {{ node_id }}
 CREATE OR REFRESH STREAMING TABLE {{ node_id }} AS
-SELECT * FROM read_kafka(
-  bootstrapServers => '{{ bootstrap_servers }}',
-  subscribe => '{{ topic }}'
+SELECT
+  key,
+  CAST(value AS STRING) AS value,
+  topic,
+  partition,
+  offset,
+  timestamp AS event_time,
+  timestampType
+FROM STREAM read_kafka(
+  bootstrapServers = '{{ bootstrap_servers }}',
+  subscribe = '{{ topic }}'
+{%- if security_protocol and security_protocol != 'PLAINTEXT' %},
+  `kafka.security.protocol` = '{{ security_protocol }}'
+{%- endif %}
+{%- if sasl_mechanism %},
+  `kafka.sasl.mechanism` = '{{ sasl_mechanism }}'
+{%- endif %}
+{%- if sasl_jaas_config %},
+  `kafka.sasl.jaas.config` = '{{ sasl_jaas_config }}'
+{%- endif %}
+{%- if ssl_truststore_type %},
+  `kafka.ssl.truststore.type` = '{{ ssl_truststore_type }}'
+{%- endif %}
+{%- if ssl_truststore_location %},
+  `kafka.ssl.truststore.location` = '{{ ssl_truststore_location }}'
+{%- endif %}
+{%- if consumer_group %},
+  `kafka.group.id` = '{{ consumer_group }}'
+{%- endif %}
+{%- if starting_offset and starting_offset != 'latest' %},
+  startingOffsets = '{{ starting_offset }}'
+{%- endif %}
 );

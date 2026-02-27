@@ -13,7 +13,7 @@ import type { PreviewSampleResponse } from "@/lib/api";
 import DataPreview from "@/components/preview/DataPreview";
 import InlinePreview from "@/components/canvas/InlinePreview";
 
-const PREVIEW_REFRESH_MS = 2000;
+const PREVIEW_REFRESH_MS = 5000;
 
 const CATEGORY_BORDER_COLORS: Record<string, string> = {
   source: "border-node-source",
@@ -31,6 +31,7 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
   const [previewLoading, setPreviewLoading] = useState(false);
 
   const panelRefreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const panelFetchingRef = useRef(false);
 
   const handlePreviewClick = useCallback(
     (e: React.MouseEvent) => {
@@ -41,11 +42,12 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
       }
       setPreviewLoading(true);
       setShowPreview(true);
+      panelFetchingRef.current = true;
       const seed = Math.floor(Date.now() / PREVIEW_REFRESH_MS);
       getNodePreview({ nodes, edges }, nodeId, seed)
         .then((res) => setPreviewData(res))
         .catch(() => setPreviewData({ columns: [], rows: [], row_count: 0 }))
-        .finally(() => setPreviewLoading(false));
+        .finally(() => { setPreviewLoading(false); panelFetchingRef.current = false; });
     },
     [showPreview, nodes, edges, nodeId]
   );
@@ -54,10 +56,13 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
   useEffect(() => {
     if (showPreview) {
       panelRefreshTimerRef.current = setInterval(() => {
+        if (panelFetchingRef.current) return;
+        panelFetchingRef.current = true;
         const seed = Math.floor(Date.now() / PREVIEW_REFRESH_MS);
         getNodePreview({ nodes: nodesRef.current, edges: edgesRef.current }, nodeId, seed)
           .then((res) => setPreviewData(res))
-          .catch(() => {});
+          .catch(() => {})
+          .finally(() => { panelFetchingRef.current = false; });
       }, PREVIEW_REFRESH_MS);
     }
     return () => {
@@ -73,12 +78,15 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
   const [dataFlash, setDataFlash] = useState(false);
   const autoExpandedRef = useRef(false);
   const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const inlineFetchingRef = useRef(false);
   const nodesRef = useRef(nodes);
   const edgesRef = useRef(edges);
   nodesRef.current = nodes;
   edgesRef.current = edges;
 
   const fetchPreview = useCallback(() => {
+    if (inlineFetchingRef.current) return;
+    inlineFetchingRef.current = true;
     const seed = Math.floor(Date.now() / PREVIEW_REFRESH_MS);
     getNodePreview({ nodes: nodesRef.current, edges: edgesRef.current }, nodeId, seed)
       .then((res) => {
@@ -86,7 +94,8 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
         setDataFlash(true);
         setTimeout(() => setDataFlash(false), 400);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => { inlineFetchingRef.current = false; });
   }, [nodeId, setNodePreviewData]);
 
   // Auto-expand preview when a node is first placed on the canvas
@@ -106,7 +115,7 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-refresh preview data every 2s while expanded
+  // Auto-refresh preview data while expanded
   useEffect(() => {
     if (previewExpanded) {
       refreshTimerRef.current = setInterval(fetchPreview, PREVIEW_REFRESH_MS);
@@ -336,6 +345,7 @@ function CustomNodeInner({ id: nodeId, data, selected }: NodeProps) {
                     columns={previewData.columns}
                     rows={previewData.rows}
                     rowCount={previewData.row_count}
+                    source={previewData.source}
                   />
                 ) : (
                   <p className="py-4 text-center text-sm text-[#484f58]">No preview data</p>

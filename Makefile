@@ -1,4 +1,4 @@
-.PHONY: install dev-frontend dev-backend dev build-frontend build-app deploy lint test build clean
+.PHONY: install dev-frontend dev-backend dev build-frontend build-app deploy attach-lakebase lint test build clean
 
 install:
 	cd frontend && npm install
@@ -20,8 +20,17 @@ build-frontend:
 build-app: build-frontend
 	@echo "Frontend built to frontend/out/ - backend serves from ../frontend/out/"
 
-deploy:
-	databricks apps deploy
+WORKSPACE_PATH = /Workspace/Users/sourabh.ghose@databricks.com/.bundle/lakestream-cep-builder/dev/files
+APP_NAME = lakestream-cep-builder
+
+deploy: build-frontend
+	databricks bundle deploy
+	$(MAKE) attach-lakebase
+	databricks apps deploy $(APP_NAME) --source-code-path "$(WORKSPACE_PATH)"
+
+attach-lakebase:
+	@echo "Attaching Lakebase resource to app..."
+	databricks apps update $(APP_NAME) --json '{"resources":[{"name":"lakestream-cep-db","database":{"instance_name":"lakestream-cep","database_name":"postgres","permission":"CAN_CONNECT_AND_CREATE"}}]}'
 
 lint:
 	cd frontend && npm run lint

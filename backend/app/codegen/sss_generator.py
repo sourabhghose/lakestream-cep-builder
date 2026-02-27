@@ -380,14 +380,48 @@ df_{node.id.replace("-", "_")} = spark.sql('''
         bootstrap = config.get("bootstrap_servers", "localhost:9092")
         topic = config.get("topic", "events")
         starting = config.get("starting_offset", "latest")
+        security_protocol = config.get("security_protocol", "PLAINTEXT")
+        sasl_mechanism = config.get("sasl_mechanism", "")
+        sasl_username = config.get("sasl_username", "")
+        sasl_password = config.get("sasl_password", "")
+        consumer_group = config.get("consumer_group", "")
+        ssl_truststore_type = config.get("ssl_truststore_type", "")
+        ssl_truststore_location = config.get("ssl_truststore_location", "")
+
+        auth_lines: list[str] = []
+        if security_protocol and security_protocol != "PLAINTEXT":
+            auth_lines.append(f'    .option("kafka.security.protocol", "{security_protocol}")')
+        if security_protocol in ("SASL_SSL", "SASL_PLAINTEXT") and sasl_mechanism:
+            auth_lines.append(f'    .option("kafka.sasl.mechanism", "{sasl_mechanism}")')
+        if security_protocol in ("SASL_SSL", "SASL_PLAINTEXT") and sasl_username:
+            jaas_class = {
+                "PLAIN": "org.apache.kafka.common.security.plain.PlainLoginModule",
+                "SCRAM-SHA-256": "org.apache.kafka.common.security.scram.ScramLoginModule",
+                "SCRAM-SHA-512": "org.apache.kafka.common.security.scram.ScramLoginModule",
+            }.get(sasl_mechanism, "org.apache.kafka.common.security.plain.PlainLoginModule")
+            jaas_config = (
+                f'{jaas_class} required '
+                f'username="{sasl_username}" password="{sasl_password}";'
+            )
+            auth_lines.append(f"    .option(\"kafka.sasl.jaas.config\", '{jaas_config}')")
+        if "SSL" in security_protocol and ssl_truststore_type:
+            auth_lines.append(f'    .option("kafka.ssl.truststore.type", "{ssl_truststore_type}")')
+        if "SSL" in security_protocol and ssl_truststore_location:
+            auth_lines.append(f'    .option("kafka.ssl.truststore.location", "{ssl_truststore_location}")')
+        if consumer_group:
+            auth_lines.append(f'    .option("kafka.group.id", "{consumer_group}")')
+
+        auth_block = "\n".join(auth_lines)
+        if auth_block:
+            auth_block = "\n" + auth_block + "\n"
+
         return f"""# Kafka source: {node.id}
 df_{safe_id} = (
     spark.readStream
     .format("kafka")
     .option("kafka.bootstrap.servers", "{bootstrap}")
     .option("subscribe", "{topic}")
-    .option("startingOffsets", "{starting}")
-    .load()
+    .option("startingOffsets", "{starting}"){auth_block}    .load()
     .selectExpr(
         "CAST(key AS STRING) AS key",
         "CAST(value AS STRING) AS value",
@@ -584,12 +618,29 @@ query_{safe_id} = (
     if node.type == "kafka-topic-sink":
         template = _env.get_template("kafka_topic_sink.py.j2")
         upstream = _get_upstream_var(node, pipeline)
+        sink_sec = config.get("security_protocol", "PLAINTEXT")
+        sink_sasl_m = config.get("sasl_mechanism", "")
+        sink_sasl_u = config.get("sasl_username", "")
+        sink_sasl_p = config.get("sasl_password", "")
+        sink_jaas = ""
+        if sink_sec in ("SASL_SSL", "SASL_PLAINTEXT") and sink_sasl_u:
+            jaas_cls = {
+                "PLAIN": "org.apache.kafka.common.security.plain.PlainLoginModule",
+                "SCRAM-SHA-256": "org.apache.kafka.common.security.scram.ScramLoginModule",
+                "SCRAM-SHA-512": "org.apache.kafka.common.security.scram.ScramLoginModule",
+            }.get(sink_sasl_m, "org.apache.kafka.common.security.plain.PlainLoginModule")
+            sink_jaas = f'{jaas_cls} required username=\\"{sink_sasl_u}\\" password=\\"{sink_sasl_p}\\";'
         return template.render(
             node_id=node.id,
             upstream_var=upstream,
             bootstrap_servers=config.get("bootstrap_servers", "localhost:9092"),
             topic=config.get("topic", "output"),
             checkpoint_location=config.get("checkpoint_location", f"/tmp/checkpoints/{node.id}"),
+            security_protocol=sink_sec if sink_sec != "PLAINTEXT" else "",
+            sasl_mechanism=sink_sasl_m if sink_sec in ("SASL_SSL", "SASL_PLAINTEXT") else "",
+            sasl_jaas_config=sink_jaas,
+            ssl_truststore_type=config.get("ssl_truststore_type", "") if "SSL" in sink_sec else "",
+            ssl_truststore_location=config.get("ssl_truststore_location", "") if "SSL" in sink_sec else "",
         )
 
     if node.type == "rest-webhook-sink":

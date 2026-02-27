@@ -31,6 +31,12 @@ def _normalize_config(config: dict) -> dict:
     ALIASES = {
         'topics': 'topic',
         'bootstrapservers': 'bootstrap_servers',
+        'securityprotocol': 'security_protocol',
+        'saslmechanism': 'sasl_mechanism',
+        'saslusername': 'sasl_username',
+        'saslpassword': 'sasl_password',
+        'ssltruststoretype': 'ssl_truststore_type',
+        'ssltruststorelocation': 'ssl_truststore_location',
         'tablename': 'table_name',
         'keycolumn': 'key_column',
         'valuecolumn': 'value_column',
@@ -154,6 +160,18 @@ def _node_label(node: PipelineNode) -> str:
     return node.type.replace("-", " ").title()
 
 
+def _build_jaas_config(security_protocol: str, sasl_mechanism: str, username: str, password: str) -> str:
+    """Build JAAS config string for Kafka SASL authentication."""
+    if security_protocol not in ("SASL_SSL", "SASL_PLAINTEXT") or not username:
+        return ""
+    jaas_class = {
+        "PLAIN": "org.apache.kafka.common.security.plain.PlainLoginModule",
+        "SCRAM-SHA-256": "org.apache.kafka.common.security.scram.ScramLoginModule",
+        "SCRAM-SHA-512": "org.apache.kafka.common.security.scram.ScramLoginModule",
+    }.get(sasl_mechanism, "org.apache.kafka.common.security.plain.PlainLoginModule")
+    return f'{jaas_class} required username="{username}" password="{password}";'
+
+
 def _render_node_snippet(node: PipelineNode, edges: list, use_mv: bool = False) -> str:
     """Render the SDP snippet for a single node based on its type.
     
@@ -181,11 +199,23 @@ def _render_node_snippet_inner(node: PipelineNode, edges: list) -> str:
     # Sources
     if node.type == "kafka-topic":
         template = _env.get_template("kafka_source.sql.j2")
+        security_protocol = config.get("security_protocol", "PLAINTEXT")
+        sasl_mechanism = config.get("sasl_mechanism", "")
+        sasl_username = config.get("sasl_username", "")
+        sasl_password = config.get("sasl_password", "")
+        sasl_jaas_config = _build_jaas_config(security_protocol, sasl_mechanism, sasl_username, sasl_password)
         return template.render(
             node_id=safe_id,
             bootstrap_servers=config.get("bootstrap_servers", "localhost:9092"),
             topic=config.get("topic", "events"),
             schema=config.get("schema", "value STRING"),
+            security_protocol=security_protocol if security_protocol != "PLAINTEXT" else "",
+            sasl_mechanism=sasl_mechanism if security_protocol in ("SASL_SSL", "SASL_PLAINTEXT") else "",
+            sasl_jaas_config=sasl_jaas_config.replace("'", "\\'") if sasl_jaas_config else "",
+            ssl_truststore_type=config.get("ssl_truststore_type", "") if "SSL" in security_protocol else "",
+            ssl_truststore_location=config.get("ssl_truststore_location", "") if "SSL" in security_protocol else "",
+            consumer_group=config.get("consumer_group", ""),
+            starting_offset=config.get("starting_offset", "latest"),
         )
 
     if node.type == "delta-table-source":
@@ -333,12 +363,23 @@ def _render_node_snippet_inner(node: PipelineNode, edges: list) -> str:
 
     if node.type == "kafka-topic-sink":
         template = _env.get_template("kafka_topic_sink.py.j2")
+        sink_security = config.get("security_protocol", "PLAINTEXT")
+        sink_sasl_mech = config.get("sasl_mechanism", "")
+        sink_jaas = _build_jaas_config(
+            sink_security, sink_sasl_mech,
+            config.get("sasl_username", ""), config.get("sasl_password", ""),
+        )
         return template.render(
             node_id=safe_id,
             source_table=config.get("source_table") or _source_table(),
             bootstrap_servers=config.get("bootstrap_servers", "localhost:9092"),
             topic=config.get("topic", "output_topic"),
             select_expr=config.get("select_expr", "*"),
+            security_protocol=sink_security if sink_security != "PLAINTEXT" else "",
+            sasl_mechanism=sink_sasl_mech if sink_security in ("SASL_SSL", "SASL_PLAINTEXT") else "",
+            sasl_jaas_config=sink_jaas,
+            ssl_truststore_type=config.get("ssl_truststore_type", "") if "SSL" in sink_security else "",
+            ssl_truststore_location=config.get("ssl_truststore_location", "") if "SSL" in sink_security else "",
         )
 
     if node.type == "sql-warehouse-sink":
