@@ -42,10 +42,12 @@ class DeployService:
                 "DATABRICKS_HOST is not set. Configure Databricks credentials for real deployment."
             )
         try:
-            return WorkspaceClient(
-                host=self._config.host,
-                token=self._config.token,
-            )
+            if self._config.token:
+                return WorkspaceClient(
+                    host=self._config.host,
+                    token=self._config.token,
+                )
+            return WorkspaceClient(host=self._config.host)
         except Exception as e:
             raise DatabricksDeployError(
                 f"Failed to create Databricks client: {e}"
