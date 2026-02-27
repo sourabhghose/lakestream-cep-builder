@@ -168,11 +168,18 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
           ? undefined
           : cronExpression;
 
+      // Resolve code target: downgrade hybrid if both codes aren't available
+      const { generatedSdpCode: sdp, generatedSssCode: sss } = usePipelineStore.getState();
+      let resolvedTarget = codeTargetChoice;
+      if (resolvedTarget === "hybrid" && (!sdp || !sss)) {
+        resolvedTarget = sdp ? "sdp" : "sss";
+      }
+
       const request = {
         pipeline_id: id,
         job_name: jobName.trim() || pipelineName.replace(/\s+/g, "-") || "default-job",
         cluster_config,
-        code_target: codeTargetChoice,
+        code_target: resolvedTarget,
         schedule,
         max_retries: maxRetries,
         checkpoint_location: checkpointLocation.trim() || undefined,
@@ -185,8 +192,11 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
       });
       addJob(result.job_id, pipelineName || "Pipeline", result.job_url);
       addToast("Pipeline deployed successfully", "success");
-    } catch {
-      addToast("Deployment failed", "error");
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+        || (err instanceof Error ? err.message : "Deployment failed");
+      addToast(msg, "error");
     } finally {
       setDeploying(false);
     }
