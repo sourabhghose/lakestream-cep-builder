@@ -413,11 +413,110 @@ class LakebaseStore(PipelineStore):
         return []
 
 
+class WorkspaceFileStore(PipelineStore):
+    """
+    Saves pipeline JSON files to the Databricks workspace filesystem.
+    Persists across app redeployments since workspace files are permanent.
+    """
+
+    def __init__(self, workspace_dir: str | None = None):
+        from databricks.sdk import WorkspaceClient
+        from databricks.sdk.service import workspace as ws_svc
+
+        self._client = WorkspaceClient()
+        if workspace_dir:
+            self._base_dir = workspace_dir
+        else:
+            try:
+                me = self._client.current_user.me()
+                self._base_dir = f"/Users/{me.user_name}/lakestream-pipelines"
+            except Exception:
+                self._base_dir = "/Shared/lakestream-pipelines"
+        try:
+            self._client.workspace.mkdirs(self._base_dir)
+        except Exception:
+            pass
+
+    def _path(self, pipeline_id: str) -> str:
+        return f"{self._base_dir}/{pipeline_id}.json"
+
+    def save(self, pipeline: PipelineDefinition) -> str:
+        from databricks.sdk.service import workspace as ws_svc
+
+        pipeline_id = _ensure_pipeline_id(pipeline)
+        pipeline = _ensure_timestamps(pipeline, is_update=False)
+        pipeline = pipeline.model_copy(update={"id": pipeline_id})
+        content = json.dumps(pipeline.model_dump(mode="json"), indent=2).encode("utf-8")
+        self._client.workspace.upload(
+            self._path(pipeline_id),
+            io.BytesIO(content),
+            format=ws_svc.ImportFormat.AUTO,
+            overwrite=True,
+        )
+        return pipeline_id
+
+    def get(self, pipeline_id: str) -> PipelineDefinition | None:
+        try:
+            with self._client.workspace.download(self._path(pipeline_id)) as f:
+                data = json.loads(f.read().decode("utf-8"))
+            return PipelineDefinition.model_validate(data)
+        except Exception:
+            return None
+
+    def list_all(self) -> list[PipelineSummary]:
+        summaries = []
+        try:
+            for obj in self._client.workspace.list(self._base_dir):
+                name = getattr(obj, "path", "") or ""
+                if name.endswith(".json"):
+                    pipeline_id = name.split("/")[-1][:-5]
+                    pipeline = self.get(pipeline_id)
+                    if pipeline:
+                        summaries.append(_to_summary(pipeline))
+        except Exception:
+            pass
+        summaries.sort(key=lambda s: s.updated_at, reverse=True)
+        return summaries
+
+    def delete(self, pipeline_id: str) -> bool:
+        try:
+            self._client.workspace.delete(self._path(pipeline_id))
+            return True
+        except Exception:
+            return False
+
+    def update(self, pipeline_id: str, pipeline: PipelineDefinition) -> PipelineDefinition:
+        from databricks.sdk.service import workspace as ws_svc
+
+        existing = self.get(pipeline_id)
+        if not existing:
+            raise FileNotFoundError(f"Pipeline {pipeline_id} not found")
+        pipeline = pipeline.model_copy(
+            update={
+                "id": pipeline_id,
+                "created_at": existing.created_at,
+                "updated_at": datetime.now(tz=timezone.utc),
+                "version": existing.version + 1,
+            }
+        )
+        content = json.dumps(pipeline.model_dump(mode="json"), indent=2).encode("utf-8")
+        self._client.workspace.upload(
+            self._path(pipeline_id),
+            io.BytesIO(content),
+            format=ws_svc.ImportFormat.AUTO,
+            overwrite=True,
+        )
+        return pipeline
+
+    def get_versions(self, pipeline_id: str) -> list[dict]:
+        return []
+
+
 def get_pipeline_store() -> PipelineStore:
     """
     Return the best available store:
     1. LakebaseStore if PGHOST is set (Lakebase PostgreSQL)
-    2. DatabricksVolumeStore if DATABRICKS_HOST is set (Unity Catalog Volume)
+    2. WorkspaceFileStore if running on Databricks (workspace files persist)
     3. LocalFileStore for local development
     """
     from app.db import is_postgres_available
@@ -425,7 +524,7 @@ def get_pipeline_store() -> PipelineStore:
         return LakebaseStore()
     if os.environ.get("DATABRICKS_HOST") or os.environ.get("DATABRICKS_RUNTIME_VERSION"):
         try:
-            return DatabricksVolumeStore()
+            return WorkspaceFileStore()
         except Exception:
             pass
     return LocalFileStore()
