@@ -62,6 +62,10 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
   const [minWorkers, setMinWorkers] = useState(1);
   const [maxWorkers, setMaxWorkers] = useState(4);
   const [existingClusterId, setExistingClusterId] = useState("");
+  const [catalog, setCatalog] = useState("main");
+  const [targetSchema, setTargetSchema] = useState("lakestream_pipelines");
+  const [catalogOptions, setCatalogOptions] = useState<string[]>([]);
+  const [schemaOptions, setSchemaOptions] = useState<string[]>([]);
   const [scheduleExpanded, setScheduleExpanded] = useState(false);
   const [checkpointExpanded, setCheckpointExpanded] = useState(false);
   const [continuous, setContinuous] = useState(true);
@@ -97,6 +101,32 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
       }
     }
   }, [isOpen, pipelineName, canHybrid, hasSdp, hasSss]);
+
+  useEffect(() => {
+    if (isOpen) {
+      api.validateDeployConnection().then(() => {
+        api.listCatalogs().then((cats) => {
+          const names = cats.map((c) => c.name);
+          setCatalogOptions(names);
+          if (names.length > 0 && !names.includes(catalog)) {
+            setCatalog(names[0]);
+          }
+        }).catch(() => {});
+      }).catch(() => {});
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (catalog) {
+      api.listSchemas(catalog).then((schemas) => {
+        const names = schemas.map((s) => s.name);
+        setSchemaOptions(names);
+        if (names.length > 0 && !names.includes(targetSchema)) {
+          setTargetSchema(names[0]);
+        }
+      }).catch(() => setSchemaOptions([]));
+    }
+  }, [catalog]);
 
   useEffect(() => {
     if (autoGenerateCheckpoint && pipelineName) {
@@ -176,6 +206,8 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
         schedule,
         max_retries: maxRetries,
         checkpoint_location: checkpointLocation.trim() || undefined,
+        catalog: catalog.trim() || undefined,
+        target_schema: targetSchema.trim() || undefined,
       };
 
       const result = await deployPipeline(request);
@@ -186,8 +218,10 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
       addJob(result.job_id, pipelineName || "Pipeline", result.job_url);
       addToast("Pipeline deployed successfully", "success");
     } catch (err: unknown) {
+      const axErr = err as { response?: { data?: { detail?: string } }; userMessage?: string };
       const msg =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+        axErr?.response?.data?.detail
+        || axErr?.userMessage
         || (err instanceof Error ? err.message : "Deployment failed");
       addToast(msg, "error");
     } finally {
@@ -444,6 +478,52 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
             </div>
           </div>
 
+          {/* 3b. Unity Catalog Target */}
+          <div>
+            <h3 className="mb-2 text-sm font-medium text-[#c9d1d9]">Unity Catalog Target</h3>
+            {clusterMode === "serverless" && (
+              <p className="mb-2 text-xs text-amber-400">Required for serverless compute</p>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-xs text-[#484f58]">Catalog</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={catalog}
+                    onChange={(e) => setCatalog(e.target.value)}
+                    placeholder="main"
+                    list="catalog-options"
+                    className="w-full rounded border border-[#30363d] bg-[#21262d] px-3 py-2 text-sm text-[#e8eaed] placeholder-[#484f58] focus:border-[#58a6ff] focus:outline-none focus:ring-1 focus:ring-[#58a6ff]"
+                  />
+                  <datalist id="catalog-options">
+                    {catalogOptions.map((c) => (
+                      <option key={c} value={c} />
+                    ))}
+                  </datalist>
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-[#484f58]">Schema</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={targetSchema}
+                    onChange={(e) => setTargetSchema(e.target.value)}
+                    placeholder="default"
+                    list="schema-options"
+                    className="w-full rounded border border-[#30363d] bg-[#21262d] px-3 py-2 text-sm text-[#e8eaed] placeholder-[#484f58] focus:border-[#58a6ff] focus:outline-none focus:ring-1 focus:ring-[#58a6ff]"
+                  />
+                  <datalist id="schema-options">
+                    {schemaOptions.map((s) => (
+                      <option key={s} value={s} />
+                    ))}
+                  </datalist>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* 4. Schedule (collapsible) */}
           <div className="rounded-lg border border-[#30363d]">
             <button
@@ -629,7 +709,8 @@ export default function DeployDialog({ isOpen, onClose }: DeployDialogProps) {
                     deploying ||
                     connectionValid !== true ||
                     hasValidationErrors ||
-                    !jobName.trim()
+                    !jobName.trim() ||
+                    (clusterMode === "serverless" && !catalog.trim())
                   }
                   className="flex items-center gap-2 rounded-md bg-[#1f6feb] px-4 py-2 text-sm font-medium text-white hover:bg-[#388bfd] disabled:opacity-60"
                 >

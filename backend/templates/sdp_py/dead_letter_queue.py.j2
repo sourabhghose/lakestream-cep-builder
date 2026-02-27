@@ -1,0 +1,9 @@
+# Dead-letter queue: {{ node_id }}
+
+import dlt
+from dlt import expect_or_drop
+
+@dlt.table(name="{{ node_id }}")
+@expect_or_drop("{{ constraint_name }}", "{{ expect_condition }}")
+def {{ node_id }}():
+    return dlt.read_stream("{{ source_table }}")

@@ -1,0 +1,9 @@
+# Stream-static join: {{ node_id }}
+
+import dlt
+
+@dlt.table(name="{{ node_id }}")
+def {{ node_id }}():
+    stream = dlt.read_stream("{{ source_table }}")
+    static = spark.table("{{ static_table }}")
+    return stream.join(static, stream["{{ join_key }}"] == static["{{ static_key }}"])

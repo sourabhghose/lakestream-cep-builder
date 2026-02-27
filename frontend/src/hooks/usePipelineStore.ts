@@ -139,6 +139,8 @@ interface PipelineState {
     schedule?: string;
     max_retries?: number;
     checkpoint_location?: string;
+    catalog?: string;
+    target_schema?: string;
   }) => Promise<{ job_id: string; job_url: string; status: string }>;
 }
 

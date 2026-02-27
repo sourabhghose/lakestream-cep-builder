@@ -1,0 +1,7 @@
+# Union-merge: {{ node_id }}
+
+import dlt
+
+@dlt.table(name="{{ node_id }}")
+def {{ node_id }}():
+    return dlt.read_stream("{{ stream_a }}").unionByName(dlt.read_stream("{{ stream_b }}"))

@@ -6,6 +6,9 @@ Includes validate_connection, list_catalogs, list_schemas for UC browsing.
 Deploy history is recorded when using Lakebase (PGHOST set).
 """
 
+import logging
+import traceback
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.auth import UserInfo, get_current_user
@@ -14,6 +17,8 @@ from app.models.pipeline import DeployHistoryEntry, DeployRequest, DeployRespons
 from app.services.deploy_history import DeployRecord, list_deploys, record_deploy
 from app.services.deploy_service import DatabricksDeployError, DeployService
 from app.services.pipeline_store import get_pipeline_store
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 deploy_service = DeployService()
@@ -30,21 +35,31 @@ async def deploy_pipeline(
     Fetches the pipeline, generates code (SDP or SSS), creates a notebook
     in the workspace, and creates/updates a DLT pipeline (SDP) or Job (SSS).
     """
-    pipeline = get_pipeline_store().get(request.pipeline_id)
+    logger.info("Deploy request: pipeline_id=%s code_target=%s", request.pipeline_id, request.code_target)
+
+    store = get_pipeline_store()
+    logger.info("Using pipeline store: %s", type(store).__name__)
+    pipeline = store.get(request.pipeline_id)
     if pipeline is None:
-        raise HTTPException(status_code=404, detail="Pipeline not found")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Pipeline '{request.pipeline_id}' not found in {type(store).__name__}",
+        )
 
     try:
         codegen_result = generate(pipeline)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        logger.error("Codegen failed: %s\n%s", e, traceback.format_exc())
+        raise HTTPException(status_code=400, detail=f"Code generation failed: {e}") from e
 
-    # Determine code target from request or auto-detect from codegen
+    has_sdp = bool(codegen_result.sdp_code)
+    has_sss = bool(codegen_result.sss_code)
+    logger.info("Codegen result: has_sdp=%s has_sss=%s", has_sdp, has_sss)
+
     code_target = request.code_target
     if code_target is None or code_target == "hybrid":
         sdp_code = codegen_result.sdp_code
         sss_code = codegen_result.sss_code
-        # Hybrid: both codes available -> multi-task job
         if sdp_code and sss_code:
             try:
                 result = deploy_service.deploy_hybrid(
@@ -57,6 +72,7 @@ async def deploy_pipeline(
                     pipeline_name=pipeline.name,
                     catalog=request.catalog,
                     schema=request.target_schema,
+                    deployed_by=user.email,
                 )
                 record_deploy(
                     pipeline_id=request.pipeline_id,
@@ -77,11 +93,13 @@ async def deploy_pipeline(
                     deployment_type=result.get("deployment_type", "job"),
                 )
             except DatabricksDeployError as e:
-                raise HTTPException(status_code=502, detail=str(e)) from e
-        # Single target: use whichever code exists
+                logger.error("Hybrid deploy SDK error: %s\n%s", e, traceback.format_exc())
+                raise HTTPException(status_code=502, detail=f"Hybrid deploy failed: {e}") from e
+            except Exception as e:
+                logger.error("Hybrid deploy unexpected error: %s\n%s", e, traceback.format_exc())
+                raise HTTPException(status_code=502, detail=f"Hybrid deploy error: {type(e).__name__}: {e}") from e
         code_target = "sdp" if sdp_code else "sss"
 
-    # Select code to deploy
     if code_target == "sdp":
         code = codegen_result.sdp_code
         if not code:
@@ -97,6 +115,7 @@ async def deploy_pipeline(
                 detail="Pipeline does not generate SSS code. Use code_target='sdp' or adjust pipeline.",
             )
 
+    logger.info("Single deploy: code_target=%s code_length=%d", code_target, len(code))
     try:
         result = deploy_service.deploy(
             pipeline_id=request.pipeline_id,
@@ -108,6 +127,7 @@ async def deploy_pipeline(
             pipeline_name=pipeline.name,
             catalog=request.catalog,
             schema=request.target_schema,
+            deployed_by=user.email,
         )
         record_deploy(
             pipeline_id=request.pipeline_id,
@@ -128,9 +148,11 @@ async def deploy_pipeline(
             deployment_type=result.get("deployment_type", "job"),
         )
     except DatabricksDeployError as e:
-        raise HTTPException(status_code=502, detail=str(e)) from e
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        logger.error("Deploy SDK error: %s\n%s", e, traceback.format_exc())
+        raise HTTPException(status_code=502, detail=f"Deploy failed: {e}") from e
+    except Exception as e:
+        logger.error("Deploy unexpected error: %s\n%s", e, traceback.format_exc())
+        raise HTTPException(status_code=502, detail=f"Deploy error: {type(e).__name__}: {e}") from e
 
 
 @router.get("/history/{pipeline_id}/details", response_model=list[DeployHistoryEntry])

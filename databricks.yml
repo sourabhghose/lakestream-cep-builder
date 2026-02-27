@@ -9,6 +9,8 @@ sync:
     - frontend/out/**
 
   exclude:
+    - "**/__pycache__/**"
+    - "**/*.pyc"
     - frontend/src/**
     - frontend/node_modules/**
     - frontend/package.json

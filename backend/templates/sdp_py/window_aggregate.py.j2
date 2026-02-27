@@ -1,0 +1,12 @@
+# Window aggregate: {{ node_id }}
+
+import dlt
+from pyspark.sql import functions as F
+
+@dlt.table(name="{{ node_id }}")
+def {{ node_id }}():
+    return (
+        dlt.read_stream("{{ source_table }}")
+        .groupBy(F.window("{{ watermark_column }}", "{{ window_duration }}", "{{ slide_duration }}"))
+        .agg(F.expr("{{ aggregation }}"))
+    )

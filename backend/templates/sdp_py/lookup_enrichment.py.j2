@@ -1,0 +1,9 @@
+# Lookup-enrichment: {{ node_id }}
+
+import dlt
+
+@dlt.table(name="{{ node_id }}")
+def {{ node_id }}():
+    stream = dlt.read_stream("{{ source_table }}")
+    lookup = spark.table("{{ lookup_table }}")
+    return stream.join(lookup, stream["{{ join_key }}"] == lookup["{{ lookup_key }}"])

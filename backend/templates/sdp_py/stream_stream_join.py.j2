@@ -1,0 +1,10 @@
+# Stream-stream join: {{ node_id }}
+
+import dlt
+from pyspark.sql import functions as F
+
+@dlt.table(name="{{ node_id }}")
+def {{ node_id }}():
+    a = dlt.read_stream("{{ stream_a }}")
+    b = dlt.read_stream("{{ stream_b }}")
+    return a.join(b, a["{{ join_key_a }}"] == b["{{ join_key_b }}"])

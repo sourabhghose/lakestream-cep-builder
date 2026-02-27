@@ -1,47 +1,46 @@
 -- Stream Simulator: {{ node_id }}
 -- Profile: {{ data_profile }}
-CREATE OR REFRESH STREAMING TABLE {{ node_id }} AS
+-- Generates {{ events_per_second * 100 }} synthetic rows for DLT demo
+CREATE OR REFRESH MATERIALIZED VIEW {{ node_id }} AS
 SELECT
 {% if data_profile == 'iot-sensors' %}
-  CAST(value AS LONG) % 100 AS sensor_id,
-  CONCAT('sensor-', CAST(CAST(value AS LONG) % 100 AS STRING)) AS device_id,
-  -10.0 + (RAND() * 60.0) AS temperature,
-  10.0 + (RAND() * 90.0) AS humidity,
-  timestamp AS event_time
+  CAST(id % 100 AS INT) AS sensor_id,
+  CONCAT('sensor-', CAST(id % 100 AS STRING)) AS device_id,
+  ROUND(-10.0 + (ABS(HASH(id)) % 6000) / 100.0, 2) AS temperature,
+  ROUND(10.0 + (ABS(HASH(id + 1)) % 9000) / 100.0, 2) AS humidity,
+  TIMESTAMPADD(SECOND, CAST(id AS INT), current_timestamp()) AS event_time
 {% elif data_profile == 'clickstream' %}
-  CONCAT('user-', CAST(CAST(value AS LONG) % 1000 AS STRING)) AS user_id,
-  CONCAT('session-', CAST(CAST(value AS LONG) % 500 AS STRING)) AS session_id,
-  CASE CAST(CAST(value AS LONG) % 5 AS INT)
+  CONCAT('user-', CAST(id % 1000 AS STRING)) AS user_id,
+  CONCAT('session-', CAST(id % 500 AS STRING)) AS session_id,
+  CASE CAST(id % 5 AS INT)
     WHEN 0 THEN 'page_view' WHEN 1 THEN 'click'
     WHEN 2 THEN 'scroll' WHEN 3 THEN 'add_to_cart' ELSE 'purchase'
   END AS event_type,
-  CONCAT('/page/', CAST(CAST(value AS LONG) % 50 AS STRING)) AS page_url,
-  timestamp AS event_time
+  CONCAT('/page/', CAST(id % 50 AS STRING)) AS page_url,
+  TIMESTAMPADD(SECOND, CAST(id AS INT), current_timestamp()) AS event_time
 {% elif data_profile == 'financial-transactions' %}
-  CONCAT('txn-', CAST(value AS STRING)) AS transaction_id,
-  CONCAT('acct-', CAST(CAST(value AS LONG) % 200 AS STRING)) AS account_id,
-  ROUND(RAND() * 5000.0, 2) AS amount,
-  CASE CAST(CAST(value AS LONG) % 4 AS INT)
+  CONCAT('txn-', CAST(id AS STRING)) AS transaction_id,
+  CONCAT('acct-', CAST(id % 200 AS STRING)) AS account_id,
+  ROUND((ABS(HASH(id)) % 500000) / 100.0, 2) AS amount,
+  CASE CAST(id % 4 AS INT)
     WHEN 0 THEN 'USD' WHEN 1 THEN 'EUR' WHEN 2 THEN 'GBP' ELSE 'JPY'
   END AS currency,
-  CASE CAST(CAST(value AS LONG) % 3 AS INT)
+  CASE CAST(id % 3 AS INT)
     WHEN 0 THEN 'debit' WHEN 1 THEN 'credit' ELSE 'transfer'
   END AS txn_type,
-  timestamp AS event_time
+  TIMESTAMPADD(SECOND, CAST(id AS INT), current_timestamp()) AS event_time
 {% elif data_profile == 'ecommerce-orders' %}
-  CONCAT('order-', CAST(value AS STRING)) AS order_id,
-  CONCAT('cust-', CAST(CAST(value AS LONG) % 500 AS STRING)) AS customer_id,
-  CONCAT('prod-', CAST(CAST(value AS LONG) % 100 AS STRING)) AS product_id,
-  CAST(1 + (CAST(value AS LONG) % 10) AS INT) AS quantity,
-  ROUND(RAND() * 200.0, 2) AS unit_price,
-  CASE CAST(CAST(value AS LONG) % 3 AS INT)
+  CONCAT('order-', CAST(id AS STRING)) AS order_id,
+  CONCAT('cust-', CAST(id % 500 AS STRING)) AS customer_id,
+  CONCAT('prod-', CAST(id % 100 AS STRING)) AS product_id,
+  CAST(1 + (id % 10) AS INT) AS quantity,
+  ROUND((ABS(HASH(id)) % 20000) / 100.0, 2) AS unit_price,
+  CASE CAST(id % 3 AS INT)
     WHEN 0 THEN 'pending' WHEN 1 THEN 'shipped' ELSE 'delivered'
   END AS status,
-  timestamp AS event_time
+  TIMESTAMPADD(SECOND, CAST(id AS INT), current_timestamp()) AS event_time
 {% else %}
-  value,
-  timestamp AS event_time
+  id AS value,
+  TIMESTAMPADD(SECOND, CAST(id AS INT), current_timestamp()) AS event_time
 {% endif %}
-FROM STREAM read_rate(
-  rowsPerSecond => {{ events_per_second }}{{ ', numPartitions => ' ~ num_partitions if num_partitions }}
-);
+FROM (SELECT EXPLODE(SEQUENCE(1, {{ events_per_second * 100 }})) AS id);

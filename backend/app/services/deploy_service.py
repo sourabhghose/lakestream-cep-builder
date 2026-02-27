@@ -12,7 +12,7 @@ import uuid
 from typing import Any, Literal
 
 from databricks.sdk import WorkspaceClient
-from databricks.sdk.service import jobs, pipelines, workspace
+from databricks.sdk.service import compute, jobs, pipelines, workspace
 
 from app.config import DatabricksConfig
 
@@ -64,24 +64,25 @@ class DeployService:
         pipeline_name: str,
         pipeline_id: str,
         suffix: str,
+        language: str = "python",
     ) -> str:
         """Upload code as a notebook/file to workspace. Returns workspace path."""
         prefix = self._config.workspace_path_prefix
         safe_name = self._safe_path(pipeline_name)
         ts = int(time.time_ns() / 1000)
-        path = f"/Users/{w.current_user.me().user_name}/{prefix}/{safe_name}_{pipeline_id[:8]}_{ts}.py"
+        ext = "sql" if language == "sql" else "py"
+        lang = workspace.Language.SQL if language == "sql" else workspace.Language.PYTHON
+        path = f"/Users/{w.current_user.me().user_name}/{prefix}/{safe_name}_{pipeline_id[:8]}_{ts}.{ext}"
 
-        # Ensure parent directory exists
         parent = "/".join(path.split("/")[:-1])
         w.workspace.mkdirs(parent)
 
-        # Upload as Python source
         content = code.encode("utf-8")
         w.workspace.upload(
             path,
             io.BytesIO(content),
             format=workspace.ImportFormat.SOURCE,
-            language=workspace.Language.PYTHON,
+            language=lang,
             overwrite=True,
         )
         return path
@@ -117,22 +118,97 @@ class DeployService:
     ) -> list[jobs.JobCluster]:
         """Build JobCluster list for Jobs API."""
         cfg = self._build_cluster_config(cluster_config)
+        cluster_spec = compute.ClusterSpec(
+            spark_version=cfg.get("spark_version", "auto:latest-lts"),
+            node_type_id=cfg.get("node_type_id", "i3.xlarge"),
+            num_workers=cfg.get("num_workers", 1),
+        )
         return [
             jobs.JobCluster(
                 job_cluster_key="main_cluster",
-                new_cluster=cfg,
+                new_cluster=cluster_spec,
             )
         ]
 
     def _job_url(self, host: str, job_id: int) -> str:
         """Build Databricks job URL."""
         base = host.rstrip("/")
-        return f"{base}/#job/{job_id}"
+        return f"{base}/jobs/{job_id}"
 
     def _pipeline_url(self, host: str, pipeline_id: str) -> str:
-        """Build Databricks pipeline URL."""
+        """Build Databricks DLT pipeline URL."""
         base = host.rstrip("/")
-        return f"{base}/#joblist/pipelines/{pipeline_id}"
+        return f"{base}/pipelines/{pipeline_id}"
+
+    def _grant_pipeline_access(
+        self, w: WorkspaceClient, pipeline_id: str, user_email: str
+    ) -> None:
+        """Grant CAN_MANAGE on a DLT pipeline to the deploying user and all workspace users."""
+        from databricks.sdk.service.pipelines import (
+            PipelineAccessControlRequest,
+            PipelinePermissionLevel,
+        )
+        acl = [
+            PipelineAccessControlRequest(
+                user_name=user_email,
+                permission_level=PipelinePermissionLevel.CAN_MANAGE,
+            ),
+            PipelineAccessControlRequest(
+                group_name="users",
+                permission_level=PipelinePermissionLevel.CAN_MANAGE,
+            ),
+        ]
+        try:
+            w.pipelines.update_permissions(pipeline_id=pipeline_id, access_control_list=acl)
+        except Exception:
+            try:
+                w.pipelines.update_permissions(
+                    pipeline_id=pipeline_id,
+                    access_control_list=[
+                        PipelineAccessControlRequest(
+                            group_name="users",
+                            permission_level=PipelinePermissionLevel.CAN_MANAGE,
+                        )
+                    ],
+                )
+            except Exception as exc:
+                import logging
+                logging.getLogger(__name__).warning("Failed to grant pipeline access: %s", exc)
+
+    def _grant_job_access(
+        self, w: WorkspaceClient, job_id: int, user_email: str
+    ) -> None:
+        """Grant CAN_MANAGE on a Job to the deploying user and all workspace users."""
+        from databricks.sdk.service.jobs import (
+            JobAccessControlRequest,
+            JobPermissionLevel,
+        )
+        acl = [
+            JobAccessControlRequest(
+                user_name=user_email,
+                permission_level=JobPermissionLevel.CAN_MANAGE,
+            ),
+            JobAccessControlRequest(
+                group_name="users",
+                permission_level=JobPermissionLevel.CAN_MANAGE,
+            ),
+        ]
+        try:
+            w.jobs.update_permissions(job_id=str(job_id), access_control_list=acl)
+        except Exception:
+            try:
+                w.jobs.update_permissions(
+                    job_id=str(job_id),
+                    access_control_list=[
+                        JobAccessControlRequest(
+                            group_name="users",
+                            permission_level=JobPermissionLevel.CAN_MANAGE,
+                        )
+                    ],
+                )
+            except Exception as exc:
+                import logging
+                logging.getLogger(__name__).warning("Failed to grant job access: %s", exc)
 
     def deploy_hybrid(
         self,
@@ -145,6 +221,7 @@ class DeployService:
         pipeline_name: str = "pipeline",
         catalog: str | None = None,
         schema: str | None = None,
+        deployed_by: str | None = None,
     ) -> dict[str, str]:
         """
         Deploy hybrid pipeline: multi-task Databricks Job with an SDP (DLT)
@@ -155,7 +232,9 @@ class DeployService:
 
         w = self._get_client()
 
-        sdp_path = self._upload_notebook(w, sdp_code, pipeline_name, pipeline_id, "sdp")
+        is_python_dlt = sdp_code.lstrip().startswith("# Databricks notebook source")
+        sdp_lang = "python" if is_python_dlt else "sql"
+        sdp_path = self._upload_notebook(w, sdp_code, pipeline_name, pipeline_id, "sdp", language=sdp_lang)
         sss_path = self._upload_notebook(w, sss_code, pipeline_name, pipeline_id, "sss")
 
         serverless = self._is_serverless(cluster_config)
@@ -165,7 +244,7 @@ class DeployService:
         )
         dlt_kw: dict[str, Any] = {
             "libraries": [lib],
-            "continuous": False,
+            "continuous": is_python_dlt,
             "serverless": serverless,
         }
         if serverless:
@@ -177,6 +256,8 @@ class DeployService:
         if schema:
             dlt_kw["schema"] = schema
         created_pipeline = w.pipelines.create(name=f"{job_name}_sdp", **dlt_kw)
+        if deployed_by:
+            self._grant_pipeline_access(w, created_pipeline.pipeline_id, deployed_by)
 
         sdp_task = jobs.Task(
             task_key="sdp_pipeline",
@@ -199,7 +280,7 @@ class DeployService:
             environments = [
                 jobs.JobEnvironment(
                     environment_key="serverless",
-                    spec={"client": "1"},
+                    spec=compute.Environment(client="1"),
                 )
             ]
             job_clusters: list[jobs.JobCluster] = []
@@ -231,6 +312,9 @@ class DeployService:
         else:
             create_kw["job_clusters"] = job_clusters
         created_job = w.jobs.create(**create_kw)
+        if deployed_by:
+            self._grant_job_access(w, created_job.job_id, deployed_by)
+        self._run_job(w, created_job.job_id)
         url = self._job_url(str(w.config.host), created_job.job_id)
         return {
             "job_id": str(created_job.job_id),
@@ -250,6 +334,7 @@ class DeployService:
         pipeline_name: str = "pipeline",
         catalog: str | None = None,
         schema: str | None = None,
+        deployed_by: str | None = None,
     ) -> dict[str, str]:
         """
         Deploy pipeline code to Databricks.
@@ -262,16 +347,19 @@ class DeployService:
 
         w = self._get_client()
         suffix = "sdp" if code_target == "sdp" else "sss"
+        is_python_dlt = code_target == "sdp" and code.lstrip().startswith("# Databricks notebook source")
+        nb_lang = "python" if (code_target != "sdp" or is_python_dlt) else "sql"
         notebook_path = self._upload_notebook(
-            w, code, pipeline_name, pipeline_id, suffix
+            w, code, pipeline_name, pipeline_id, suffix, language=nb_lang
         )
 
         if code_target == "sdp":
             return self._deploy_sdp(
-                w, job_name, notebook_path, cluster_config, schedule, catalog, schema
+                w, job_name, notebook_path, cluster_config, schedule, catalog, schema,
+                deployed_by, continuous=is_python_dlt,
             )
         return self._deploy_sss(
-            w, job_name, notebook_path, cluster_config, schedule
+            w, job_name, notebook_path, cluster_config, schedule, deployed_by
         )
 
     def _is_serverless(self, cluster_config: dict[str, Any]) -> bool:
@@ -287,6 +375,8 @@ class DeployService:
         schedule: str | None,
         catalog: str | None,
         schema: str | None,
+        deployed_by: str | None = None,
+        continuous: bool = False,
     ) -> dict[str, str]:
         """Create or update DLT pipeline for SDP code."""
         lib = pipelines.PipelineLibrary(
@@ -302,7 +392,7 @@ class DeployService:
 
         update_kw: dict[str, Any] = {
             "libraries": [lib],
-            "continuous": False,
+            "continuous": continuous,
             "serverless": serverless,
         }
         if serverless:
@@ -320,6 +410,9 @@ class DeployService:
                 name=job_name,
                 **update_kw,
             )
+            if deployed_by:
+                self._grant_pipeline_access(w, existing_id, deployed_by)
+            self._start_pipeline(w, existing_id)
             url = self._pipeline_url(str(w.config.host), existing_id)
             return {
                 "job_id": existing_id,
@@ -329,6 +422,9 @@ class DeployService:
             }
 
         created = w.pipelines.create(name=job_name, **update_kw)
+        if deployed_by:
+            self._grant_pipeline_access(w, created.pipeline_id, deployed_by)
+        self._start_pipeline(w, created.pipeline_id)
         url = self._pipeline_url(str(w.config.host), created.pipeline_id)
         return {
             "job_id": created.pipeline_id,
@@ -344,6 +440,7 @@ class DeployService:
         notebook_path: str,
         cluster_config: dict[str, Any],
         schedule: str | None,
+        deployed_by: str | None = None,
     ) -> dict[str, str]:
         """Create or update Job with streaming notebook task for SSS code."""
         serverless = self._is_serverless(cluster_config)
@@ -360,7 +457,7 @@ class DeployService:
             environments = [
                 jobs.JobEnvironment(
                     environment_key="serverless",
-                    spec={"client": "1"},
+                    spec=compute.Environment(client="1"),
                 )
             ]
             job_clusters: list[jobs.JobCluster] = []
@@ -402,6 +499,9 @@ class DeployService:
                 job_id=existing_job.job_id,
                 new_settings=jobs.JobSettings(**settings_kw),
             )
+            if deployed_by:
+                self._grant_job_access(w, existing_job.job_id, deployed_by)
+            self._run_job(w, existing_job.job_id)
             url = self._job_url(str(w.config.host), existing_job.job_id)
             return {
                 "job_id": str(existing_job.job_id),
@@ -411,6 +511,9 @@ class DeployService:
             }
 
         created = w.jobs.create(**settings_kw)
+        if deployed_by:
+            self._grant_job_access(w, created.job_id, deployed_by)
+        self._run_job(w, created.job_id)
         url = self._job_url(str(w.config.host), created.job_id)
         return {
             "job_id": str(created.job_id),
@@ -419,10 +522,26 @@ class DeployService:
             "deployment_type": "job",
         }
 
+    def _start_pipeline(self, w: WorkspaceClient, pipeline_id: str) -> None:
+        """Trigger a DLT pipeline update (non-blocking)."""
+        try:
+            w.pipelines.start_update(pipeline_id=pipeline_id)
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning("Auto-start pipeline %s failed: %s", pipeline_id, exc)
+
+    def _run_job(self, w: WorkspaceClient, job_id: int) -> None:
+        """Trigger a job run (non-blocking)."""
+        try:
+            w.jobs.run_now(job_id=job_id)
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning("Auto-run job %s failed: %s", job_id, exc)
+
     def _deploy_mock(self, job_name: str) -> dict[str, str]:
         """Mock deployment when Databricks is not configured."""
         job_id = str(uuid.uuid4())
-        job_url = f"https://databricks.example.com/#job/{job_id}"
+        job_url = f"https://databricks.example.com/jobs/{job_id}"
         return {
             "job_id": job_id,
             "job_url": job_url,
@@ -617,7 +736,7 @@ class DeployService:
                 p = w.pipelines.get(pipeline_id=job_id)
                 raw = getattr(p, "state", "UNKNOWN") or "UNKNOWN"
                 status = self._normalize_status(raw)
-                run_url = job_url or f"{base_url}/#joblist/pipelines/{job_id}"
+                run_url = job_url or f"{base_url}/pipelines/{job_id}"
                 return {
                     "job_id": job_id,
                     "status": status,
@@ -630,7 +749,7 @@ class DeployService:
                 return {
                     "job_id": job_id,
                     "status": "PENDING",
-                    "run_url": job_url or f"{base_url}/#job/{job_id}",
+                    "run_url": job_url or f"{base_url}/jobs/{job_id}",
                 }
 
             run = runs[0]
@@ -656,9 +775,9 @@ class DeployService:
 
             run_url = job_url
             if not run_url and getattr(run, "run_id", None):
-                run_url = f"{base_url}/#job/{job_id}/run/{run.run_id}"
+                run_url = f"{base_url}/jobs/{job_id}/runs/{run.run_id}"
             if not run_url:
-                run_url = f"{base_url}/#job/{job_id}"
+                run_url = f"{base_url}/jobs/{job_id}"
 
             return {
                 "job_id": job_id,
@@ -693,7 +812,7 @@ class DeployService:
         return {
             "job_id": job_id,
             "status": status,
-            "run_url": job_url or f"https://databricks.example.com/#job/{job_id}",
+            "run_url": job_url or f"https://databricks.example.com/jobs/{job_id}",
             "start_time": None,
             "duration_ms": None,
         }

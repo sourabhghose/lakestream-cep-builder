@@ -1,0 +1,7 @@
+# Map-select: {{ node_id }}
+
+import dlt
+
+@dlt.table(name="{{ node_id }}")
+def {{ node_id }}():
+    return dlt.read_stream("{{ source_table }}").selectExpr("{{ expression }}")

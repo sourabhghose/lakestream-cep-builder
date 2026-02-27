@@ -20,7 +20,11 @@ api.interceptors.response.use(
       if (status === 401) userMessage = "Authentication required";
       else if (status === 403) userMessage = "Permission denied";
       else if (status === 404) userMessage = "Resource not found";
-      else if (status >= 500) userMessage = "Server error. Please try again later.";
+      else if (status >= 500) {
+        const d = data as Record<string, unknown> | null;
+        if (d && typeof d.detail === "string") userMessage = d.detail;
+        else userMessage = "Server error. Please try again later.";
+      }
       else if (data) {
         if (typeof data === "string") userMessage = data;
         else if (typeof data.message === "string") userMessage = data.message;
@@ -211,6 +215,8 @@ export interface DeployRequest {
   schedule?: string;
   max_retries?: number;
   checkpoint_location?: string;
+  catalog?: string;
+  target_schema?: string;
 }
 
 export interface DeployResponse {
