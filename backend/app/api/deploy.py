@@ -39,22 +39,12 @@ async def deploy_pipeline(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
-    # Determine code target: from request, or from codegen (default sdp for hybrid)
+    # Determine code target from request or auto-detect from codegen
     code_target = request.code_target
-    if code_target is None:
-        ct = codegen_result.code_target
-        code_target = "sdp" if ct in ("sdp", "hybrid") else "sss"
-
-    # Hybrid: deploy both SDP and SSS as a multi-task job
-    # Auto-downgrade to single target if only one code type exists
-    if code_target == "hybrid":
+    if code_target is None or code_target == "hybrid":
         sdp_code = codegen_result.sdp_code
         sss_code = codegen_result.sss_code
-        if not sdp_code and not sss_code:
-            raise HTTPException(
-                status_code=400,
-                detail="No code generated. Check pipeline nodes.",
-            )
+        # Hybrid: both codes available -> multi-task job
         if sdp_code and sss_code:
             try:
                 result = deploy_service.deploy_hybrid(
@@ -88,8 +78,8 @@ async def deploy_pipeline(
                 )
             except DatabricksDeployError as e:
                 raise HTTPException(status_code=502, detail=str(e)) from e
-        else:
-            code_target = "sdp" if sdp_code else "sss"
+        # Single target: use whichever code exists
+        code_target = "sdp" if sdp_code else "sss"
 
     # Select code to deploy
     if code_target == "sdp":

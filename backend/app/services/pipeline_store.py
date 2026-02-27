@@ -414,8 +414,18 @@ class LakebaseStore(PipelineStore):
 
 
 def get_pipeline_store() -> PipelineStore:
-    """Return LakebaseStore if Lakebase is available, otherwise LocalFileStore."""
+    """
+    Return the best available store:
+    1. LakebaseStore if PGHOST is set (Lakebase PostgreSQL)
+    2. DatabricksVolumeStore if DATABRICKS_HOST is set (Unity Catalog Volume)
+    3. LocalFileStore for local development
+    """
     from app.db import is_postgres_available
     if is_postgres_available():
         return LakebaseStore()
+    if os.environ.get("DATABRICKS_HOST") or os.environ.get("DATABRICKS_RUNTIME_VERSION"):
+        try:
+            return DatabricksVolumeStore()
+        except Exception:
+            pass
     return LocalFileStore()
