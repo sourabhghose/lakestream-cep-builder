@@ -50,7 +50,20 @@ CREATE TABLE IF NOT EXISTS saved_templates (
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS pattern_test_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    pipeline_id VARCHAR(255),
+    total_events INT NOT NULL,
+    total_matches INT NOT NULL,
+    matches_json JSONB NOT NULL,
+    event_flow_json JSONB NOT NULL,
+    run_context JSONB,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
 CREATE INDEX IF NOT EXISTS idx_pipelines_status ON pipelines(status);
 CREATE INDEX IF NOT EXISTS idx_pipelines_created_by ON pipelines(created_by);
 CREATE INDEX IF NOT EXISTS idx_deploy_history_pipeline ON deploy_history(pipeline_id);
 CREATE INDEX IF NOT EXISTS idx_templates_industry ON saved_templates(industry);
+CREATE INDEX IF NOT EXISTS idx_pattern_test_pipeline ON pattern_test_history(pipeline_id);
+CREATE INDEX IF NOT EXISTS idx_pattern_test_created_at ON pattern_test_history(created_at);
