@@ -465,6 +465,13 @@ export interface PatternTestMatch {
   matched_events: number[];
   match_time: string;
   details: string;
+  matched_event_payloads?: Record<string, unknown>[];
+  timeline?: {
+    event_index: number;
+    timestamp: string;
+    event_type?: string;
+  }[];
+  state_snapshot?: Record<string, unknown>;
 }
 
 export interface PatternTestEventFlow {
@@ -477,6 +484,7 @@ export interface PatternTestResponse {
   event_flow: PatternTestEventFlow[];
   total_events: number;
   total_matches: number;
+  run_id?: string | null;
 }
 
 export async function testPattern(
@@ -490,6 +498,44 @@ export async function testPattern(
     },
     events,
   });
+  return res.data;
+}
+
+export interface PatternTestRunSummary {
+  id: string;
+  pipeline_id: string | null;
+  total_events: number;
+  total_matches: number;
+  created_at: string;
+}
+
+export interface PatternTestRunDetail {
+  id: string;
+  pipeline_id: string | null;
+  total_events: number;
+  total_matches: number;
+  matches: PatternTestMatch[];
+  event_flow: PatternTestEventFlow[];
+  run_context?: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export async function listPatternTestHistory(
+  pipelineId?: string,
+  limit: number = 20
+): Promise<PatternTestRunSummary[]> {
+  const params = new URLSearchParams();
+  if (pipelineId) params.set("pipeline_id", pipelineId);
+  params.set("limit", String(limit));
+  const qs = params.toString();
+  const res = await api.get(`/api/pattern/history${qs ? `?${qs}` : ""}`);
+  return res.data ?? [];
+}
+
+export async function getPatternTestHistoryRun(
+  runId: string
+): Promise<PatternTestRunDetail> {
+  const res = await api.get(`/api/pattern/history/${encodeURIComponent(runId)}`);
   return res.data;
 }
 

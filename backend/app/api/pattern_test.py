@@ -7,6 +7,7 @@ plus event flow (which events reached which nodes).
 
 import json
 import re
+import logging
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -15,8 +16,14 @@ from pydantic import BaseModel, Field
 
 from app.codegen.graph_utils import get_upstream_nodes, topological_sort
 from app.models.pipeline import PipelineEdge, PipelineNode
+from app.services.pattern_explainability import (
+    get_pattern_test_run,
+    list_pattern_test_runs,
+    record_pattern_test_run,
+)
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 CEP_PATTERN_TYPES = {
     "sequence-detector", "absence-detector", "count-threshold", "velocity-detector",
@@ -46,6 +53,18 @@ class PatternMatch(BaseModel):
     matched_events: list[int] = Field(..., description="Indices of matched events")
     match_time: str = Field(..., description="Timestamp when match completed")
     details: str = Field(..., description="Human-readable match description")
+    matched_event_payloads: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="Subset of matched event payloads for explainability",
+    )
+    timeline: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="Timeline of matched events with timestamps",
+    )
+    state_snapshot: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Pattern-specific state snapshot at trigger time",
+    )
 
 
 class EventFlowEntry(BaseModel):
@@ -62,6 +81,33 @@ class PatternTestResponse(BaseModel):
     event_flow: list[EventFlowEntry] = Field(..., description="Per-event node reachability")
     total_events: int = Field(..., description="Number of events tested")
     total_matches: int = Field(..., description="Number of matches found")
+    run_id: str | None = Field(
+        default=None,
+        description="Persisted run identifier for explainability history",
+    )
+
+
+class PatternTestRunSummary(BaseModel):
+    """Summary for stored pattern test run history."""
+
+    id: str
+    pipeline_id: str | None
+    total_events: int
+    total_matches: int
+    created_at: str
+
+
+class PatternTestRunDetail(BaseModel):
+    """Detailed stored pattern test run."""
+
+    id: str
+    pipeline_id: str | None
+    total_events: int
+    total_matches: int
+    matches: list[dict[str, Any]]
+    event_flow: list[dict[str, Any]]
+    run_context: dict[str, Any] | None = None
+    created_at: str
 
 
 def _parse_duration(config_val: Any) -> timedelta:
@@ -335,6 +381,32 @@ def _match_deduplication(
     return results
 
 
+def _build_pattern_match(
+    node_id: str,
+    node_type: str,
+    pattern_name: str,
+    config: dict[str, Any],
+    events: list[dict[str, Any]],
+    matched_idx: list[int],
+    details: str,
+) -> PatternMatch:
+    last_ts = _get_ts(events[matched_idx[-1]], matched_idx[-1]) if matched_idx else None
+    match_time = last_ts.isoformat() if last_ts else ""
+    payloads, timeline, snapshot = _build_match_explainability(
+        events, matched_idx, node_type, config
+    )
+    return PatternMatch(
+        pattern_node_id=node_id,
+        pattern_name=pattern_name,
+        matched_events=matched_idx,
+        match_time=match_time,
+        details=details,
+        matched_event_payloads=payloads,
+        timeline=timeline,
+        state_snapshot=snapshot,
+    )
+
+
 def _match_pattern(
     node_id: str,
     node_type: str,
@@ -355,15 +427,11 @@ def _match_pattern(
         steps = steps_raw if isinstance(steps_raw, list) else []
         within = _parse_duration(config.get("withinDuration", {"value": 5, "unit": "minutes"}))
         for matched_idx, details in _match_sequence(events, steps, within, node_id, pattern_name):
-            last_ts = _get_ts(events[matched_idx[-1]], matched_idx[-1]) if matched_idx else None
-            match_time = last_ts.isoformat() if last_ts else ""
-            matches.append(PatternMatch(
-                pattern_node_id=node_id,
-                pattern_name=pattern_name,
-                matched_events=matched_idx,
-                match_time=match_time,
-                details=details,
-            ))
+            matches.append(
+                _build_pattern_match(
+                    node_id, node_type, pattern_name, config, events, matched_idx, details
+                )
+            )
 
     elif node_type == "count-threshold":
         event_filter = config.get("eventFilter", "true")
@@ -372,15 +440,11 @@ def _match_pattern(
         for matched_idx, details in _match_count_threshold(
             events, event_filter, threshold, window, node_id, pattern_name
         ):
-            last_ts = _get_ts(events[matched_idx[-1]], matched_idx[-1]) if matched_idx else None
-            match_time = last_ts.isoformat() if last_ts else ""
-            matches.append(PatternMatch(
-                pattern_node_id=node_id,
-                pattern_name=pattern_name,
-                matched_events=matched_idx,
-                match_time=match_time,
-                details=details,
-            ))
+            matches.append(
+                _build_pattern_match(
+                    node_id, node_type, pattern_name, config, events, matched_idx, details
+                )
+            )
 
     elif node_type == "absence-detector":
         trigger_filter = config.get("triggerEventFilter", "true")
@@ -389,15 +453,11 @@ def _match_pattern(
         for matched_idx, details in _match_absence(
             events, trigger_filter, expected_filter, timeout, node_id, pattern_name
         ):
-            last_ts = _get_ts(events[matched_idx[-1]], matched_idx[-1]) if matched_idx else None
-            match_time = last_ts.isoformat() if last_ts else ""
-            matches.append(PatternMatch(
-                pattern_node_id=node_id,
-                pattern_name=pattern_name,
-                matched_events=matched_idx,
-                match_time=match_time,
-                details=details,
-            ))
+            matches.append(
+                _build_pattern_match(
+                    node_id, node_type, pattern_name, config, events, matched_idx, details
+                )
+            )
 
     elif node_type == "velocity-detector":
         event_filter = config.get("eventFilter", "true")
@@ -407,15 +467,11 @@ def _match_pattern(
         for matched_idx, details in _match_velocity(
             events, event_filter, rate_threshold, rate_unit, window, node_id, pattern_name
         ):
-            last_ts = _get_ts(events[matched_idx[-1]], matched_idx[-1]) if matched_idx else None
-            match_time = last_ts.isoformat() if last_ts else ""
-            matches.append(PatternMatch(
-                pattern_node_id=node_id,
-                pattern_name=pattern_name,
-                matched_events=matched_idx,
-                match_time=match_time,
-                details=details,
-            ))
+            matches.append(
+                _build_pattern_match(
+                    node_id, node_type, pattern_name, config, events, matched_idx, details
+                )
+            )
 
     elif node_type == "temporal-correlation":
         stream_a = config.get("streamAFilter", "true")
@@ -424,40 +480,36 @@ def _match_pattern(
         for matched_idx, details in _match_temporal_correlation(
             events, stream_a, stream_b, max_gap, node_id, pattern_name
         ):
-            last_ts = _get_ts(events[matched_idx[-1]], matched_idx[-1]) if matched_idx else None
-            match_time = last_ts.isoformat() if last_ts else ""
-            matches.append(PatternMatch(
-                pattern_node_id=node_id,
-                pattern_name=pattern_name,
-                matched_events=matched_idx,
-                match_time=match_time,
-                details=details,
-            ))
+            matches.append(
+                _build_pattern_match(
+                    node_id, node_type, pattern_name, config, events, matched_idx, details
+                )
+            )
 
     elif node_type == "deduplication":
         key_fields = config.get("dedupKeyFields", [])
         if isinstance(key_fields, str):
             key_fields = [key_fields] if key_fields else []
         for matched_idx, details in _match_deduplication(events, key_fields, node_id, pattern_name):
-            last_ts = _get_ts(events[matched_idx[-1]], matched_idx[-1]) if matched_idx else None
-            match_time = last_ts.isoformat() if last_ts else ""
-            matches.append(PatternMatch(
-                pattern_node_id=node_id,
-                pattern_name=pattern_name,
-                matched_events=matched_idx,
-                match_time=match_time,
-                details=details,
-            ))
+            matches.append(
+                _build_pattern_match(
+                    node_id, node_type, pattern_name, config, events, matched_idx, details
+                )
+            )
 
     else:
         # Simplified matching for other patterns (geofence, trend, outlier, session, etc.)
-        matches.append(PatternMatch(
-            pattern_node_id=node_id,
-            pattern_name=pattern_name,
-            matched_events=[],
-            match_time="",
-            details=f"Pattern {pattern_name} (simplified matching not implemented for {node_type})",
-        ))
+        matches.append(
+            _build_pattern_match(
+                node_id,
+                node_type,
+                pattern_name,
+                config,
+                events,
+                [],
+                f"Pattern {pattern_name} (simplified matching not implemented for {node_type})",
+            )
+        )
 
     return matches
 
@@ -540,6 +592,7 @@ def _pattern_type_label(t: str) -> str:
     return labels.get(t, t.replace("-", " ").title())
 
 
+
 @router.post("/test", response_model=PatternTestResponse)
 async def pattern_test(request: PatternTestRequest) -> PatternTestResponse:
     """
@@ -597,9 +650,74 @@ async def pattern_test(request: PatternTestRequest) -> PatternTestResponse:
 
     event_flow = _compute_event_flow(nodes, edges, events, all_matches)
 
+    run_id: str | None = None
+    try:
+        pipeline_id = pipeline.get("id")
+        pipeline_id_str = str(pipeline_id).strip() if pipeline_id else None
+        if pipeline_id_str == "":
+            pipeline_id_str = None
+        run_context = {
+            "node_count": len(nodes),
+            "edge_count": len(edges),
+            "pattern_node_count": len([n for n in nodes if n.type in CEP_PATTERN_TYPES]),
+        }
+        run_id = record_pattern_test_run(
+            pipeline_id=pipeline_id_str,
+            total_events=len(events),
+            total_matches=len(all_matches),
+            matches=[m.model_dump() for m in all_matches],
+            event_flow=[e.model_dump() for e in event_flow],
+            run_context=run_context,
+        )
+    except Exception as e:
+        logger.warning("Failed to persist pattern test explainability history: %s", e)
+
     return PatternTestResponse(
         matches=all_matches,
         event_flow=event_flow,
         total_events=len(events),
         total_matches=len(all_matches),
+        run_id=run_id,
+    )
+
+
+@router.get("/history", response_model=list[PatternTestRunSummary])
+async def list_pattern_test_history(
+    pipeline_id: str | None = None,
+    limit: int = 20,
+) -> list[PatternTestRunSummary]:
+    """
+    List persisted pattern test explainability runs.
+
+    Optional filtering by pipeline_id; defaults to latest 20 runs.
+    """
+    safe_limit = max(1, min(limit, 100))
+    records = list_pattern_test_runs(pipeline_id=pipeline_id, limit=safe_limit)
+    return [
+        PatternTestRunSummary(
+            id=r.id,
+            pipeline_id=r.pipeline_id,
+            total_events=r.total_events,
+            total_matches=r.total_matches,
+            created_at=r.created_at.isoformat(),
+        )
+        for r in records
+    ]
+
+
+@router.get("/history/{run_id}", response_model=PatternTestRunDetail)
+async def get_pattern_test_history_run(run_id: str) -> PatternTestRunDetail:
+    """Fetch full explainability payload for a persisted run."""
+    record = get_pattern_test_run(run_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Pattern test run not found")
+    return PatternTestRunDetail(
+        id=record.id,
+        pipeline_id=record.pipeline_id,
+        total_events=record.total_events,
+        total_matches=record.total_matches,
+        matches=record.matches,
+        event_flow=record.event_flow,
+        run_context=record.run_context,
+        created_at=record.created_at.isoformat(),
     )
