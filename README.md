@@ -66,7 +66,7 @@ Deployed as a **Databricks App** — a single FastAPI process serves the React f
 | **Dual Code Generation** | Lakeflow Declarative Pipelines (SDP) + Spark Structured Streaming |
 | **14 CEP Patterns** | Sequence, absence, count, velocity, geofence, correlation, trend, outlier, session, dedup, MATCH_RECOGNIZE, custom, state machine, heartbeat/liveness |
 | **TransformWithState** | Spark 4.0 stateful processing for advanced CEP patterns |
-| **Pattern Test Mode** | Upload sample events, simulate CEP matching, see results + event flow |
+| **Pattern Test Mode** | Upload sample events, simulate CEP matching, and view end-user lineage/explainability (matched payloads, trigger timeline, state snapshot, event flow) |
 | **Monaco Editor** | Bidirectional sync, diff view vs last deploy, line-level code annotations |
 | **Schema Discovery** | Browse Unity Catalog catalogs/schemas/tables with cascading dropdowns |
 | **Data Preview** | Per-node synthetic preview + flow-through source-to-sink simulation |
@@ -307,6 +307,23 @@ Powered by **Claude Sonnet on Databricks** Foundation Model APIs. No API keys ne
 | `deploy_history` | Deployment audit trail — job IDs, status, timestamps, errors |
 | `user_preferences` | Per-user settings — default catalog/schema, canvas preferences |
 | `saved_templates` | Built-in (19) + user-created pipeline templates |
+| `pattern_test_history` | Persisted Pattern Test lineage/explainability runs (`run_id`, matches, event flow, run context) |
+
+---
+
+## End-User Lineage Visibility (Pattern Test)
+
+When a user runs **Pattern Test**, lineage is visible directly in the UI and retrievable through APIs:
+
+- **Per match (Explainability panel)**
+  - `matched_event_payloads`: the exact event payloads that contributed to the match
+  - `timeline`: ordered trigger sequence with event index and timestamp
+  - `state_snapshot`: pattern state at trigger time for user-facing reasoning/debugging
+- **Flow-level lineage**
+  - `event_flow`: per-event node reachability so users can see how each event propagated
+- **Run-level lineage**
+  - `run_id` returned by `/api/pattern/test`, used to retrieve the same run later
+  - persisted run history via `/api/pattern/history` and `/api/pattern/history/{run_id}`
 
 ---
 
@@ -329,7 +346,9 @@ Powered by **Claude Sonnet on Databricks** Foundation Model APIs. No API keys ne
 | `/api/schema/.../columns` | GET | Get column definitions |
 | `/api/preview/sample` | POST | Get synthetic data preview for a node |
 | `/api/preview/flow` | POST | Flow-through preview (source to sink) |
-| `/api/pattern/test` | POST | Test CEP patterns against sample events |
+| `/api/pattern/test` | POST | Test CEP patterns against sample events (returns match-level lineage + `run_id`) |
+| `/api/pattern/history` | GET | List persisted pattern test runs (latest first, optional `pipeline_id`) |
+| `/api/pattern/history/{run_id}` | GET | Get full lineage/explainability details for a specific run |
 | `/api/ai/generate` | POST | AI-powered pipeline generation from natural language (Claude Sonnet) |
 | `/api/ai/config-assist` | POST | AI-powered node config generation from natural language |
 | `/api/ai/explain-code` | POST | AI-powered code explanation for SDP/SSS code |
