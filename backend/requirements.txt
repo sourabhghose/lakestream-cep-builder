@@ -9,5 +9,5 @@ httpx
 confluent-kafka>=2.3
 psycopg[binary]>=3.2
 psycopg-pool>=3.2
-pytest>=8.0
+pytest>=9.0.3
 flake8>=7.0
